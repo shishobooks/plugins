@@ -7,8 +7,8 @@
     "plugins/*"
   ],
   "scripts": {
-    "build": "node esbuild.config.js",
-    "build:watch": "node esbuild.config.js --watch",
+    "build": "node esbuild.config.cjs",
+    "build:watch": "node esbuild.config.cjs --watch",
     "test:docker": "MAIN_WORKTREE=$(git worktree list | head -1 | awk '{print $1}') COMPOSE_MENU=false docker compose up",
     "clean": "rm -rf dist",
     "lint": "concurrently --kill-others-on-fail --group \"yarn:lint:*\"",
