@@ -14,8 +14,22 @@
     },
     "httpAccess": {
       "description": "Calls Open Library API",
-      "domains": ["openlibrary.org"]
-    }
+      "domains": ["openlibrary.org", "covers.openlibrary.org"]
+    },
+    "identifierTypes": [
+      {
+        "id": "openlibrary_work",
+        "name": "Open Library Work",
+        "urlTemplate": "https://openlibrary.org/works/{value}",
+        "pattern": "^OL\\d+W$"
+      },
+      {
+        "id": "openlibrary_edition",
+        "name": "Open Library Edition",
+        "urlTemplate": "https://openlibrary.org/books/{value}",
+        "pattern": "^OL\\d+M$"
+      }
+    ]
   },
   "configSchema": {}
 }
