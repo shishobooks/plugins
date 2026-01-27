@@ -6,7 +6,6 @@ import type {
   ShishoPlugin,
 } from "@shisho/plugin-types";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- exported via esbuild IIFE globalName
 const plugin: ShishoPlugin = {
   metadataEnricher: {
     enrich(context: MetadataEnricherContext): EnrichmentResult {
@@ -30,3 +29,6 @@ const plugin: ShishoPlugin = {
     },
   },
 };
+
+// Export for esbuild IIFE bundling - this becomes the return value
+export default plugin;

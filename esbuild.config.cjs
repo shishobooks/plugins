@@ -47,7 +47,8 @@ async function build() {
       platform: "neutral",
       outfile: path.join(outDir, "main.js"),
       logLevel: "info",
-      treeShaking: false, // Preserve the plugin variable for runtime
+      // Extract default export for Shisho's goja runtime which expects plugin to be the object directly
+      footer: { js: "plugin = plugin.default;" },
     });
 
     if (watchMode) {
