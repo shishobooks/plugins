@@ -1,0 +1,15 @@
+{
+  "repositoryVersion": 1,
+  "scope": "shisho",
+  "name": "Official Shisho Plugins",
+  "plugins": [
+    {
+      "id": "open-library-enricher",
+      "name": "Open Library Enricher",
+      "description": "Enriches book metadata from Open Library",
+      "author": "Shisho Team",
+      "homepage": "https://github.com/shishobooks/plugins",
+      "versions": []
+    }
+  ]
+}

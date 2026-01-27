@@ -1,0 +1,15 @@
+services:
+  shisho:
+    image: ghcr.io/shishobooks/shisho:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dist:/plugins/local
+      # Library is shared from main worktree so all worktrees use the same data
+      - ${MAIN_WORKTREE:-.}/tmp/library:/library
+      - ./tmp/data:/data
+      - ./tmp/config:/config
+    environment:
+      - DATABASE_FILE_PATH=/data/shisho.db
+      - PLUGIN_DIR=/plugins
+      - JWT_SECRET=dev-secret-for-testing-only

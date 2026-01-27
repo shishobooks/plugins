@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build plugins
+        run: yarn build
+
+      - name: Verify SHA256 hashes
+        run: |
+          for plugin_dir in dist/*/; do
+            plugin_name=$(basename "$plugin_dir")
+            manifest_file="$plugin_dir/manifest.json"
+
+            if [[ ! -f "$manifest_file" ]]; then
+              continue
+            fi
+
+            plugin_id=$(jq -r '.id' "$manifest_file")
+            plugin_version=$(jq -r '.version' "$manifest_file")
+            zip_name="${plugin_id}-${plugin_version}.zip"
+
+            # Create ZIP
+            (cd "$plugin_dir" && zip -r "../$zip_name" manifest.json main.js)
+
+            # Calculate SHA256
+            actual_sha256=$(sha256sum "dist/$zip_name" | awk '{print $1}')
+
+            # Get expected SHA256 from repository.json
+            expected_sha256=$(jq -r --arg id "$plugin_id" --arg version "$plugin_version" \
+              '.plugins[] | select(.id == $id) | .versions[] | select(.version == $version) | .sha256' \
+              repository.json)
+
+            echo "Plugin: $plugin_id v$plugin_version"
+            echo "  Expected SHA256: $expected_sha256"
+            echo "  Actual SHA256:   $actual_sha256"
+
+            if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+              echo "ERROR: SHA256 mismatch for $plugin_id!"
+              exit 1
+            fi
+
+            echo "  SHA256 verified!"
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: false
+          body_path: CHANGELOG.md

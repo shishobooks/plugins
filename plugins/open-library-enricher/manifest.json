@@ -1,0 +1,21 @@
+{
+  "manifestVersion": 1,
+  "id": "open-library-enricher",
+  "name": "Open Library Enricher",
+  "version": "0.1.0",
+  "description": "Enriches book metadata from Open Library",
+  "author": "Shisho Team",
+  "homepage": "https://github.com/shishobooks/plugins",
+  "license": "MIT",
+  "capabilities": {
+    "metadataEnricher": {
+      "description": "Fetches metadata from Open Library API",
+      "fileTypes": ["epub", "m4b"]
+    },
+    "httpAccess": {
+      "description": "Calls Open Library API",
+      "domains": ["openlibrary.org"]
+    }
+  },
+  "configSchema": {}
+}
