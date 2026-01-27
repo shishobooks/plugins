@@ -47,6 +47,7 @@ async function build() {
       platform: "neutral",
       outfile: path.join(outDir, "main.js"),
       logLevel: "info",
+      treeShaking: false, // Preserve the plugin variable for runtime
     });
 
     if (watchMode) {
