@@ -14,7 +14,7 @@
     },
     "httpAccess": {
       "description": "Calls Open Library API",
-      "domains": ["openlibrary.org", "covers.openlibrary.org", "archive.org"]
+      "domains": ["openlibrary.org", "covers.openlibrary.org", "*.archive.org"]
     },
     "identifierTypes": [
       {
