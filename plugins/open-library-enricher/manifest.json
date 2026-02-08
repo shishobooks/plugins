@@ -23,8 +23,7 @@
         "seriesNumber",
         "genres",
         "tags",
-        "coverData",
-        "coverMimeType",
+        "cover",
         "identifiers"
       ]
     },
