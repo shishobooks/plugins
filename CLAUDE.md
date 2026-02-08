@@ -8,14 +8,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 yarn build              # Build all plugins to dist/
 yarn build:watch        # Watch mode for development
 yarn clean              # Remove dist/
+yarn start              # Start Shisho app via Docker with plugins mounted at localhost:8080
+
+yarn test               # Run all tests (vitest run)
+yarn test:watch         # Watch mode (vitest)
 
 yarn lint               # Run all linters concurrently (fails fast)
 yarn lint:eslint        # ESLint only (--max-warnings 0)
 yarn lint:prettier      # Prettier check
 yarn lint:types         # TypeScript type check (tsc --noEmit)
-
-yarn test:docker        # Start Shisho app via Docker with plugins mounted at localhost:8080
 ```
+
+### Testing
+
+Tests use **vitest** and live in `plugins/<plugin-id>/src/__tests__/*.test.ts`. A global setup file (`test/setup.ts`) mocks the `shisho` runtime object (`log`, `http.fetch`, `url.searchParams`) since it's injected by goja at runtime. Mocks are reset via `vi.restoreAllMocks()` in `beforeEach`. Use `vi.mock("../api")` to mock the HTTP layer when testing higher-level modules (lookup, mapping).
 
 ### Releasing a plugin
 
