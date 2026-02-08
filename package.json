@@ -11,6 +11,8 @@
     "build:watch": "node esbuild.config.cjs --watch",
     "start": "MAIN_WORKTREE=$(git worktree list | head -1 | awk '{print $1}') COMPOSE_MENU=false docker compose up --pull always",
     "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "concurrently --kill-others-on-fail --group \"yarn:lint:*\"",
     "lint:eslint": "eslint --max-warnings 0 .",
     "lint:prettier": "prettier --check .",
@@ -26,6 +28,7 @@
     "globals": "^17.1.0",
     "prettier": "3.8.1",
     "typescript": "^5.7.0",
-    "typescript-eslint": "^8.53.1"
+    "typescript-eslint": "^8.53.1",
+    "vitest": "^3.1.0"
   }
 }
