@@ -1,0 +1,58 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Build & Development Commands
+
+```bash
+yarn build              # Build all plugins to dist/
+yarn build:watch        # Watch mode for development
+yarn clean              # Remove dist/
+
+yarn lint               # Run all linters concurrently (fails fast)
+yarn lint:eslint        # ESLint only (--max-warnings 0)
+yarn lint:prettier      # Prettier check
+yarn lint:types         # TypeScript type check (tsc --noEmit)
+
+yarn test:docker        # Start Shisho app via Docker with plugins mounted at localhost:8080
+```
+
+### Releasing a plugin
+
+```bash
+make release plugin=open-library-enricher tag=0.2.0
+make release plugin=open-library-enricher tag=0.2.0 dry-run=1
+```
+
+This runs `scripts/release.sh` which: validates the plugin, bumps versions in `manifest.json` and `package.json`, builds, generates a changelog from path-filtered commits, updates `repository.json`, commits as `[Release] <plugin-id>@<version>`, tags, and pushes. The GitHub Actions workflow then creates the GitHub Release with the ZIP artifact.
+
+## Architecture
+
+This is a **Yarn workspaces monorepo** for Shisho application plugins. Each plugin under `plugins/` is a workspace member.
+
+### Build pipeline
+
+Plugins are TypeScript, bundled by esbuild (`esbuild.config.js`) into a single **IIFE** (`dist/<plugin-id>/main.js`) targeting **ES2020** with platform `neutral`. The IIFE exports a global `plugin` object. The build also copies `manifest.json` into the dist output. There are no Node.js APIs available at runtime — plugins run in a [goja](https://github.com/nicholasgasior/goja) JavaScript engine.
+
+### Plugin structure
+
+Each plugin lives in `plugins/<plugin-id>/` with:
+- `manifest.json` — declares capabilities (`metadataEnricher`, `httpAccess`, `fileParser`, `inputConverter`, `outputGenerator`, etc.) and config schema
+- `src/index.ts` — entry point, exports a `ShishoPlugin` object with hook implementations
+- `package.json` — workspace-level package (version must match manifest)
+- `CHANGELOG.md` — per-plugin changelog (used by release process)
+
+### Runtime environment
+
+Plugins access the host via a global `shisho` object providing: `shisho.log.*`, `shisho.config.*`, `shisho.http.fetch()`, plus filesystem/archive/XML/FFmpeg APIs. Types come from `@shisho/plugin-types` (declared in root `tsconfig.json` via `types`).
+
+### Release model
+
+Per-plugin releases. Tags use format `<plugin-id>@<version>` (e.g., `open-library-enricher@0.1.0`). Each plugin has independent versioning and its own `CHANGELOG.md`. The `repository.json` at the root serves as the plugin registry, with SHA256-verified download URLs pointing to GitHub Release assets.
+
+## Conventions
+
+- **Commit messages**: `[Category] Description` — categories: `Feature`/`Feat`, `Fix`, `Docs`/`Doc`, `Test`/`E2E`, `CI`/`CD`, `Chore`, `Init`, `Release`
+- **Unused variables**: prefix with `_` (ESLint configured to allow this)
+- **Trailing commas**: required in multiline (`comma-dangle: always-multiline`)
+- **Import ordering**: enforced by Prettier plugin — builtin → third-party → project (`^@/`)

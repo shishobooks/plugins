@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "*@*.*.*"
 
 permissions:
   contents: write
@@ -14,6 +14,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Parse tag
+        id: parse
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          PLUGIN_ID="${TAG%%@*}"
+          VERSION="${TAG##*@}"
+          echo "plugin_id=$PLUGIN_ID" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Plugin: $PLUGIN_ID, Version: $VERSION"
+
+      - name: Verify manifest version matches tag
+        run: |
+          MANIFEST_VERSION=$(jq -r '.version' "plugins/${{ steps.parse.outputs.plugin_id }}/manifest.json")
+          if [[ "$MANIFEST_VERSION" != "${{ steps.parse.outputs.version }}" ]]; then
+            echo "ERROR: Manifest version ($MANIFEST_VERSION) does not match tag version (${{ steps.parse.outputs.version }})"
+            exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -27,46 +46,65 @@ jobs:
       - name: Build plugins
         run: yarn build
 
-      - name: Verify SHA256 hashes
+      - name: Create ZIP and verify SHA256
         run: |
-          for plugin_dir in dist/*/; do
-            plugin_name=$(basename "$plugin_dir")
-            manifest_file="$plugin_dir/manifest.json"
+          PLUGIN_ID="${{ steps.parse.outputs.plugin_id }}"
+          VERSION="${{ steps.parse.outputs.version }}"
+          PLUGIN_DIR="dist/$PLUGIN_ID"
+          ZIP_NAME="${PLUGIN_ID}-${VERSION}.zip"
 
-            if [[ ! -f "$manifest_file" ]]; then
-              continue
-            fi
+          if [[ ! -d "$PLUGIN_DIR" ]]; then
+            echo "ERROR: Build output for '$PLUGIN_ID' not found"
+            exit 1
+          fi
 
-            plugin_id=$(jq -r '.id' "$manifest_file")
-            plugin_version=$(jq -r '.version' "$manifest_file")
-            zip_name="${plugin_id}-${plugin_version}.zip"
+          # Create ZIP
+          (cd "$PLUGIN_DIR" && zip -r "../$ZIP_NAME" manifest.json main.js)
 
-            # Create ZIP
-            (cd "$plugin_dir" && zip -r "../$zip_name" manifest.json main.js)
+          # Calculate SHA256
+          ACTUAL_SHA256=$(sha256sum "dist/$ZIP_NAME" | awk '{print $1}')
 
-            # Calculate SHA256
-            actual_sha256=$(sha256sum "dist/$zip_name" | awk '{print $1}')
+          # Get expected SHA256 from repository.json
+          EXPECTED_SHA256=$(jq -r --arg id "$PLUGIN_ID" --arg version "$VERSION" \
+            '.plugins[] | select(.id == $id) | .versions[] | select(.version == $version) | .sha256' \
+            repository.json)
 
-            # Get expected SHA256 from repository.json
-            expected_sha256=$(jq -r --arg id "$plugin_id" --arg version "$plugin_version" \
-              '.plugins[] | select(.id == $id) | .versions[] | select(.version == $version) | .sha256' \
-              repository.json)
+          echo "Plugin: $PLUGIN_ID v$VERSION"
+          echo "  Expected SHA256: $EXPECTED_SHA256"
+          echo "  Actual SHA256:   $ACTUAL_SHA256"
 
-            echo "Plugin: $plugin_id v$plugin_version"
-            echo "  Expected SHA256: $expected_sha256"
-            echo "  Actual SHA256:   $actual_sha256"
+          if [[ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]]; then
+            echo "ERROR: SHA256 mismatch for $PLUGIN_ID!"
+            exit 1
+          fi
 
-            if [[ "$actual_sha256" != "$expected_sha256" ]]; then
-              echo "ERROR: SHA256 mismatch for $plugin_id!"
-              exit 1
-            fi
+          echo "  SHA256 verified!"
 
-            echo "  SHA256 verified!"
-          done
+      - name: Extract release notes
+        id: notes
+        run: |
+          PLUGIN_ID="${{ steps.parse.outputs.plugin_id }}"
+          VERSION="${{ steps.parse.outputs.version }}"
+          CHANGELOG="plugins/$PLUGIN_ID/CHANGELOG.md"
+
+          # Extract the section for this version from the changelog
+          NOTES=$(awk -v ver="$VERSION" '
+            /^## \[/ {
+              if (found) exit
+              if (index($0, "## [" ver "]")) found=1
+            }
+            found { print }
+          ' "$CHANGELOG")
+
+          # Write to file for the release action
+          echo "$NOTES" > release_notes.md
+          echo "Release notes extracted:"
+          cat release_notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.zip
+          name: "${{ steps.parse.outputs.plugin_id }} v${{ steps.parse.outputs.version }}"
+          files: "dist/${{ steps.parse.outputs.plugin_id }}-${{ steps.parse.outputs.version }}.zip"
           generate_release_notes: false
-          body_path: CHANGELOG.md
+          body_path: release_notes.md

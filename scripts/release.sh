@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Release script for Shisho Plugins
-# Usage: ./scripts/release.sh <version> [--dry-run]
-# Example: ./scripts/release.sh 0.1.0
-# Example: ./scripts/release.sh 0.1.0 --dry-run
+# Per-plugin release script for Shisho Plugins
+# Usage: ./scripts/release.sh <plugin-id> <version> [--dry-run]
+# Example: ./scripts/release.sh open-library-enricher 0.1.0
+# Example: ./scripts/release.sh open-library-enricher 0.1.0 --dry-run
 
 DRY_RUN=false
+PLUGIN_ID=""
 VERSION=""
 
 # Parse arguments
@@ -16,24 +17,63 @@ for arg in "$@"; do
             DRY_RUN=true
             ;;
         *)
-            if [[ -z "$VERSION" ]]; then
+            if [[ -z "$PLUGIN_ID" ]]; then
+                PLUGIN_ID="$arg"
+            elif [[ -z "$VERSION" ]]; then
                 VERSION="$arg"
             fi
             ;;
     esac
 done
 
-if [[ -z "$VERSION" ]]; then
-    echo "Usage: $0 <version> [--dry-run]"
-    echo "Example: $0 0.1.0"
-    echo "Example: $0 0.1.0 --dry-run"
+if [[ -z "$PLUGIN_ID" || -z "$VERSION" ]]; then
+    echo "Usage: $0 <plugin-id> <version> [--dry-run]"
+    echo "Example: $0 open-library-enricher 0.1.0"
+    echo "Example: $0 open-library-enricher 0.1.0 --dry-run"
     exit 1
 fi
 
 # Ensure version doesn't start with 'v'
 VERSION="${VERSION#v}"
-TAG="v$VERSION"
+TAG="${PLUGIN_ID}@${VERSION}"
 REPO_URL="https://github.com/shishobooks/plugins"
+
+PLUGIN_DIR="plugins/$PLUGIN_ID"
+PLUGIN_MANIFEST="$PLUGIN_DIR/manifest.json"
+PLUGIN_PACKAGE="$PLUGIN_DIR/package.json"
+PLUGIN_CHANGELOG="$PLUGIN_DIR/CHANGELOG.md"
+
+# --- Plugin validation ---
+available_plugins() {
+    jq -r '.plugins[].id' repository.json | sed 's/^/  - /'
+}
+
+if [[ ! -d "$PLUGIN_DIR" ]]; then
+    echo "Error: Plugin directory '$PLUGIN_DIR' does not exist."
+    echo "Available plugins:"
+    available_plugins
+    exit 1
+fi
+
+if [[ ! -f "$PLUGIN_MANIFEST" ]]; then
+    echo "Error: Manifest not found at '$PLUGIN_MANIFEST'."
+    echo "Available plugins:"
+    available_plugins
+    exit 1
+fi
+
+MANIFEST_ID=$(jq -r '.id' "$PLUGIN_MANIFEST")
+if [[ "$MANIFEST_ID" != "$PLUGIN_ID" ]]; then
+    echo "Error: Manifest id '$MANIFEST_ID' does not match plugin-id '$PLUGIN_ID'."
+    exit 1
+fi
+
+if ! jq -e --arg id "$PLUGIN_ID" '.plugins[] | select(.id == $id)' repository.json >/dev/null 2>&1; then
+    echo "Error: Plugin '$PLUGIN_ID' is not registered in repository.json."
+    echo "Available plugins:"
+    available_plugins
+    exit 1
+fi
 
 # Check for uncommitted changes
 if ! git diff --quiet || ! git diff --cached --quiet; then
@@ -69,65 +109,60 @@ else
     echo "Creating release $TAG..."
 fi
 
-# Build plugins
+# --- Bump versions in source files ---
+echo "Bumping version to $VERSION..."
+jq --arg v "$VERSION" '.version = $v' "$PLUGIN_MANIFEST" > "$PLUGIN_MANIFEST.tmp" && mv "$PLUGIN_MANIFEST.tmp" "$PLUGIN_MANIFEST"
+jq --arg v "$VERSION" '.version = $v' "$PLUGIN_PACKAGE" > "$PLUGIN_PACKAGE.tmp" && mv "$PLUGIN_PACKAGE.tmp" "$PLUGIN_PACKAGE"
+
+# --- Build plugins ---
 echo "Building plugins..."
 yarn build
 
-# Create dist directory if it doesn't exist
+# Check dist output exists for target plugin
 DIST_DIR="dist"
-if [[ ! -d "$DIST_DIR" ]]; then
-    echo "Error: No plugins built. Check the build output."
+DIST_PLUGIN_DIR="$DIST_DIR/$PLUGIN_ID"
+
+if [[ ! -d "$DIST_PLUGIN_DIR" ]]; then
+    echo "Error: Build output for '$PLUGIN_ID' not found at '$DIST_PLUGIN_DIR'."
     exit 1
 fi
 
-# Process each plugin
-PLUGINS_JSON="[]"
-for plugin_dir in "$DIST_DIR"/*/; do
-    plugin_name=$(basename "$plugin_dir")
-    manifest_file="$plugin_dir/manifest.json"
+MANIFEST_FILE="$DIST_PLUGIN_DIR/manifest.json"
+if [[ ! -f "$MANIFEST_FILE" ]]; then
+    echo "Error: No manifest.json found in $DIST_PLUGIN_DIR."
+    exit 1
+fi
 
-    if [[ ! -f "$manifest_file" ]]; then
-        echo "Warning: No manifest.json found in $plugin_dir, skipping..."
-        continue
-    fi
+# Read plugin info from built manifest
+BUILT_VERSION=$(jq -r '.version' "$MANIFEST_FILE")
+echo "Processing plugin: $PLUGIN_ID v$BUILT_VERSION"
 
-    # Read plugin info from manifest
-    plugin_id=$(jq -r '.id' "$manifest_file")
-    plugin_version=$(jq -r '.version' "$manifest_file")
+# Create ZIP file
+ZIP_NAME="${PLUGIN_ID}-${VERSION}.zip"
+ZIP_PATH="$DIST_DIR/$ZIP_NAME"
 
-    echo "Processing plugin: $plugin_id v$plugin_version"
+(cd "$DIST_PLUGIN_DIR" && zip -r "../$ZIP_NAME" manifest.json main.js)
 
-    # Create ZIP file
-    zip_name="${plugin_id}-${plugin_version}.zip"
-    zip_path="$DIST_DIR/$zip_name"
+# Calculate SHA256
+if [[ "$(uname)" == "Darwin" ]]; then
+    SHA256=$(shasum -a 256 "$ZIP_PATH" | awk '{print $1}')
+else
+    SHA256=$(sha256sum "$ZIP_PATH" | awk '{print $1}')
+fi
 
-    (cd "$plugin_dir" && zip -r "../$zip_name" manifest.json main.js)
+echo "  ZIP: $ZIP_NAME"
+echo "  SHA256: $SHA256"
 
-    # Calculate SHA256
-    if [[ "$(uname)" == "Darwin" ]]; then
-        sha256=$(shasum -a 256 "$zip_path" | awk '{print $1}')
-    else
-        sha256=$(sha256sum "$zip_path" | awk '{print $1}')
-    fi
+# --- Generate changelog from commits since last release of this plugin ---
+PREV_TAG=$(git tag -l "${PLUGIN_ID}@*" --sort=-v:refname | head -1 || true)
 
-    echo "  ZIP: $zip_name"
-    echo "  SHA256: $sha256"
-
-    # Build version entry for repository.json
-    download_url="$REPO_URL/releases/download/$TAG/$zip_name"
-    release_date=$(date +%Y-%m-%d)
-done
-
-# Get the previous tag for changelog generation
-PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-# Generate changelog entries from commits since last tag
 echo "Generating changelog..."
 
 if [[ -n "$PREV_TAG" ]]; then
     COMMIT_RANGE="$PREV_TAG..HEAD"
 else
-    COMMIT_RANGE="HEAD"
+    # First release: include all commits
+    COMMIT_RANGE=""
 fi
 
 # Initialize category commit lists
@@ -169,7 +204,7 @@ while IFS= read -r commit; do
     else
         COMMITS_OTHER+="- $commit"$'\n'
     fi
-done < <(git log --pretty=format:"%s" $COMMIT_RANGE)
+done < <(git log --pretty=format:"%s" ${COMMIT_RANGE:+"$COMMIT_RANGE"} -- "plugins/$PLUGIN_ID")
 
 # Build changelog section
 CHANGELOG_SECTION="## [$VERSION] - $(date +%Y-%m-%d)"$'\n'
@@ -199,55 +234,35 @@ if [[ -n "$COMMITS_OTHER" ]]; then
     CHANGELOG_SECTION+="$COMMITS_OTHER"
 fi
 
-# Update repository.json with new versions
+# --- Update repository.json ---
 echo "Updating repository.json..."
 
-for plugin_dir in "$DIST_DIR"/*/; do
-    plugin_name=$(basename "$plugin_dir")
-    manifest_file="$plugin_dir/manifest.json"
+DOWNLOAD_URL="$REPO_URL/releases/download/$TAG/$ZIP_NAME"
+RELEASE_DATE=$(date +%Y-%m-%d)
 
-    if [[ ! -f "$manifest_file" ]]; then
-        continue
-    fi
+MANIFEST_VER=$(jq -r '.manifestVersion' "$MANIFEST_FILE")
 
-    plugin_id=$(jq -r '.id' "$manifest_file")
-    plugin_version=$(jq -r '.version' "$manifest_file")
-    zip_name="${plugin_id}-${plugin_version}.zip"
-    zip_path="$DIST_DIR/$zip_name"
+NEW_VERSION=$(jq -n \
+    --arg version "$VERSION" \
+    --arg manifestVersion "$MANIFEST_VER" \
+    --arg releaseDate "$RELEASE_DATE" \
+    --arg changelog "$CHANGELOG_SECTION" \
+    --arg downloadUrl "$DOWNLOAD_URL" \
+    --arg sha256 "$SHA256" \
+    '{
+        version: $version,
+        manifestVersion: ($manifestVersion | tonumber),
+        releaseDate: $releaseDate,
+        changelog: $changelog,
+        downloadUrl: $downloadUrl,
+        sha256: $sha256
+    }')
 
-    if [[ "$(uname)" == "Darwin" ]]; then
-        sha256=$(shasum -a 256 "$zip_path" | awk '{print $1}')
-    else
-        sha256=$(sha256sum "$zip_path" | awk '{print $1}')
-    fi
+jq --arg id "$PLUGIN_ID" --argjson newVersion "$NEW_VERSION" '
+    .plugins = [.plugins[] | if .id == $id then .versions = [$newVersion] + .versions else . end]
+' repository.json > repository.json.tmp && mv repository.json.tmp repository.json
 
-    download_url="$REPO_URL/releases/download/$TAG/$zip_name"
-    release_date=$(date +%Y-%m-%d)
-
-    # Create new version entry
-    new_version=$(jq -n \
-        --arg version "$plugin_version" \
-        --arg manifestVersion "1" \
-        --arg releaseDate "$release_date" \
-        --arg changelog "$CHANGELOG_SECTION" \
-        --arg downloadUrl "$download_url" \
-        --arg sha256 "$sha256" \
-        '{
-            version: $version,
-            manifestVersion: ($manifestVersion | tonumber),
-            releaseDate: $releaseDate,
-            changelog: $changelog,
-            downloadUrl: $downloadUrl,
-            sha256: $sha256
-        }')
-
-    # Update repository.json - prepend new version to the versions array
-    jq --arg id "$plugin_id" --argjson newVersion "$new_version" '
-        .plugins = [.plugins[] | if .id == $id then .versions = [$newVersion] + .versions else . end]
-    ' repository.json > repository.json.tmp && mv repository.json.tmp repository.json
-done
-
-# In dry-run mode, show what would be added to changelog and exit
+# --- Dry-run: show results and clean up ---
 if [[ "$DRY_RUN" == "true" ]]; then
     echo ""
     echo "=== Changelog entry that would be added ==="
@@ -259,26 +274,26 @@ if [[ "$DRY_RUN" == "true" ]]; then
     echo "=== End repository.json ==="
     echo ""
     echo "Would update:"
-    echo "  - CHANGELOG.md"
+    echo "  - $PLUGIN_CHANGELOG"
+    echo "  - $PLUGIN_MANIFEST"
+    echo "  - $PLUGIN_PACKAGE"
     echo "  - repository.json"
-    echo "  - package.json -> $VERSION"
     echo ""
     echo "Would commit: [Release] $TAG"
     echo "Would create tag: $TAG"
     echo "Would push: master and $TAG to origin"
     echo ""
 
-    # Clean up dist
+    # Clean up
     rm -rf dist
-    git checkout repository.json
+    git checkout "$PLUGIN_MANIFEST" "$PLUGIN_PACKAGE" repository.json
 
     echo "=== DRY RUN COMPLETE ==="
     exit 0
 fi
 
-# Update CHANGELOG.md
-echo "Updating CHANGELOG.md..."
-CHANGELOG_FILE="CHANGELOG.md"
+# --- Update per-plugin CHANGELOG.md ---
+echo "Updating $PLUGIN_CHANGELOG..."
 
 {
     found=false
@@ -289,19 +304,15 @@ CHANGELOG_FILE="CHANGELOG.md"
             echo "$CHANGELOG_SECTION"
             found=true
         fi
-    done < "$CHANGELOG_FILE"
-} > "$CHANGELOG_FILE.tmp" && mv "$CHANGELOG_FILE.tmp" "$CHANGELOG_FILE"
-
-# Update root package.json version
-echo "Updating package.json..."
-npm version "$VERSION" --no-git-tag-version
+    done < "$PLUGIN_CHANGELOG"
+} > "$PLUGIN_CHANGELOG.tmp" && mv "$PLUGIN_CHANGELOG.tmp" "$PLUGIN_CHANGELOG"
 
 # Clean up dist (we don't commit build artifacts)
 rm -rf dist
 
-# Commit changes
+# Commit changes (only relevant files)
 echo "Committing changes..."
-git add CHANGELOG.md package.json repository.json
+git add "$PLUGIN_MANIFEST" "$PLUGIN_PACKAGE" "$PLUGIN_CHANGELOG" repository.json
 git commit -m "[Release] $TAG"
 
 # Create tag

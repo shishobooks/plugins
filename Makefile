@@ -10,11 +10,14 @@ test-docker:
 	yarn test:docker
 
 release:
-ifndef tag
-	$(error tag is required. Usage: make release tag=0.1.0)
+ifndef plugin
+	$(error plugin is required. Usage: make release plugin=open-library-enricher tag=0.2.0)
 endif
-ifdef dry-run
-	./scripts/release.sh $(tag) --dry-run
+ifndef tag
+	$(error tag is required. Usage: make release plugin=open-library-enricher tag=0.2.0)
+endif
+ifeq ($(dry-run),1)
+	./scripts/release.sh $(plugin) $(tag) --dry-run
 else
-	./scripts/release.sh $(tag)
+	./scripts/release.sh $(plugin) $(tag)
 endif
