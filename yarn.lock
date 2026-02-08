@@ -327,10 +327,10 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@shisho/plugin-types@latest":
-  version "0.0.9"
-  resolved "https://registry.yarnpkg.com/@shisho/plugin-types/-/plugin-types-0.0.9.tgz#684a134e4e2d7a3f68032409c72bf944e7953886"
-  integrity sha512-MwkCZHq8RT64vllHvHAWEQrenanZyT1GEXfLr5psnzwvaq4hifWp7Ix09Y8v/giaaVq7tjCU+FcdNRu1MI2g2A==
+"@shisho/plugin-types@^0.0.14":
+  version "0.0.14"
+  resolved "https://registry.yarnpkg.com/@shisho/plugin-types/-/plugin-types-0.0.14.tgz#51d3d326d9e557d6fe3b594d58f42005192325c1"
+  integrity sha512-P6i98/RjGeq8PZuvu2qwq4uXrksGl53ol+eiJL9XrFGdLk6sdSlB9aLsHj47frYQVShjkC3mN8BOCSE4tez4UQ==
 
 "@types/estree@^1.0.6":
   version "1.0.8"
