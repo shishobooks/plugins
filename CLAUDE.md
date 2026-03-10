@@ -43,10 +43,15 @@ Plugins are TypeScript, bundled by esbuild (`esbuild.config.js`) into a single *
 ### Plugin structure
 
 Each plugin lives in `plugins/<plugin-id>/` with:
+
 - `manifest.json` — declares capabilities (`metadataEnricher`, `httpAccess`, `fileParser`, `inputConverter`, `outputGenerator`, etc.) and config schema
 - `src/index.ts` — entry point, exports a `ShishoPlugin` object with hook implementations
 - `package.json` — workspace-level package (version must match manifest)
 - `CHANGELOG.md` — per-plugin changelog (used by release process)
+
+### Version pinning
+
+The `@shisho/plugin-types` version in `package.json` and the Docker image tag in `docker-compose.yml` must always be kept in sync — both track the same Shisho release. When updating one, update the other to match.
 
 ### Runtime environment
 

@@ -1,25 +1,41 @@
-import { findBook } from "./lookup";
+import { lookupByProviderData, searchForBooks } from "./lookup";
 import { toMetadata } from "./mapping";
+import type { OLProviderData } from "./types";
 import type {
+  EnrichContext,
   EnrichmentResult,
-  MetadataEnricherContext,
+  SearchContext,
+  SearchResponse,
   ShishoPlugin,
 } from "@shisho/plugin-types";
 
 const plugin: ShishoPlugin = {
   metadataEnricher: {
-    enrich(context: MetadataEnricherContext): EnrichmentResult {
-      shisho.log.info("Open Library enricher starting");
+    search(context: SearchContext): SearchResponse {
+      shisho.log.info("Open Library enricher: searching");
 
-      // Find the book using priority lookup chain
-      const result = findBook(context);
-      if (!result) {
-        shisho.log.info("No match found in Open Library");
+      const results = searchForBooks(context);
+      shisho.log.info(`Found ${results.length} candidate(s)`);
+
+      return { results };
+    },
+
+    enrich(context: EnrichContext): EnrichmentResult {
+      shisho.log.info("Open Library enricher: enriching");
+
+      const providerData = context.selectedResult as OLProviderData;
+      if (!providerData?.workId && !providerData?.editionId) {
+        shisho.log.warn("No provider data available for enrichment");
         return { modified: false };
       }
 
-      // Transform to ParsedMetadata
-      shisho.log.info(`Found: ${result.work.title}`);
+      const result = lookupByProviderData(providerData);
+      if (!result) {
+        shisho.log.info("Could not complete lookup for enrichment");
+        return { modified: false };
+      }
+
+      shisho.log.info(`Enriching with: ${result.work.title}`);
       const metadata = toMetadata(result);
 
       return {

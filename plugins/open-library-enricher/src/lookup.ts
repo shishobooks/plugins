@@ -9,51 +9,72 @@ import type {
   OLAuthor,
   OLEdition,
   OLLookupResult,
+  OLProviderData,
   OLSearchDoc,
   OLWork,
 } from "./types";
 import {
   extractOLId,
   levenshteinDistance,
+  normalizeDescription,
   normalizeForComparison,
+  parseOLDate,
 } from "./utils";
-import type { MetadataEnricherContext } from "@shisho/plugin-types";
+import type { SearchContext, SearchResult } from "@shisho/plugin-types";
 
 const MAX_LEVENSHTEIN_DISTANCE = 5;
 
 /**
- * Find a book in Open Library using the priority lookup chain:
+ * Search for candidate books in Open Library using the priority lookup chain:
  * 1. Existing Open Library IDs (edition or work)
  * 2. ISBN lookup
  * 3. Title + Author search (with confidence check)
  *
- * @returns Lookup result with edition, work, and authors, or null if not found
+ * Returns lightweight SearchResult[] for the user to select from.
  */
-export function findBook(
-  context: MetadataEnricherContext,
-): OLLookupResult | null {
+export function searchForBooks(context: SearchContext): SearchResult[] {
   // 1. Try existing Open Library IDs
-  const existingResult = tryExistingIds(context);
-  if (existingResult) return existingResult;
+  const idResults = tryExistingIdSearch(context);
+  if (idResults.length > 0) return idResults;
 
   // 2. Try ISBN lookup
-  const isbnResult = tryISBNLookup(context);
-  if (isbnResult) return isbnResult;
+  const isbnResults = tryISBNSearch(context);
+  if (isbnResults.length > 0) return isbnResults;
 
   // 3. Try title + author search
   return tryTitleAuthorSearch(context);
 }
 
 /**
- * Try lookup using existing Open Library identifiers.
+ * Look up full book data from providerData (passed from search to enrich).
  */
-function tryExistingIds(
-  context: MetadataEnricherContext,
+export function lookupByProviderData(
+  providerData: OLProviderData,
 ): OLLookupResult | null {
-  const identifiers = [
-    ...(context.parsedMetadata.identifiers ?? []),
-    ...(context.book.identifiers ?? []),
-  ];
+  if (providerData.editionId) {
+    shisho.log.info(`Enriching by edition ID: ${providerData.editionId}`);
+    const edition = fetchEdition(providerData.editionId);
+    if (edition) {
+      return completeEditionLookup(edition);
+    }
+  }
+
+  if (providerData.workId) {
+    shisho.log.info(`Enriching by work ID: ${providerData.workId}`);
+    const work = fetchWork(providerData.workId);
+    if (work) {
+      return completeWorkLookup(work);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Try search using existing Open Library identifiers.
+ */
+function tryExistingIdSearch(context: SearchContext): SearchResult[] {
+  const identifiers = context.book.identifiers ?? [];
 
   // Try edition ID first (more specific)
   const editionId = identifiers.find(
@@ -63,7 +84,21 @@ function tryExistingIds(
     shisho.log.info(`Looking up by edition ID: ${editionId}`);
     const edition = fetchEdition(editionId);
     if (edition) {
-      return completeEditionLookup(edition);
+      const workId = edition.works?.[0]?.key
+        ? extractOLId(edition.works[0].key)
+        : undefined;
+      // Search to find author names (not on edition endpoint)
+      const search = searchBooks(edition.title);
+      const matchingDoc = search?.docs.find(
+        (doc) => workId && extractOLId(doc.key) === workId,
+      );
+      return [
+        editionToSearchResult(
+          edition,
+          { editionId, workId },
+          matchingDoc?.author_name,
+        ),
+      ];
     }
   }
 
@@ -75,23 +110,23 @@ function tryExistingIds(
     shisho.log.info(`Looking up by work ID: ${workId}`);
     const work = fetchWork(workId);
     if (work) {
-      return completeWorkLookup(work);
+      // Search to find fields not on work endpoint (authors, publish year)
+      const search = searchBooks(work.title);
+      const matchingDoc = search?.docs.find(
+        (doc) => extractOLId(doc.key) === workId,
+      );
+      return [workToSearchResult(work, { workId }, matchingDoc)];
     }
   }
 
-  return null;
+  return [];
 }
 
 /**
- * Try lookup using ISBN identifiers.
+ * Try search using ISBN identifiers.
  */
-function tryISBNLookup(
-  context: MetadataEnricherContext,
-): OLLookupResult | null {
-  const identifiers = [
-    ...(context.parsedMetadata.identifiers ?? []),
-    ...(context.book.identifiers ?? []),
-  ];
+function tryISBNSearch(context: SearchContext): SearchResult[] {
+  const identifiers = context.book.identifiers ?? [];
 
   // Try ISBN-13 first, then ISBN-10
   const isbns = identifiers
@@ -102,30 +137,40 @@ function tryISBNLookup(
     shisho.log.info(`Looking up by ISBN: ${isbn}`);
     const edition = fetchByISBN(isbn);
     if (edition) {
-      return completeEditionLookup(edition);
+      const workId = edition.works?.[0]?.key
+        ? extractOLId(edition.works[0].key)
+        : undefined;
+      const editionId = extractOLId(edition.key);
+      // Search to find author names (not on edition endpoint)
+      const search = searchBooks(edition.title);
+      const matchingDoc = search?.docs.find(
+        (doc) => workId && extractOLId(doc.key) === workId,
+      );
+      return [
+        editionToSearchResult(
+          edition,
+          { editionId, workId },
+          matchingDoc?.author_name,
+        ),
+      ];
     }
   }
 
-  return null;
+  return [];
 }
 
 /**
- * Try lookup using title + author search with confidence check.
+ * Try search using title + author with confidence check.
  */
-function tryTitleAuthorSearch(
-  context: MetadataEnricherContext,
-): OLLookupResult | null {
-  const title = context.parsedMetadata.title ?? context.book.title;
+function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
+  const title = context.query || context.book.title;
   if (!title) {
     shisho.log.debug("No title available for search");
-    return null;
+    return [];
   }
 
   // Get author name for search
-  const authors = [
-    ...(context.parsedMetadata.authors ?? []),
-    ...(context.book.authors ?? []),
-  ];
+  const authors = context.book.authors ?? [];
   const authorName = authors[0]?.name;
 
   shisho.log.info(
@@ -134,36 +179,14 @@ function tryTitleAuthorSearch(
   const searchResult = searchBooks(title, authorName);
   if (!searchResult || searchResult.numFound === 0) {
     shisho.log.debug("No search results found");
-    return null;
+    return [];
   }
 
-  // Find best matching result
-  const match = findBestMatch(searchResult.docs, title, authors);
-  if (!match) {
-    shisho.log.debug("No confident match found in search results");
-    return null;
-  }
+  // Filter and convert matching results
+  const results: SearchResult[] = [];
+  const normalizedTarget = normalizeForComparison(title);
 
-  // Fetch the work details
-  const workId = extractOLId(match.key);
-  shisho.log.info(`Found match: ${match.title} (${workId})`);
-  const work = fetchWork(workId);
-  if (!work) return null;
-
-  return completeWorkLookup(work);
-}
-
-/**
- * Find the best matching search result with confidence check.
- */
-function findBestMatch(
-  docs: OLSearchDoc[],
-  targetTitle: string,
-  contextAuthors: Array<{ name: string }>,
-): OLSearchDoc | null {
-  const normalizedTarget = normalizeForComparison(targetTitle);
-
-  for (const doc of docs) {
+  for (const doc of searchResult.docs) {
     const normalizedDoc = normalizeForComparison(doc.title);
     const distance = levenshteinDistance(normalizedTarget, normalizedDoc);
 
@@ -172,8 +195,8 @@ function findBestMatch(
     }
 
     // If we have authors in context, require at least one overlap
-    if (contextAuthors.length > 0 && doc.author_name) {
-      const hasAuthorMatch = contextAuthors.some((ctxAuthor) =>
+    if (authors.length > 0 && doc.author_name) {
+      const hasAuthorMatch = authors.some((ctxAuthor) =>
         doc.author_name!.some(
           (docAuthor) =>
             normalizeForComparison(ctxAuthor.name) ===
@@ -186,10 +209,121 @@ function findBestMatch(
       }
     }
 
-    return doc;
+    results.push(searchDocToSearchResult(doc));
   }
 
-  return null;
+  return results;
+}
+
+/**
+ * Convert an OL edition to a SearchResult.
+ */
+function editionToSearchResult(
+  edition: OLEdition,
+  providerData: OLProviderData,
+  authorNames?: string[],
+): SearchResult {
+  const result: SearchResult = {
+    title: edition.title,
+    providerData,
+  };
+  if (authorNames && authorNames.length > 0) {
+    result.authors = authorNames;
+  }
+  if (edition.publishers?.[0]) {
+    result.publisher = edition.publishers[0];
+  }
+  if (edition.publish_date) {
+    const date = parseOLDate(edition.publish_date);
+    if (date) result.releaseDate = date;
+  }
+  const identifiers: Array<{ type: string; value: string }> = [];
+  if (providerData.workId) {
+    identifiers.push({ type: "openlibrary_work", value: providerData.workId });
+  }
+  if (providerData.editionId) {
+    identifiers.push({
+      type: "openlibrary_edition",
+      value: providerData.editionId,
+    });
+  }
+  for (const isbn of edition.isbn_13 ?? []) {
+    identifiers.push({ type: "isbn_13", value: isbn });
+  }
+  for (const isbn of edition.isbn_10 ?? []) {
+    identifiers.push({ type: "isbn_10", value: isbn });
+  }
+  if (identifiers.length > 0) {
+    result.identifiers = identifiers;
+  }
+  if (edition.covers?.[0]) {
+    result.imageUrl = `https://covers.openlibrary.org/b/id/${edition.covers[0]}-M.jpg`;
+  }
+  return result;
+}
+
+/**
+ * Convert an OL work to a SearchResult.
+ */
+function workToSearchResult(
+  work: OLWork,
+  providerData: OLProviderData,
+  searchDoc?: OLSearchDoc,
+): SearchResult {
+  const result: SearchResult = {
+    title: work.title,
+    providerData,
+  };
+  const description = normalizeDescription(work.description);
+  if (description) {
+    result.description = description;
+  }
+  if (searchDoc?.author_name) {
+    result.authors = searchDoc.author_name;
+  }
+  if (searchDoc?.first_publish_year) {
+    result.releaseDate = `${searchDoc.first_publish_year}-01-01`;
+  }
+  const identifiers: Array<{ type: string; value: string }> = [];
+  if (providerData.workId) {
+    identifiers.push({ type: "openlibrary_work", value: providerData.workId });
+  }
+  if (identifiers.length > 0) {
+    result.identifiers = identifiers;
+  }
+  if (work.covers?.[0]) {
+    result.imageUrl = `https://covers.openlibrary.org/b/id/${work.covers[0]}-M.jpg`;
+  }
+  return result;
+}
+
+/**
+ * Convert a search doc to a SearchResult.
+ */
+function searchDocToSearchResult(doc: OLSearchDoc): SearchResult {
+  const workId = extractOLId(doc.key);
+  const editionId = doc.edition_key?.[0];
+
+  const result: SearchResult = {
+    title: doc.title,
+    providerData: { workId, editionId } as OLProviderData,
+  };
+  if (doc.author_name) {
+    result.authors = doc.author_name;
+  }
+  const identifiers: Array<{ type: string; value: string }> = [];
+  identifiers.push({ type: "openlibrary_work", value: workId });
+  if (editionId) {
+    identifiers.push({ type: "openlibrary_edition", value: editionId });
+  }
+  result.identifiers = identifiers;
+  if (doc.first_publish_year) {
+    result.releaseDate = `${doc.first_publish_year}-01-01`;
+  }
+  if (doc.cover_i) {
+    result.imageUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
+  }
+  return result;
 }
 
 /**

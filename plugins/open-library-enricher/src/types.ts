@@ -71,3 +71,9 @@ export interface OLLookupResult {
   work: OLWork;
   authors: OLAuthor[];
 }
+
+/** Data stored in SearchResult.providerData to pass between search and enrich phases. */
+export interface OLProviderData {
+  workId?: string;
+  editionId?: string;
+}
