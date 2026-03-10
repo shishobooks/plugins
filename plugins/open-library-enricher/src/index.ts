@@ -1,19 +1,50 @@
+import { lookupByProviderData, searchForBooks } from "./lookup";
+import { toMetadata } from "./mapping";
+import type { OLProviderData } from "./types";
 import type {
+  EnrichContext,
   EnrichmentResult,
-  MetadataEnricherContext,
+  SearchContext,
+  SearchResponse,
   ShishoPlugin,
 } from "@shisho/plugin-types";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- `plugin` is required by the Shisho plugin runtime
 const plugin: ShishoPlugin = {
   metadataEnricher: {
-    enrich(_context: MetadataEnricherContext): EnrichmentResult {
-      shisho.log.info("Open Library enricher called");
+    search(context: SearchContext): SearchResponse {
+      shisho.log.info("Open Library enricher: searching");
 
-      // TODO: Implement actual Open Library lookup
+      const results = searchForBooks(context);
+      shisho.log.info(`Found ${results.length} candidate(s)`);
+
+      return { results };
+    },
+
+    enrich(context: EnrichContext): EnrichmentResult {
+      shisho.log.info("Open Library enricher: enriching");
+
+      const providerData = context.selectedResult as OLProviderData;
+      if (!providerData?.workId && !providerData?.editionId) {
+        shisho.log.warn("No provider data available for enrichment");
+        return { modified: false };
+      }
+
+      const result = lookupByProviderData(providerData);
+      if (!result) {
+        shisho.log.info("Could not complete lookup for enrichment");
+        return { modified: false };
+      }
+
+      shisho.log.info(`Enriching with: ${result.work.title}`);
+      const metadata = toMetadata(result);
+
       return {
-        modified: false,
+        modified: true,
+        metadata,
       };
     },
   },
 };
+
+// Export for esbuild IIFE bundling - this becomes the return value
+export default plugin;

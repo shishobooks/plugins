@@ -1,6 +1,6 @@
 services:
   shisho:
-    image: ghcr.io/shishobooks/shisho:latest
+    image: ghcr.io/shishobooks/shisho:0.0.19
     ports:
       - "8080:8080"
     volumes:
@@ -10,6 +10,7 @@ services:
       - ./tmp/data:/data
       - ./tmp/config:/config
     environment:
+      - LOG_FORMAT=console
       - DATABASE_FILE_PATH=/data/shisho.db
       - PLUGIN_DIR=/plugins
       - JWT_SECRET=dev-secret-for-testing-only
