@@ -21,5 +21,5 @@ globalThis.shisho = {
 } as unknown as typeof shisho;
 
 beforeEach(() => {
-  vi.restoreAllMocks();
+  vi.clearAllMocks();
 });

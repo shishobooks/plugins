@@ -1,5 +1,7 @@
 # Open Library Enricher Design
 
+> **Note:** This design predates the two-phase search/enrich architecture in `@shisho/plugin-types` 0.0.18+. The plugin now implements `search()` + `enrich()` instead of a single `enrich()` hook. See the source code for the current implementation.
+
 ## Overview
 
 This document describes the implementation design for the Open Library metadata enricher plugin for Shisho. The plugin fetches book metadata from the Open Library API to enrich books in a user's library.

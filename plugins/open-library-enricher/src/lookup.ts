@@ -23,6 +23,7 @@ import {
 import type { SearchContext, SearchResult } from "@shisho/plugin-types";
 
 const MAX_LEVENSHTEIN_DISTANCE = 5;
+const MAX_LEVENSHTEIN_RATIO = 0.4;
 
 /**
  * Search for candidate books in Open Library using the priority lookup chain:
@@ -190,12 +191,20 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
     const normalizedDoc = normalizeForComparison(doc.title);
     const distance = levenshteinDistance(normalizedTarget, normalizedDoc);
 
-    if (distance > MAX_LEVENSHTEIN_DISTANCE) {
+    const maxLen = Math.max(normalizedTarget.length, normalizedDoc.length);
+    if (
+      distance > MAX_LEVENSHTEIN_DISTANCE ||
+      (maxLen > 0 && distance / maxLen > MAX_LEVENSHTEIN_RATIO)
+    ) {
       continue;
     }
 
     // If we have authors in context, require at least one overlap
-    if (authors.length > 0 && doc.author_name) {
+    if (authors.length > 0) {
+      if (!doc.author_name) {
+        shisho.log.debug(`Skipping "${doc.title}" - no author info to verify`);
+        continue;
+      }
       const hasAuthorMatch = authors.some((ctxAuthor) =>
         doc.author_name!.some(
           (docAuthor) =>
@@ -282,7 +291,7 @@ function workToSearchResult(
     result.authors = searchDoc.author_name;
   }
   if (searchDoc?.first_publish_year) {
-    result.releaseDate = `${searchDoc.first_publish_year}-01-01`;
+    result.releaseDate = `${searchDoc.first_publish_year}-01-01T00:00:00Z`;
   }
   const identifiers: Array<{ type: string; value: string }> = [];
   if (providerData.workId) {
@@ -318,7 +327,7 @@ function searchDocToSearchResult(doc: OLSearchDoc): SearchResult {
   }
   result.identifiers = identifiers;
   if (doc.first_publish_year) {
-    result.releaseDate = `${doc.first_publish_year}-01-01`;
+    result.releaseDate = `${doc.first_publish_year}-01-01T00:00:00Z`;
   }
   if (doc.cover_i) {
     result.imageUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
@@ -353,8 +362,13 @@ function completeWorkLookup(work: OLWork): OLLookupResult | null {
   // Search for the work title to get edition keys
   const searchResult = searchBooks(work.title);
   if (!searchResult || searchResult.numFound === 0) {
-    shisho.log.warn("Could not find edition for work");
-    return null;
+    shisho.log.warn("Could not find edition for work, using work data only");
+    const authors = fetchAuthors(work);
+    return {
+      edition: { key: "", title: work.title, covers: work.covers },
+      work,
+      authors,
+    };
   }
 
   // Find a matching doc with the same work key

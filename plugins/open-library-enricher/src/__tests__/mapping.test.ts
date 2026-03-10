@@ -60,7 +60,7 @@ describe("toMetadata", () => {
       expect(metadata.authors).toEqual([{ name: "J.R.R. Tolkien" }]);
       expect(metadata.description).toBe("A fantasy novel.");
       expect(metadata.publisher).toBe("HarperCollins");
-      expect(metadata.releaseDate).toBe("1954-01-01");
+      expect(metadata.releaseDate).toBe("1954-01-01T00:00:00Z");
       expect(metadata.genres).toEqual(["Fantasy"]);
       expect(metadata.tags).toEqual(["Adventure"]);
       expect(metadata.coverData).toBeInstanceOf(ArrayBuffer);
@@ -189,6 +189,24 @@ describe("toMetadata", () => {
         { type: "isbn_13", value: "9780123456789" },
         { type: "isbn_10", value: "0123456789" },
         { type: "goodreads", value: "12345" },
+      ]);
+    });
+
+    it("skips edition identifier for synthetic editions with empty key", () => {
+      const result = makeResult({
+        edition: {
+          key: "",
+          title: "Test",
+        },
+        work: {
+          key: "/works/OL456W",
+          title: "Test",
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.identifiers).toEqual([
+        { type: "openlibrary_work", value: "OL456W" },
       ]);
     });
   });

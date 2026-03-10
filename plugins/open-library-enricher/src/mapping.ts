@@ -192,8 +192,8 @@ function collectIdentifiers(
     });
   }
 
-  // Open Library edition ID
-  if (edition.key) {
+  // Open Library edition ID (skip synthetic editions with empty/placeholder keys)
+  if (edition.key && edition.key.includes("/")) {
     identifiers.push({
       type: "openlibrary_edition",
       value: extractOLId(edition.key),

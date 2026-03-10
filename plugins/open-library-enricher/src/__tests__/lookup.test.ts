@@ -124,7 +124,7 @@ describe("searchForBooks", () => {
       expect(results[0].title).toBe("The Hobbit");
       expect(results[0].authors).toEqual(["J.R.R. Tolkien"]);
       expect(results[0].providerData).toEqual({ workId: "OL456W" });
-      expect(results[0].releaseDate).toBe("1937-01-01");
+      expect(results[0].releaseDate).toBe("1937-01-01T00:00:00Z");
       expect(results[0].identifiers).toEqual([
         { type: "openlibrary_work", value: "OL456W" },
       ]);
@@ -249,6 +249,31 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(0);
     });
 
+    it("filters out results with no author info when context has authors", () => {
+      const context = makeContext({
+        query: "The Hobbit",
+        book: {
+          authors: [{ name: "J.R.R. Tolkien" }],
+        },
+      });
+
+      const searchResult: OLSearchResult = {
+        numFound: 1,
+        start: 0,
+        docs: [
+          {
+            key: "/works/OL999W",
+            title: "The Hobbit",
+            // no author_name field
+          },
+        ],
+      };
+      mockedSearchBooks.mockReturnValue(searchResult);
+
+      const results = searchForBooks(context);
+      expect(results).toHaveLength(0);
+    });
+
     it("filters out results with high Levenshtein distance", () => {
       const context = makeContext({
         query: "The Hobbit",
@@ -261,6 +286,27 @@ describe("searchForBooks", () => {
           {
             key: "/works/OL999W",
             title: "A Completely Different Title Altogether",
+          },
+        ],
+      };
+      mockedSearchBooks.mockReturnValue(searchResult);
+
+      const results = searchForBooks(context);
+      expect(results).toHaveLength(0);
+    });
+
+    it("filters out short title matches that exceed relative threshold", () => {
+      const context = makeContext({
+        query: "Dune",
+      });
+
+      const searchResult: OLSearchResult = {
+        numFound: 1,
+        start: 0,
+        docs: [
+          {
+            key: "/works/OL999W",
+            title: "Duneland", // distance 4, but ratio 4/8 = 0.5 > 0.4
           },
         ],
       };
@@ -400,5 +446,19 @@ describe("lookupByProviderData", () => {
 
     expect(result).not.toBeNull();
     expect(result!.work).toEqual(sampleWork);
+  });
+
+  it("returns work-only data when search endpoint fails", () => {
+    const providerData: OLProviderData = { workId: "OL456W" };
+    mockedFetchWork.mockReturnValue(sampleWork);
+    mockedFetchAuthor.mockReturnValue(sampleAuthor);
+    mockedSearchBooks.mockReturnValue(null); // search fails
+
+    const result = lookupByProviderData(providerData);
+
+    expect(result).not.toBeNull();
+    expect(result!.work).toEqual(sampleWork);
+    expect(result!.edition.key).toBe("");
+    expect(result!.authors).toEqual([sampleAuthor]);
   });
 });

@@ -95,31 +95,31 @@ describe("extractOLId", () => {
 
 describe("parseOLDate", () => {
   it("parses year only", () => {
-    expect(parseOLDate("1954")).toBe("1954-01-01");
+    expect(parseOLDate("1954")).toBe("1954-01-01T00:00:00Z");
   });
 
   it("parses full month and year", () => {
-    expect(parseOLDate("June 1954")).toBe("1954-06-01");
+    expect(parseOLDate("June 1954")).toBe("1954-06-01T00:00:00Z");
   });
 
   it("parses abbreviated month and year", () => {
-    expect(parseOLDate("Jun 1954")).toBe("1954-06-01");
+    expect(parseOLDate("Jun 1954")).toBe("1954-06-01T00:00:00Z");
   });
 
   it("parses full date with full month name", () => {
-    expect(parseOLDate("June 15, 1954")).toBe("1954-06-15");
+    expect(parseOLDate("June 15, 1954")).toBe("1954-06-15T00:00:00Z");
   });
 
   it("parses full date with abbreviated month", () => {
-    expect(parseOLDate("Jun 15, 1954")).toBe("1954-06-15");
+    expect(parseOLDate("Jun 15, 1954")).toBe("1954-06-15T00:00:00Z");
   });
 
   it("parses full date without comma", () => {
-    expect(parseOLDate("Jun 15 1954")).toBe("1954-06-15");
+    expect(parseOLDate("Jun 15 1954")).toBe("1954-06-15T00:00:00Z");
   });
 
   it("parses ISO format passthrough", () => {
-    expect(parseOLDate("1954-06-15")).toBe("1954-06-15");
+    expect(parseOLDate("1954-06-15")).toBe("1954-06-15T00:00:00Z");
   });
 
   it("returns undefined for invalid date", () => {
@@ -131,7 +131,7 @@ describe("parseOLDate", () => {
   });
 
   it("pads single-digit days", () => {
-    expect(parseOLDate("Jun 5, 1954")).toBe("1954-06-05");
+    expect(parseOLDate("Jun 5, 1954")).toBe("1954-06-05T00:00:00Z");
   });
 });
 
