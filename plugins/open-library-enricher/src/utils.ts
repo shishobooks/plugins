@@ -71,7 +71,7 @@ export function parseOLDate(dateStr: string): string | undefined {
 
   // Year only: "1954"
   if (/^\d{4}$/.test(trimmed)) {
-    return `${trimmed}-01-01`;
+    return `${trimmed}-01-01T00:00:00Z`;
   }
 
   // Month Year: "June 1954" or "Jun 1954"
@@ -79,7 +79,7 @@ export function parseOLDate(dateStr: string): string | undefined {
   if (monthYearMatch) {
     const month = parseMonth(monthYearMatch[1]);
     if (month) {
-      return `${monthYearMatch[2]}-${month}-01`;
+      return `${monthYearMatch[2]}-${month}-01T00:00:00Z`;
     }
   }
 
@@ -89,13 +89,13 @@ export function parseOLDate(dateStr: string): string | undefined {
     const month = parseMonth(fullDateMatch[1]);
     if (month) {
       const day = fullDateMatch[2].padStart(2, "0");
-      return `${fullDateMatch[3]}-${month}-${day}`;
+      return `${fullDateMatch[3]}-${month}-${day}T00:00:00Z`;
     }
   }
 
   // ISO-like: "1954-06-15"
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
+    return `${trimmed}T00:00:00Z`;
   }
 
   return undefined;
