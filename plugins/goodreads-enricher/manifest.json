@@ -1,0 +1,42 @@
+{
+  "manifestVersion": 1,
+  "id": "goodreads-enricher",
+  "name": "Goodreads Enricher",
+  "version": "0.1.0",
+  "description": "Enriches book metadata from Goodreads",
+  "author": "Shisho Team",
+  "homepage": "https://github.com/shishobooks/plugins",
+  "license": "MIT",
+  "capabilities": {
+    "metadataEnricher": {
+      "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+      "fileTypes": ["epub", "m4b", "pdf"],
+      "fields": [
+        "title",
+        "authors",
+        "description",
+        "publisher",
+        "releaseDate",
+        "series",
+        "seriesNumber",
+        "genres",
+        "tags",
+        "cover",
+        "identifiers"
+      ]
+    },
+    "httpAccess": {
+      "description": "Calls Goodreads autocomplete API, fetches book pages, and downloads cover images",
+      "domains": ["*.goodreads.com", "i.gr-assets.com", "m.media-amazon.com"]
+    },
+    "identifierTypes": [
+      {
+        "id": "goodreads",
+        "name": "Goodreads",
+        "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+        "pattern": "^\\d+$"
+      }
+    ]
+  },
+  "configSchema": {}
+}
