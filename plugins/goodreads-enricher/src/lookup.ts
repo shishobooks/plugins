@@ -166,12 +166,14 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
 
 /**
  * Convert an autocomplete result to a SearchResult.
+ * Uses the full title (with series suffix) so users can see series info
+ * in the search results, since SearchResult has no dedicated series field.
  */
 function autocompleteToSearchResult(
   result: GRAutocompleteResult,
 ): SearchResult {
   const searchResult: SearchResult = {
-    title: result.bookTitleBare,
+    title: result.title,
     authors: [result.author.name],
     providerData: { bookId: result.bookId } as GRProviderData,
     identifiers: [{ type: "goodreads", value: result.bookId }],

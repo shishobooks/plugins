@@ -1,6 +1,7 @@
 import {
   decodeHTMLEntities,
   extractDescription,
+  extractFromNextData,
   extractGenres,
   extractPublicationInfo,
   extractSchemaOrg,
@@ -59,6 +60,19 @@ describe("extractSchemaOrg", () => {
 
     const result = extractSchemaOrg(html);
     expect(result!.author).toEqual([{ name: "Author One", url: "/author/1" }]);
+  });
+
+  it("decodes HTML entities in name", () => {
+    const html = `
+      <script type="application/ld+json">
+      {"@type": "Book", "name": "Carl&apos;s Doomsday Scenario (Dungeon Crawler Carl, #2)"}
+      </script>
+    `;
+
+    const result = extractSchemaOrg(html);
+    expect(result!.name).toBe(
+      "Carl's Doomsday Scenario (Dungeon Crawler Carl, #2)",
+    );
   });
 
   it("returns null when no JSON-LD found", () => {
@@ -194,6 +208,16 @@ describe("extractGenres", () => {
 
     const result = extractGenres(html);
     expect(result).toEqual(["Science Fiction", "High Fantasy"]);
+  });
+
+  it("matches full Goodreads URLs (not just relative paths)", () => {
+    const html = `
+      <a href="https://www.goodreads.com/genres/fantasy">Fantasy</a>
+      <a href="https://www.goodreads.com/genres/science-fiction">Science Fiction</a>
+    `;
+
+    const result = extractGenres(html);
+    expect(result).toEqual(["Fantasy", "Science Fiction"]);
   });
 });
 
@@ -332,5 +356,171 @@ describe("stripHTML", () => {
 
   it("handles empty input", () => {
     expect(stripHTML("")).toBe("");
+  });
+});
+
+describe("extractFromNextData", () => {
+  function makeNextDataHtml(apolloState: Record<string, unknown>): string {
+    const nextData = {
+      props: {
+        pageProps: {
+          apolloState,
+        },
+      },
+    };
+    return `<html><script id="__NEXT_DATA__" type="application/json">${JSON.stringify(nextData)}</script></html>`;
+  }
+
+  const fullApolloState = {
+    "Book:kca://book/amzn1.gr.book.v1.abc123": {
+      __typename: "Book",
+      title: "Carl's Doomsday Scenario",
+      titleComplete: "Carl's Doomsday Scenario (Dungeon Crawler Carl, #2)",
+      description:
+        '"The training levels have concluded."<br /><br />The ratings are off the chart.',
+      'description({"stripped":true})':
+        '"The training levels have concluded."\r\n\r\nThe ratings are off the chart.',
+      imageUrl: "https://m.media-amazon.com/images/books/56377548.jpg",
+      bookGenres: [
+        { genre: { name: "Fantasy", webUrl: "/genres/fantasy" } },
+        { genre: { name: "Science Fiction", webUrl: "/genres/sci-fi" } },
+        { genre: { name: "Humor", webUrl: "/genres/humor" } },
+      ],
+      details: {
+        publisher: "Dandy House",
+        publicationTime: 1609920000000,
+        isbn13: "9781234567890",
+        isbn: null,
+        numPages: 364,
+        format: "Kindle Edition",
+        language: { name: "English" },
+      },
+      bookSeries: [
+        {
+          userPosition: "2",
+          series: {
+            __ref: "Series:kca://series/amzn1.gr.series.v3.abc",
+          },
+        },
+      ],
+      primaryContributorEdge: {
+        role: "Author",
+        node: { __ref: "Contributor:kca://contributor/abc" },
+      },
+    },
+    "Series:kca://series/amzn1.gr.series.v3.abc": {
+      __typename: "Series",
+      title: "Dungeon Crawler Carl",
+      webUrl: "https://www.goodreads.com/series/309211",
+    },
+    "Contributor:kca://contributor/abc": {
+      __typename: "Contributor",
+      name: "Matt Dinniman",
+      webUrl: "https://www.goodreads.com/author/show/123",
+    },
+  };
+
+  it("extracts all fields from Apollo state", () => {
+    const html = makeNextDataHtml(fullApolloState);
+    const result = extractFromNextData(html);
+
+    expect(result).not.toBeNull();
+    expect(result!.schemaOrg).not.toBeNull();
+    expect(result!.schemaOrg!.name).toBe(
+      "Carl's Doomsday Scenario (Dungeon Crawler Carl, #2)",
+    );
+    expect(result!.schemaOrg!.image).toBe(
+      "https://m.media-amazon.com/images/books/56377548.jpg",
+    );
+    expect(result!.schemaOrg!.isbn).toBe("9781234567890");
+    expect(result!.schemaOrg!.numberOfPages).toBe(364);
+    expect(result!.schemaOrg!.inLanguage).toBe("English");
+    expect(result!.schemaOrg!.author).toEqual([
+      {
+        name: "Matt Dinniman",
+        url: "https://www.goodreads.com/author/show/123",
+      },
+    ]);
+  });
+
+  it("extracts clean description without HTML entities", () => {
+    const html = makeNextDataHtml(fullApolloState);
+    const result = extractFromNextData(html)!;
+
+    expect(result.description).toBe(
+      '"The training levels have concluded."\n\nThe ratings are off the chart.',
+    );
+  });
+
+  it("extracts series info from Apollo refs", () => {
+    const html = makeNextDataHtml(fullApolloState);
+    const result = extractFromNextData(html)!;
+
+    expect(result.series).toBe("Dungeon Crawler Carl");
+    expect(result.seriesNumber).toBe(2);
+  });
+
+  it("extracts genres from bookGenres array", () => {
+    const html = makeNextDataHtml(fullApolloState);
+    const result = extractFromNextData(html)!;
+
+    expect(result.genres).toEqual(["Fantasy", "Science Fiction", "Humor"]);
+  });
+
+  it("extracts publisher and date from details", () => {
+    const html = makeNextDataHtml(fullApolloState);
+    const result = extractFromNextData(html)!;
+
+    expect(result.publisher).toBe("Dandy House");
+    expect(result.publishDate).toBe("January 6, 2021");
+  });
+
+  it("returns null when no __NEXT_DATA__ script", () => {
+    expect(extractFromNextData("<html></html>")).toBeNull();
+  });
+
+  it("returns null when no Apollo state", () => {
+    const html =
+      '<html><script id="__NEXT_DATA__" type="application/json">{"props":{}}</script></html>';
+    expect(extractFromNextData(html)).toBeNull();
+  });
+
+  it("returns null when no Book entity in Apollo state", () => {
+    const html = makeNextDataHtml({
+      "Series:kca://foo": { __typename: "Series", title: "Test" },
+    });
+    expect(extractFromNextData(html)).toBeNull();
+  });
+
+  it("handles missing series gracefully", () => {
+    const state = {
+      "Book:kca://book/123": {
+        __typename: "Book",
+        title: "Standalone Novel",
+        titleComplete: "Standalone Novel",
+        details: {},
+        bookGenres: [],
+      },
+    };
+    const result = extractFromNextData(makeNextDataHtml(state))!;
+
+    expect(result.series).toBeNull();
+    expect(result.seriesNumber).toBeNull();
+  });
+
+  it("falls back to HTML description when stripped is missing", () => {
+    const state = {
+      "Book:kca://book/123": {
+        __typename: "Book",
+        title: "Test",
+        titleComplete: "Test",
+        description: "A <b>bold</b> description &amp; more.",
+        details: {},
+        bookGenres: [],
+      },
+    };
+    const result = extractFromNextData(makeNextDataHtml(state))!;
+
+    expect(result.description).toBe("A bold description & more.");
   });
 });

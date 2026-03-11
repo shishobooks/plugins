@@ -2,8 +2,15 @@ import type { GRBookPageData, GRSchemaOrg } from "./types";
 
 /**
  * Parse a Goodreads book page HTML to extract structured metadata.
+ *
+ * Tries __NEXT_DATA__ Apollo state first (rich structured data), then falls
+ * back to JSON-LD + regex scraping for pages where Apollo data is unavailable.
  */
 export function parseBookPage(html: string): GRBookPageData {
+  const apolloData = extractFromNextData(html);
+  if (apolloData) return apolloData;
+
+  // Fallback: regex-based extraction
   const schemaOrg = extractSchemaOrg(html);
   const description = extractDescription(html);
   const seriesInfo = extractSeries(html, schemaOrg);
@@ -19,6 +26,226 @@ export function parseBookPage(html: string): GRBookPageData {
     publisher: pubInfo.publisher,
     publishDate: pubInfo.publishDate,
   };
+}
+
+/**
+ * Extract book data from __NEXT_DATA__ Apollo state.
+ *
+ * Goodreads embeds rich structured data in a Next.js Apollo cache. This is the
+ * most reliable data source: clean text (no HTML entities), full descriptions,
+ * structured genres, and millisecond timestamps for dates.
+ */
+export function extractFromNextData(html: string): GRBookPageData | null {
+  const match = html.match(
+    /<script\s+id="__NEXT_DATA__"\s+type="application\/json"[^>]*>([\s\S]*?)<\/script>/i,
+  );
+  if (!match) return null;
+
+  try {
+    const nextData = JSON.parse(match[1]);
+    const apolloState = nextData?.props?.pageProps?.apolloState;
+    if (!apolloState) return null;
+
+    // Find the Book entity (key starts with "Book:")
+    const bookEntry = Object.entries(apolloState).find(
+      ([key, val]) =>
+        key.startsWith("Book:") &&
+        (val as Record<string, unknown>).__typename === "Book",
+    );
+    if (!bookEntry) return null;
+
+    const book = bookEntry[1] as Record<string, unknown>;
+
+    // Build schema.org-compatible data from Apollo
+    const schemaOrg = buildSchemaOrgFromApollo(book, apolloState);
+
+    // Description — prefer stripped variant, fall back to HTML description
+    const strippedDesc = book['description({"stripped":true})'] as
+      | string
+      | null;
+    const htmlDesc = book.description as string | null;
+    let description: string | null = null;
+    if (strippedDesc) {
+      description = strippedDesc.replace(/\r\n/g, "\n").trim();
+    } else if (htmlDesc) {
+      description = stripHTML(htmlDesc);
+    }
+
+    // Series
+    const { series, seriesNumber } = extractSeriesFromApollo(book, apolloState);
+
+    // Genres
+    const genres = extractGenresFromApollo(book);
+
+    // Publication info from details
+    const details = book.details as Record<string, unknown> | undefined;
+    let publisher: string | null = null;
+    let publishDate: string | null = null;
+
+    if (details) {
+      if (typeof details.publisher === "string" && details.publisher) {
+        publisher = details.publisher;
+      }
+      if (typeof details.publicationTime === "number") {
+        publishDate = formatTimestamp(details.publicationTime);
+      }
+    }
+
+    return {
+      schemaOrg,
+      description,
+      series,
+      seriesNumber,
+      genres,
+      publisher,
+      publishDate,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Build a GRSchemaOrg-compatible object from Apollo state.
+ */
+function buildSchemaOrgFromApollo(
+  book: Record<string, unknown>,
+  apolloState: Record<string, unknown>,
+): GRSchemaOrg {
+  const details = book.details as Record<string, unknown> | undefined;
+  const language = details?.language as Record<string, unknown> | undefined;
+
+  // Resolve authors from contributor edges
+  const authors: Array<{ name: string; url: string }> = [];
+  const primaryEdge = book.primaryContributorEdge as
+    | Record<string, unknown>
+    | undefined;
+  if (primaryEdge?.node) {
+    const ref = (primaryEdge.node as Record<string, string>).__ref;
+    if (ref) {
+      const contributor = apolloState[ref] as
+        | Record<string, unknown>
+        | undefined;
+      if (contributor?.name) {
+        authors.push({
+          name: contributor.name as string,
+          url: (contributor.webUrl as string) ?? "",
+        });
+      }
+    }
+  }
+
+  // Also check secondaryContributorEdges
+  const secondaryEdges = book.secondaryContributorEdges as
+    | Array<Record<string, unknown>>
+    | undefined;
+  if (secondaryEdges) {
+    for (const edge of secondaryEdges) {
+      if (edge.role === "Author" || edge.role === "author") {
+        const ref = (edge.node as Record<string, string>)?.__ref;
+        if (ref) {
+          const contributor = apolloState[ref] as
+            | Record<string, unknown>
+            | undefined;
+          if (contributor?.name) {
+            authors.push({
+              name: contributor.name as string,
+              url: (contributor.webUrl as string) ?? "",
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    name: (book.titleComplete as string) ?? (book.title as string) ?? "",
+    image: (book.imageUrl as string) ?? undefined,
+    bookFormat: (details?.format as string) ?? undefined,
+    numberOfPages: (details?.numPages as number) ?? undefined,
+    inLanguage: (language?.name as string) ?? undefined,
+    isbn: (details?.isbn13 as string) ?? (details?.isbn as string) ?? undefined,
+    author: authors.length > 0 ? authors : undefined,
+  };
+}
+
+/**
+ * Extract series info from Apollo bookSeries array.
+ */
+function extractSeriesFromApollo(
+  book: Record<string, unknown>,
+  apolloState: Record<string, unknown>,
+): { series: string | null; seriesNumber: number | null } {
+  const bookSeries = book.bookSeries as
+    | Array<Record<string, unknown>>
+    | undefined;
+  if (!bookSeries || bookSeries.length === 0) {
+    return { series: null, seriesNumber: null };
+  }
+
+  const entry = bookSeries[0];
+  const position = entry.userPosition as string | undefined;
+  const seriesRef = (entry.series as Record<string, string>)?.__ref;
+
+  let seriesName: string | null = null;
+  if (seriesRef) {
+    const seriesObj = apolloState[seriesRef] as
+      | Record<string, unknown>
+      | undefined;
+    if (seriesObj?.title) {
+      seriesName = seriesObj.title as string;
+    }
+  }
+
+  return {
+    series: seriesName,
+    seriesNumber: position ? parseFloat(position) : null,
+  };
+}
+
+/**
+ * Extract genre names from Apollo bookGenres array.
+ */
+function extractGenresFromApollo(book: Record<string, unknown>): string[] {
+  const bookGenres = book.bookGenres as
+    | Array<Record<string, unknown>>
+    | undefined;
+  if (!bookGenres) return [];
+
+  const genres: string[] = [];
+  for (const entry of bookGenres) {
+    const genre = entry.genre as Record<string, unknown> | undefined;
+    if (genre?.name && typeof genre.name === "string") {
+      genres.push(genre.name);
+    }
+  }
+  return genres;
+}
+
+/**
+ * Format a millisecond Unix timestamp as a human-readable date string.
+ * Returns format like "January 6, 2021" to match Goodreads date format.
+ */
+function formatTimestamp(ms: number): string {
+  const MONTH_NAMES = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const date = new Date(ms);
+  const month = MONTH_NAMES[date.getUTCMonth()];
+  const day = date.getUTCDate();
+  const year = date.getUTCFullYear();
+  return `${month} ${day}, ${year}`;
 }
 
 /**
@@ -41,7 +268,7 @@ export function extractSchemaOrg(html: string): GRSchemaOrg | null {
         : undefined;
 
     return {
-      name: data.name,
+      name: decodeHTMLEntities(data.name ?? ""),
       image: data.image,
       bookFormat: data.bookFormat,
       numberOfPages: data.numberOfPages,
@@ -101,7 +328,8 @@ export function extractGenres(html: string): string[] {
   const genres: string[] = [];
   const seen = new Set<string>();
 
-  const regex = /href="\/genres\/([^"]+)"[^>]*>([^<]+)<\/a>/gi;
+  const regex =
+    /href="(?:https:\/\/www\.goodreads\.com)?\/genres\/([^"]+)"[^>]*>([^<]+)<\/a>/gi;
   let match;
   while ((match = regex.exec(html)) !== null) {
     const name = match[2].trim();

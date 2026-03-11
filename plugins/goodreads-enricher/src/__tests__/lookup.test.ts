@@ -145,7 +145,7 @@ describe("searchForBooks", () => {
         "The Hobbit J.R.R. Tolkien",
       );
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe("The Hobbit");
+      expect(results[0].title).toBe("The Hobbit, or There and Back Again");
     });
 
     it("falls back to book.title when query is empty", () => {
