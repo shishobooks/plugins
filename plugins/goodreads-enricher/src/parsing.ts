@@ -207,5 +207,5 @@ export function decodeHTMLEntities(text: string): string {
  * Strip HTML tags from a string.
  */
 export function stripHTML(html: string): string {
-  return html.replace(/<[^>]+>/g, "").trim();
+  return decodeHTMLEntities(html.replace(/<[^>]+>/g, "")).trim();
 }

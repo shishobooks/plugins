@@ -320,6 +320,12 @@ describe("stripHTML", () => {
     expect(stripHTML("<b>Bold</b> and <i>italic</i>")).toBe("Bold and italic");
   });
 
+  it("decodes HTML entities after stripping tags", () => {
+    expect(stripHTML("It&apos;s a <b>great</b> book &amp; more")).toBe(
+      "It's a great book & more",
+    );
+  });
+
   it("trims whitespace", () => {
     expect(stripHTML("  <p>text</p>  ")).toBe("text");
   });

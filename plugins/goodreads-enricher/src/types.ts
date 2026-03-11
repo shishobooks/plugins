@@ -6,15 +6,15 @@
 
 /** Single result from the Goodreads autocomplete API (/book/auto_complete?format=json) */
 export interface GRAutocompleteResult {
-  imageUrl: string;
+  imageUrl?: string;
   bookId: string;
   workId: string;
   bookUrl: string;
   title: string;
   bookTitleBare: string;
-  numPages: number;
-  avgRating: string;
-  ratingsCount: number;
+  numPages?: number;
+  avgRating?: string;
+  ratingsCount?: number;
   author: {
     id: number;
     name: string;
@@ -22,7 +22,7 @@ export interface GRAutocompleteResult {
     profileUrl: string;
     worksListUrl: string;
   };
-  description: {
+  description?: {
     html: string;
     truncated: boolean;
     fullContentUrl: string;
