@@ -35,7 +35,11 @@ const plugin: ShishoPlugin = {
         return { modified: false };
       }
 
-      shisho.log.info(`Enriching with: ${result.autocomplete.title}`);
+      const title =
+        result.autocomplete?.bookTitleBare ??
+        result.pageData.schemaOrg?.name ??
+        result.bookId;
+      shisho.log.info(`Enriching with: ${title}`);
       const metadata = toMetadata(result);
 
       return {

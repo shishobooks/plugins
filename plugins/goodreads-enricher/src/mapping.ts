@@ -17,22 +17,26 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
   const { autocomplete, pageData } = result;
   const metadata: ParsedMetadata = {};
 
-  // Title - use bare title from autocomplete (no series suffix)
-  metadata.title = cleanTitle(autocomplete.bookTitleBare, pageData.series);
+  // Title - prefer autocomplete bare title (no series suffix), fall back to JSON-LD name
+  const rawTitle =
+    autocomplete?.bookTitleBare ?? pageData.schemaOrg?.name ?? undefined;
+  if (rawTitle) {
+    metadata.title = cleanTitle(rawTitle, pageData.series);
+  }
 
   // Authors - prefer JSON-LD authors (more complete), fall back to autocomplete
   if (pageData.schemaOrg?.author && pageData.schemaOrg.author.length > 0) {
     metadata.authors = pageData.schemaOrg.author.map(
       (a): ParsedAuthor => ({ name: a.name }),
     );
-  } else {
+  } else if (autocomplete) {
     metadata.authors = [{ name: autocomplete.author.name }];
   }
 
   // Description - prefer page description, fall back to autocomplete
   if (pageData.description) {
     metadata.description = pageData.description;
-  } else if (autocomplete.description?.html) {
+  } else if (autocomplete?.description?.html) {
     metadata.description = stripHTML(autocomplete.description.html);
   }
 
@@ -73,7 +77,7 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
 
   // Cover image - prefer JSON-LD (full size), fall back to autocomplete
   const coverUrl =
-    pageData.schemaOrg?.image ?? autocomplete.imageUrl ?? undefined;
+    pageData.schemaOrg?.image ?? autocomplete?.imageUrl ?? undefined;
   if (coverUrl) {
     shisho.log.info("Fetching cover image");
     const cover = fetchCover(coverUrl);

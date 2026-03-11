@@ -274,9 +274,18 @@ describe("searchForBooks", () => {
 });
 
 describe("lookupByProviderData", () => {
+  const defaultPageData = {
+    schemaOrg: null,
+    description: null,
+    series: null,
+    seriesNumber: null,
+    genres: [],
+    publisher: null,
+    publishDate: null,
+  };
+
   it("returns combined autocomplete and page data", () => {
     const providerData: GRProviderData = { bookId: "5907" };
-    mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
     mockedFetchBookPage.mockReturnValue("<html>page</html>");
     mockedParseBookPage.mockReturnValue({
       schemaOrg: { name: "The Hobbit" },
@@ -287,6 +296,7 @@ describe("lookupByProviderData", () => {
       publisher: "HarperCollins",
       publishDate: "September 21, 1937",
     });
+    mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
 
     const result = lookupByProviderData(providerData);
 
@@ -297,16 +307,26 @@ describe("lookupByProviderData", () => {
     expect(result!.pageData.genres).toEqual(["Fantasy"]);
   });
 
-  it("returns null when autocomplete fails", () => {
-    const providerData: GRProviderData = { bookId: "5907" };
+  it("succeeds with page data only when autocomplete fails", () => {
+    const providerData: GRProviderData = { bookId: "56377548" };
+    mockedFetchBookPage.mockReturnValue("<html>page</html>");
+    mockedParseBookPage.mockReturnValue({
+      ...defaultPageData,
+      schemaOrg: { name: "Some Book" },
+      description: "A description.",
+    });
     mockedSearchAutocomplete.mockReturnValue(null);
 
-    expect(lookupByProviderData(providerData)).toBeNull();
+    const result = lookupByProviderData(providerData);
+
+    expect(result).not.toBeNull();
+    expect(result!.bookId).toBe("56377548");
+    expect(result!.autocomplete).toBeUndefined();
+    expect(result!.pageData.description).toBe("A description.");
   });
 
   it("returns null when book page fetch fails", () => {
     const providerData: GRProviderData = { bookId: "5907" };
-    mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
     mockedFetchBookPage.mockReturnValue(null);
 
     expect(lookupByProviderData(providerData)).toBeNull();
@@ -319,21 +339,13 @@ describe("lookupByProviderData", () => {
       bookId: "9999",
       title: "Wrong Book",
     };
-    mockedSearchAutocomplete.mockReturnValue([otherResult, sampleAutocomplete]);
     mockedFetchBookPage.mockReturnValue("<html></html>");
-    mockedParseBookPage.mockReturnValue({
-      schemaOrg: null,
-      description: null,
-      series: null,
-      seriesNumber: null,
-      genres: [],
-      publisher: null,
-      publishDate: null,
-    });
+    mockedParseBookPage.mockReturnValue(defaultPageData);
+    mockedSearchAutocomplete.mockReturnValue([otherResult, sampleAutocomplete]);
 
     const result = lookupByProviderData(providerData);
 
-    expect(result!.autocomplete.bookId).toBe("5907");
+    expect(result!.autocomplete!.bookId).toBe("5907");
   });
 
   it("falls back to first autocomplete result if exact match not found", () => {
@@ -343,20 +355,12 @@ describe("lookupByProviderData", () => {
       bookId: "9999",
       title: "Close Match",
     };
-    mockedSearchAutocomplete.mockReturnValue([otherResult]);
     mockedFetchBookPage.mockReturnValue("<html></html>");
-    mockedParseBookPage.mockReturnValue({
-      schemaOrg: null,
-      description: null,
-      series: null,
-      seriesNumber: null,
-      genres: [],
-      publisher: null,
-      publishDate: null,
-    });
+    mockedParseBookPage.mockReturnValue(defaultPageData);
+    mockedSearchAutocomplete.mockReturnValue([otherResult]);
 
     const result = lookupByProviderData(providerData);
 
-    expect(result!.autocomplete.bookId).toBe("9999");
+    expect(result!.autocomplete!.bookId).toBe("9999");
   });
 });

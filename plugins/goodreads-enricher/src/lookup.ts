@@ -33,6 +33,10 @@ export function searchForBooks(context: SearchContext): SearchResult[] {
 
 /**
  * Look up full book data from providerData (passed from search to enrich).
+ *
+ * The book page is the primary data source. Autocomplete is tried as optional
+ * supplementary data (bare title, image URL) but enrichment proceeds without it
+ * since autocomplete is a fuzzy text search and doesn't reliably resolve by ID.
  */
 export function lookupByProviderData(
   providerData: GRProviderData,
@@ -40,16 +44,7 @@ export function lookupByProviderData(
   const { bookId } = providerData;
   shisho.log.info(`Enriching by Goodreads book ID: ${bookId}`);
 
-  // Search autocomplete to get basic info
-  const results = searchAutocomplete(bookId);
-  const autocomplete =
-    results?.find((r) => r.bookId === bookId) ?? results?.[0];
-  if (!autocomplete) {
-    shisho.log.warn(`Could not find book ${bookId} in autocomplete`);
-    return null;
-  }
-
-  // Fetch the book page for detailed metadata
+  // Fetch the book page — this is the primary data source
   const html = fetchBookPage(bookId);
   if (!html) {
     shisho.log.warn(`Could not fetch book page for ${bookId}`);
@@ -57,7 +52,18 @@ export function lookupByProviderData(
   }
 
   const pageData = parseBookPage(html);
-  return { bookId, autocomplete, pageData };
+
+  // Try autocomplete for supplementary data (bare title, fallback image)
+  const results = searchAutocomplete(bookId);
+  const autocomplete =
+    results?.find((r) => r.bookId === bookId) ?? results?.[0];
+  if (!autocomplete) {
+    shisho.log.debug(
+      `Autocomplete unavailable for book ${bookId}, using page data only`,
+    );
+  }
+
+  return { bookId, autocomplete: autocomplete ?? undefined, pageData };
 }
 
 /**

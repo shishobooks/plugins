@@ -118,6 +118,41 @@ describe("toMetadata", () => {
       expect(metadata.series).toBeUndefined();
       expect(metadata.genres).toBeUndefined();
     });
+
+    it("works without autocomplete data (page data only)", () => {
+      const result: GRLookupResult = {
+        bookId: "56377548",
+        // no autocomplete
+        pageData: {
+          schemaOrg: {
+            name: "Iron Flame (The Empyrean, #2)",
+            isbn: "9781649374172",
+            image: "https://m.media-amazon.com/images/books/iron-flame.jpg",
+            author: [{ name: "Rebecca Yarros", url: "/author/123" }],
+          },
+          description: "A sequel about dragons.",
+          series: "The Empyrean",
+          seriesNumber: 2,
+          genres: ["Fantasy", "Romance"],
+          publisher: "Entangled Publishing",
+          publishDate: "November 7, 2023",
+        },
+      };
+      mockedFetchCover.mockReturnValue({
+        data: new ArrayBuffer(8),
+        mimeType: "image/jpeg",
+      });
+
+      const metadata = toMetadata(result);
+
+      expect(metadata.title).toBe("Iron Flame");
+      expect(metadata.authors).toEqual([{ name: "Rebecca Yarros" }]);
+      expect(metadata.description).toBe("A sequel about dragons.");
+      expect(metadata.publisher).toBe("Entangled Publishing");
+      expect(metadata.series).toBe("The Empyrean");
+      expect(metadata.seriesNumber).toBe(2);
+      expect(metadata.coverData).toBeInstanceOf(ArrayBuffer);
+    });
   });
 
   describe("title cleaning", () => {

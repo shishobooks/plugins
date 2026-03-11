@@ -54,10 +54,10 @@ export interface GRBookPageData {
   publishDate: string | null;
 }
 
-/** Combined result from lookup containing autocomplete data + parsed page data */
+/** Combined result from lookup containing page data + optional autocomplete data */
 export interface GRLookupResult {
   bookId: string;
-  autocomplete: GRAutocompleteResult;
+  autocomplete?: GRAutocompleteResult;
   pageData: GRBookPageData;
 }
 
