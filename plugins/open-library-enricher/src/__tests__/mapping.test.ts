@@ -51,7 +51,11 @@ describe("toMetadata", () => {
         authors: [{ key: "/authors/OL789A", name: "J.R.R. Tolkien" }],
       });
 
-      mockedFetchCover.mockReturnValue(new ArrayBuffer(8));
+      const coverBuffer = new ArrayBuffer(8);
+      mockedFetchCover.mockReturnValue({
+        data: coverBuffer,
+        mimeType: "image/jpeg",
+      });
 
       const metadata = toMetadata(result);
 
@@ -63,7 +67,7 @@ describe("toMetadata", () => {
       expect(metadata.releaseDate).toBe("1954-01-01T00:00:00Z");
       expect(metadata.genres).toEqual(["Fantasy"]);
       expect(metadata.tags).toEqual(["Adventure"]);
-      expect(metadata.coverData).toBeInstanceOf(ArrayBuffer);
+      expect(metadata.coverData).toBe(coverBuffer);
       expect(metadata.coverMimeType).toBe("image/jpeg");
     });
 
@@ -222,12 +226,15 @@ describe("toMetadata", () => {
       });
 
       const coverBuffer = new ArrayBuffer(16);
-      mockedFetchCover.mockReturnValue(coverBuffer);
+      mockedFetchCover.mockReturnValue({
+        data: coverBuffer,
+        mimeType: "image/png",
+      });
 
       const metadata = toMetadata(result);
       expect(mockedFetchCover).toHaveBeenCalledWith(67890);
       expect(metadata.coverData).toBe(coverBuffer);
-      expect(metadata.coverMimeType).toBe("image/jpeg");
+      expect(metadata.coverMimeType).toBe("image/png");
     });
 
     it("falls back to work cover when edition has none", () => {
@@ -239,7 +246,10 @@ describe("toMetadata", () => {
         },
       });
 
-      mockedFetchCover.mockReturnValue(new ArrayBuffer(8));
+      mockedFetchCover.mockReturnValue({
+        data: new ArrayBuffer(8),
+        mimeType: "image/jpeg",
+      });
 
       toMetadata(result);
       expect(mockedFetchCover).toHaveBeenCalledWith(11111);

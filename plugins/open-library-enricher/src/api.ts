@@ -79,12 +79,17 @@ export function searchBooks(
   return fetchJSON<OLSearchResult>(`${BASE_URL}/search.json?${query}`);
 }
 
+export interface CoverResult {
+  data: ArrayBuffer;
+  mimeType: string;
+}
+
 /**
  * Fetch a cover image by cover ID.
  * @param coverId - Cover ID number
- * @returns ArrayBuffer of JPEG image data, or null if not found
+ * @returns Cover data with MIME type, or null if not found
  */
-export function fetchCover(coverId: number): ArrayBuffer | null {
+export function fetchCover(coverId: number): CoverResult | null {
   const url = `${COVERS_URL}/b/id/${coverId}-L.jpg`;
   shisho.log.debug(`Fetching cover: ${url}`);
 
@@ -97,5 +102,8 @@ export function fetchCover(coverId: number): ArrayBuffer | null {
     return null;
   }
 
-  return response.arrayBuffer();
+  const contentType = response.headers["content-type"];
+  const mimeType = contentType?.split(";")[0].trim() || "image/jpeg";
+
+  return { data: response.arrayBuffer(), mimeType };
 }

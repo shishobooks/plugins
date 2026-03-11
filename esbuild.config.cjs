@@ -45,6 +45,7 @@ async function build() {
       globalName: "plugin",
       target: "es2020",
       platform: "neutral",
+      mainFields: ["main"],
       outfile: path.join(outDir, "main.js"),
       logLevel: "info",
       // Extract default export for Shisho's goja runtime which expects plugin to be the object directly
