@@ -97,10 +97,10 @@ export function toMetadata(result: OLLookupResult): ParsedMetadata {
   const coverId = edition.covers?.[0] ?? work.covers?.[0];
   if (coverId) {
     shisho.log.info(`Fetching cover image: ${coverId}`);
-    const coverData = fetchCover(coverId);
-    if (coverData) {
-      metadata.coverData = coverData;
-      metadata.coverMimeType = "image/jpeg";
+    const cover = fetchCover(coverId);
+    if (cover) {
+      metadata.coverData = cover.data;
+      metadata.coverMimeType = cover.mimeType;
     }
   }
 

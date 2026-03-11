@@ -41,34 +41,35 @@ export function normalizeForComparison(text: string): string {
 
 /**
  * Parse month name to 2-digit string.
- * Supports full names (January) and abbreviations (Jan, Sept).
+ * Supports full names (January) and abbreviations (Jan, Sep, Sept).
  */
+const MONTHS: Record<string, string> = {
+  january: "01",
+  jan: "01",
+  february: "02",
+  feb: "02",
+  march: "03",
+  mar: "03",
+  april: "04",
+  apr: "04",
+  may: "05",
+  june: "06",
+  jun: "06",
+  july: "07",
+  jul: "07",
+  august: "08",
+  aug: "08",
+  september: "09",
+  sep: "09",
+  sept: "09",
+  october: "10",
+  oct: "10",
+  november: "11",
+  nov: "11",
+  december: "12",
+  dec: "12",
+};
+
 export function parseMonth(monthStr: string): string | undefined {
-  const months: Record<string, string> = {
-    january: "01",
-    jan: "01",
-    february: "02",
-    feb: "02",
-    march: "03",
-    mar: "03",
-    april: "04",
-    apr: "04",
-    may: "05",
-    june: "06",
-    jun: "06",
-    july: "07",
-    jul: "07",
-    august: "08",
-    aug: "08",
-    september: "09",
-    sep: "09",
-    sept: "09",
-    october: "10",
-    oct: "10",
-    november: "11",
-    nov: "11",
-    december: "12",
-    dec: "12",
-  };
-  return months[monthStr.toLowerCase()];
+  return MONTHS[monthStr.toLowerCase()];
 }
