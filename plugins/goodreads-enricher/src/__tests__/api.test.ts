@@ -8,11 +8,13 @@ function mockFetch(response: {
   body?: unknown;
   text?: string;
   arrayBuffer?: ArrayBuffer;
+  headers?: Record<string, string>;
 }) {
   vi.mocked(shisho.http.fetch).mockReturnValue({
     status: response.status,
     statusText: response.statusText ?? "",
     ok: response.ok,
+    headers: response.headers ?? {},
     json: () => response.body,
     text: () => response.text ?? "",
     arrayBuffer: () => response.arrayBuffer,
@@ -91,14 +93,38 @@ describe("fetchBookPage", () => {
 });
 
 describe("fetchCover", () => {
-  it("returns ArrayBuffer on success", () => {
+  it("returns data and MIME type from content-type header", () => {
+    const buffer = new ArrayBuffer(8);
+    mockFetch({
+      status: 200,
+      ok: true,
+      arrayBuffer: buffer,
+      headers: { "content-type": "image/png" },
+    });
+
+    const result = fetchCover("https://example.com/cover.png");
+    expect(result).toEqual({ data: buffer, mimeType: "image/png" });
+  });
+
+  it("strips charset from content-type header", () => {
+    const buffer = new ArrayBuffer(8);
+    mockFetch({
+      status: 200,
+      ok: true,
+      arrayBuffer: buffer,
+      headers: { "content-type": "image/jpeg; charset=utf-8" },
+    });
+
+    const result = fetchCover("https://example.com/cover.jpg");
+    expect(result!.mimeType).toBe("image/jpeg");
+  });
+
+  it("defaults to image/jpeg when no content-type header", () => {
     const buffer = new ArrayBuffer(8);
     mockFetch({ status: 200, ok: true, arrayBuffer: buffer });
 
-    const result = fetchCover(
-      "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/123.jpg",
-    );
-    expect(result).toBe(buffer);
+    const result = fetchCover("https://example.com/cover.jpg");
+    expect(result).toEqual({ data: buffer, mimeType: "image/jpeg" });
   });
 
   it("returns null on failure", () => {

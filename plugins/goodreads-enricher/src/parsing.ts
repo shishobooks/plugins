@@ -165,7 +165,9 @@ export function extractPublicationInfo(html: string): {
     publishDate = firstPubMatch[1].trim();
   }
 
-  // Look for "Published ... by Publisher" (requires "by" so it won't match "First published" lines)
+  // Look for "Published ... by Publisher". The required "by" keyword prevents matching "First
+  // published" lines (which don't include a publisher). If a "First published" line did include
+  // "by Publisher", the date would already be captured above and only the publisher is extracted.
   const pubByMatch = html.match(
     /Published\s+([A-Z][a-z]+(?:\s+\d{1,2},?)?\s+\d{4})\s+by\s+([^<\n]+?)(?:\s*<|\s*\n)/i,
   );

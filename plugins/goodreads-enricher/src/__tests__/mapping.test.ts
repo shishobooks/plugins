@@ -76,7 +76,11 @@ describe("toMetadata", () => {
           publishDate: "September 21, 1937",
         },
       });
-      mockedFetchCover.mockReturnValue(new ArrayBuffer(8));
+      const coverBuffer = new ArrayBuffer(8);
+      mockedFetchCover.mockReturnValue({
+        data: coverBuffer,
+        mimeType: "image/jpeg",
+      });
 
       const metadata = toMetadata(result);
 
@@ -94,7 +98,7 @@ describe("toMetadata", () => {
       expect(metadata.seriesNumber).toBe(1);
       expect(metadata.genres).toEqual(["Fantasy", "Classics", "Fiction"]);
       expect(metadata.tags).toEqual(["Adventure"]);
-      expect(metadata.coverData).toBeInstanceOf(ArrayBuffer);
+      expect(metadata.coverData).toBe(coverBuffer);
       expect(metadata.coverMimeType).toBe("image/jpeg");
       expect(metadata.identifiers).toEqual([
         { type: "goodreads", value: "5907" },
@@ -332,19 +336,25 @@ describe("toMetadata", () => {
         },
       });
       const coverBuffer = new ArrayBuffer(16);
-      mockedFetchCover.mockReturnValue(coverBuffer);
+      mockedFetchCover.mockReturnValue({
+        data: coverBuffer,
+        mimeType: "image/png",
+      });
 
       const metadata = toMetadata(result);
       expect(mockedFetchCover).toHaveBeenCalledWith(
         "https://m.media-amazon.com/images/books/5907.jpg",
       );
       expect(metadata.coverData).toBe(coverBuffer);
-      expect(metadata.coverMimeType).toBe("image/jpeg");
+      expect(metadata.coverMimeType).toBe("image/png");
     });
 
     it("falls back to autocomplete image URL", () => {
       const result = makeResult();
-      mockedFetchCover.mockReturnValue(new ArrayBuffer(8));
+      mockedFetchCover.mockReturnValue({
+        data: new ArrayBuffer(8),
+        mimeType: "image/jpeg",
+      });
 
       toMetadata(result);
       expect(mockedFetchCover).toHaveBeenCalledWith(
