@@ -1,17 +1,10 @@
-import { fetchCover } from "../api";
 import { toMetadata } from "../mapping";
 import type { GRAutocompleteResult, GRLookupResult } from "../types";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../api", () => ({
-  fetchCover: vi.fn(),
-}));
-
 vi.mock("../parsing", () => ({
   stripHTML: vi.fn((html: string) => html.replace(/<[^>]+>/g, "").trim()),
 }));
-
-const mockedFetchCover = vi.mocked(fetchCover);
 
 const baseAutocomplete: GRAutocompleteResult = {
   imageUrl: "https://i.gr-assets.com/images/books/5907._SY75_.jpg",
@@ -76,11 +69,6 @@ describe("toMetadata", () => {
           publishDate: "September 21, 1937",
         },
       });
-      const coverBuffer = new ArrayBuffer(8);
-      mockedFetchCover.mockReturnValue({
-        data: coverBuffer,
-        mimeType: "image/jpeg",
-      });
 
       const metadata = toMetadata(result);
 
@@ -98,8 +86,9 @@ describe("toMetadata", () => {
       expect(metadata.seriesNumber).toBe(1);
       expect(metadata.genres).toEqual(["Fantasy", "Classics", "Fiction"]);
       expect(metadata.tags).toEqual(["Adventure"]);
-      expect(metadata.coverData).toBe(coverBuffer);
-      expect(metadata.coverMimeType).toBe("image/jpeg");
+      expect(metadata.coverUrl).toBe(
+        "https://m.media-amazon.com/images/books/5907.jpg",
+      );
       expect(metadata.identifiers).toEqual([
         { type: "goodreads", value: "5907" },
         { type: "isbn_13", value: "9780261102217" },
@@ -108,7 +97,6 @@ describe("toMetadata", () => {
 
     it("handles minimal result without errors", () => {
       const result = makeResult();
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
 
@@ -122,7 +110,6 @@ describe("toMetadata", () => {
     it("works without autocomplete data (page data only)", () => {
       const result: GRLookupResult = {
         bookId: "56377548",
-        // no autocomplete
         pageData: {
           schemaOrg: {
             name: "Iron Flame (The Empyrean, #2)",
@@ -138,10 +125,6 @@ describe("toMetadata", () => {
           publishDate: "November 7, 2023",
         },
       };
-      mockedFetchCover.mockReturnValue({
-        data: new ArrayBuffer(8),
-        mimeType: "image/jpeg",
-      });
 
       const metadata = toMetadata(result);
 
@@ -151,7 +134,9 @@ describe("toMetadata", () => {
       expect(metadata.publisher).toBe("Entangled Publishing");
       expect(metadata.series).toBe("The Empyrean");
       expect(metadata.seriesNumber).toBe(2);
-      expect(metadata.coverData).toBeInstanceOf(ArrayBuffer);
+      expect(metadata.coverUrl).toBe(
+        "https://m.media-amazon.com/images/books/iron-flame.jpg",
+      );
     });
   });
 
@@ -172,7 +157,6 @@ describe("toMetadata", () => {
           publishDate: null,
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.title).toBe("The Name of the Wind");
@@ -180,7 +164,6 @@ describe("toMetadata", () => {
 
     it("keeps title unchanged when no series", () => {
       const result = makeResult();
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.title).toBe("The Hobbit, or There and Back Again");
@@ -206,7 +189,6 @@ describe("toMetadata", () => {
           publishDate: null,
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.authors).toEqual([
@@ -217,7 +199,6 @@ describe("toMetadata", () => {
 
     it("falls back to autocomplete author when JSON-LD has none", () => {
       const result = makeResult();
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.authors).toEqual([{ name: "J.R.R. Tolkien" }]);
@@ -237,7 +218,6 @@ describe("toMetadata", () => {
           publishDate: null,
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.description).toBe("Full page description.");
@@ -245,7 +225,6 @@ describe("toMetadata", () => {
 
     it("falls back to autocomplete description", () => {
       const result = makeResult();
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.description).toBe(
@@ -273,7 +252,6 @@ describe("toMetadata", () => {
           publishDate: null,
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.genres).toEqual(["Fantasy", "Classics", "Fiction"]);
@@ -292,7 +270,6 @@ describe("toMetadata", () => {
           publishDate: null,
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.genres).toEqual(["Fantasy", "Fiction"]);
@@ -313,7 +290,6 @@ describe("toMetadata", () => {
           publishDate: null,
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.identifiers).toEqual([
@@ -334,7 +310,6 @@ describe("toMetadata", () => {
           publishDate: null,
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.identifiers).toEqual([
@@ -345,7 +320,6 @@ describe("toMetadata", () => {
 
     it("includes only Goodreads ID when no ISBN", () => {
       const result = makeResult();
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.identifiers).toEqual([
@@ -354,8 +328,8 @@ describe("toMetadata", () => {
     });
   });
 
-  describe("cover fetching", () => {
-    it("fetches cover from JSON-LD image URL", () => {
+  describe("cover URL", () => {
+    it("uses JSON-LD image URL", () => {
       const result = makeResult({
         pageData: {
           schemaOrg: {
@@ -370,40 +344,38 @@ describe("toMetadata", () => {
           publishDate: null,
         },
       });
-      const coverBuffer = new ArrayBuffer(16);
-      mockedFetchCover.mockReturnValue({
-        data: coverBuffer,
-        mimeType: "image/png",
-      });
 
       const metadata = toMetadata(result);
-      expect(mockedFetchCover).toHaveBeenCalledWith(
+      expect(metadata.coverUrl).toBe(
         "https://m.media-amazon.com/images/books/5907.jpg",
       );
-      expect(metadata.coverData).toBe(coverBuffer);
-      expect(metadata.coverMimeType).toBe("image/png");
     });
 
     it("falls back to autocomplete image URL", () => {
       const result = makeResult();
-      mockedFetchCover.mockReturnValue({
-        data: new ArrayBuffer(8),
-        mimeType: "image/jpeg",
-      });
 
-      toMetadata(result);
-      expect(mockedFetchCover).toHaveBeenCalledWith(
+      const metadata = toMetadata(result);
+      expect(metadata.coverUrl).toBe(
         "https://i.gr-assets.com/images/books/5907._SY75_.jpg",
       );
     });
 
-    it("handles cover fetch failure gracefully", () => {
-      const result = makeResult();
-      mockedFetchCover.mockReturnValue(null);
+    it("omits coverUrl when no image available", () => {
+      const result: GRLookupResult = {
+        bookId: "123",
+        pageData: {
+          schemaOrg: null,
+          description: null,
+          series: null,
+          seriesNumber: null,
+          genres: [],
+          publisher: null,
+          publishDate: null,
+        },
+      };
 
       const metadata = toMetadata(result);
-      expect(metadata.coverData).toBeUndefined();
-      expect(metadata.coverMimeType).toBeUndefined();
+      expect(metadata.coverUrl).toBeUndefined();
     });
   });
 
@@ -420,7 +392,6 @@ describe("toMetadata", () => {
           publishDate: "September 21, 1937",
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.releaseDate).toBe("1937-09-21T00:00:00Z");
@@ -438,7 +409,6 @@ describe("toMetadata", () => {
           publishDate: "March 2007",
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.releaseDate).toBe("2007-03-01T00:00:00Z");
@@ -456,7 +426,6 @@ describe("toMetadata", () => {
           publishDate: "1937",
         },
       });
-      mockedFetchCover.mockReturnValue(null);
 
       const metadata = toMetadata(result);
       expect(metadata.releaseDate).toBe("1937-01-01T00:00:00Z");

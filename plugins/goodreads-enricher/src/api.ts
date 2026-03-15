@@ -56,29 +56,3 @@ export function searchAutocomplete(
 export function fetchBookPage(bookId: string): string | null {
   return fetchText(`${BASE_URL}/book/show/${bookId}`);
 }
-
-export interface CoverResult {
-  data: ArrayBuffer;
-  mimeType: string;
-}
-
-/**
- * Fetch a cover image from a URL.
- * @returns Cover data with MIME type, or null on failure
- */
-export function fetchCover(url: string): CoverResult | null {
-  shisho.log.debug(`Fetching cover: ${url}`);
-  const response = shisho.http.fetch(url, {
-    headers: { "User-Agent": USER_AGENT },
-  });
-
-  if (!response.ok) {
-    shisho.log.warn(`Failed to fetch cover: ${response.status}`);
-    return null;
-  }
-
-  const contentType = response.headers["content-type"];
-  const mimeType = contentType?.split(";")[0].trim() || "image/jpeg";
-
-  return { data: response.arrayBuffer(), mimeType };
-}

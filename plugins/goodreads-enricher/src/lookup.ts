@@ -1,4 +1,5 @@
 import { fetchBookPage, searchAutocomplete } from "./api";
+import { toMetadata } from "./mapping";
 import { parseBookPage, stripHTML } from "./parsing";
 import type {
   GRAutocompleteResult,
@@ -17,6 +18,10 @@ const MAX_LEVENSHTEIN_RATIO = 0.4;
 /**
  * Search for candidate books using the Goodreads autocomplete API.
  * Priority: Goodreads ID -> ISBN -> Title + Author
+ *
+ * For each candidate, fetches the book page and builds full metadata so the
+ * user can evaluate all fields before selecting. The metadata is attached
+ * via the passthrough pattern for the enrich phase.
  */
 export function searchForBooks(context: SearchContext): SearchResult[] {
   // 1. Try existing Goodreads ID
@@ -32,41 +37,6 @@ export function searchForBooks(context: SearchContext): SearchResult[] {
 }
 
 /**
- * Look up full book data from providerData (passed from search to enrich).
- *
- * The book page is the primary data source. Autocomplete is tried as optional
- * supplementary data (bare title, image URL) but enrichment proceeds without it
- * since autocomplete is a fuzzy text search and doesn't reliably resolve by ID.
- */
-export function lookupByProviderData(
-  providerData: GRProviderData,
-): GRLookupResult | null {
-  const { bookId } = providerData;
-  shisho.log.info(`Enriching by Goodreads book ID: ${bookId}`);
-
-  // Fetch the book page — this is the primary data source
-  const html = fetchBookPage(bookId);
-  if (!html) {
-    shisho.log.warn(`Could not fetch book page for ${bookId}`);
-    return null;
-  }
-
-  const pageData = parseBookPage(html);
-
-  // Try autocomplete for supplementary data (bare title, fallback image)
-  const results = searchAutocomplete(bookId);
-  const autocomplete =
-    results?.find((r) => r.bookId === bookId) ?? results?.[0];
-  if (!autocomplete) {
-    shisho.log.debug(
-      `Autocomplete unavailable for book ${bookId}, using page data only`,
-    );
-  }
-
-  return { bookId, autocomplete: autocomplete ?? undefined, pageData };
-}
-
-/**
  * Try search using existing Goodreads identifier.
  */
 function tryGoodreadsIdSearch(context: SearchContext): SearchResult[] {
@@ -79,7 +49,7 @@ function tryGoodreadsIdSearch(context: SearchContext): SearchResult[] {
   const match = results?.find((r) => r.bookId === goodreadsId);
 
   if (match) {
-    return [autocompleteToSearchResult(match)];
+    return [enrichSearchResult(match)];
   }
 
   return [];
@@ -100,7 +70,7 @@ function tryISBNSearch(context: SearchContext): SearchResult[] {
     shisho.log.info(`Searching by ISBN: ${isbn}`);
     const results = searchAutocomplete(isbn);
     if (results && results.length > 0) {
-      return [autocompleteToSearchResult(results[0])];
+      return [enrichSearchResult(results[0])];
     }
   }
 
@@ -158,16 +128,85 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
       }
     }
 
-    filtered.push(autocompleteToSearchResult(result));
+    filtered.push(enrichSearchResult(result));
   }
 
   return filtered;
 }
 
 /**
- * Convert an autocomplete result to a SearchResult.
- * Uses the full title (with series suffix) so users can see series info
- * in the search results, since SearchResult has no dedicated series field.
+ * Enrich an autocomplete result by fetching the book page and building
+ * full metadata. Returns a SearchResult with all available fields populated.
+ *
+ * Falls back to autocomplete-only data if the book page fetch fails.
+ */
+function enrichSearchResult(autocomplete: GRAutocompleteResult): SearchResult {
+  const bookId = autocomplete.bookId;
+
+  // Fetch book page for rich data
+  const html = fetchBookPage(bookId);
+  if (!html) {
+    shisho.log.debug(
+      `Book page unavailable for ${bookId}, using autocomplete only`,
+    );
+    return autocompleteToSearchResult(autocomplete);
+  }
+
+  const pageData = parseBookPage(html);
+  const lookupResult: GRLookupResult = {
+    bookId,
+    autocomplete,
+    pageData,
+  };
+  const metadata = toMetadata(lookupResult);
+
+  const searchResult: SearchResult = {
+    title: metadata.title ?? autocomplete.title,
+    providerData: { bookId } as GRProviderData,
+    metadata,
+  };
+
+  // Populate all SearchResult display fields from metadata
+  if (metadata.authors) {
+    searchResult.authors = metadata.authors.map((a) => a.name);
+  }
+  if (metadata.description) {
+    searchResult.description = metadata.description;
+  }
+  if (metadata.publisher) {
+    searchResult.publisher = metadata.publisher;
+  }
+  if (metadata.releaseDate) {
+    searchResult.releaseDate = metadata.releaseDate;
+  }
+  if (metadata.series) {
+    searchResult.series = metadata.series;
+    if (metadata.seriesNumber !== undefined) {
+      searchResult.seriesNumber = metadata.seriesNumber;
+    }
+  }
+  if (metadata.genres) {
+    searchResult.genres = metadata.genres;
+  }
+  if (metadata.tags) {
+    searchResult.tags = metadata.tags;
+  }
+  if (metadata.identifiers) {
+    searchResult.identifiers = metadata.identifiers;
+  }
+
+  // Image URL for search result thumbnail
+  const imageUrl =
+    pageData.schemaOrg?.image ?? autocomplete.imageUrl ?? undefined;
+  if (imageUrl) {
+    searchResult.imageUrl = imageUrl;
+  }
+
+  return searchResult;
+}
+
+/**
+ * Fallback: convert autocomplete result to SearchResult without page data.
  */
 function autocompleteToSearchResult(
   result: GRAutocompleteResult,

@@ -1,14 +1,13 @@
 import { fetchBookPage, searchAutocomplete } from "../api";
-import { lookupByProviderData, searchForBooks } from "../lookup";
+import { searchForBooks } from "../lookup";
 import { parseBookPage } from "../parsing";
-import type { GRAutocompleteResult, GRProviderData } from "../types";
+import type { GRAutocompleteResult } from "../types";
 import type { SearchContext } from "@shisho/plugin-types";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../api", () => ({
   searchAutocomplete: vi.fn(),
   fetchBookPage: vi.fn(),
-  fetchCover: vi.fn(),
 }));
 
 vi.mock("../parsing", () => ({
@@ -53,6 +52,27 @@ const sampleAutocomplete: GRAutocompleteResult = {
   },
 };
 
+const samplePageData = {
+  schemaOrg: {
+    name: "The Hobbit",
+    image: "https://m.media-amazon.com/images/books/5907.jpg",
+    author: [{ name: "J.R.R. Tolkien", url: "/author/656983" }],
+    isbn: "9780261102217",
+  },
+  description: "A fantasy novel about a hobbit's adventure.",
+  series: "Middle-earth",
+  seriesNumber: 1,
+  genres: ["Fantasy", "Classics", "Fiction", "Adventure"],
+  publisher: "HarperCollins",
+  publishDate: "September 21, 1937",
+};
+
+/** Set up mocks so book page fetch + parse succeeds with sample data. */
+function mockBookPageSuccess() {
+  mockedFetchBookPage.mockReturnValue("<html>page</html>");
+  mockedParseBookPage.mockReturnValue(samplePageData);
+}
+
 describe("searchForBooks", () => {
   describe("Goodreads ID lookup", () => {
     it("finds by Goodreads ID from book identifiers", () => {
@@ -62,17 +82,13 @@ describe("searchForBooks", () => {
         },
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
+      mockBookPageSuccess();
 
       const results = searchForBooks(context);
 
       expect(mockedSearchAutocomplete).toHaveBeenCalledWith("5907");
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe("The Hobbit, or There and Back Again");
-      expect(results[0].authors).toEqual(["J.R.R. Tolkien"]);
       expect(results[0].providerData).toEqual({ bookId: "5907" });
-      expect(results[0].identifiers).toEqual([
-        { type: "goodreads", value: "5907" },
-      ]);
     });
 
     it("returns empty when Goodreads ID not found in results", () => {
@@ -96,12 +112,12 @@ describe("searchForBooks", () => {
         },
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
+      mockBookPageSuccess();
 
       const results = searchForBooks(context);
 
       expect(mockedSearchAutocomplete).toHaveBeenCalledWith("9780261102217");
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe("The Hobbit, or There and Back Again");
     });
 
     it("tries ISBN-10 if ISBN-13 fails", () => {
@@ -114,8 +130,9 @@ describe("searchForBooks", () => {
         },
       });
       mockedSearchAutocomplete
-        .mockReturnValueOnce(null) // ISBN-13 fails
-        .mockReturnValueOnce([sampleAutocomplete]); // ISBN-10 succeeds
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce([sampleAutocomplete]);
+      mockBookPageSuccess();
 
       const results = searchForBooks(context);
 
@@ -138,6 +155,7 @@ describe("searchForBooks", () => {
         },
       });
       mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
+      mockBookPageSuccess();
 
       const results = searchForBooks(context);
 
@@ -145,7 +163,6 @@ describe("searchForBooks", () => {
         "The Hobbit J.R.R. Tolkien",
       );
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe("The Hobbit, or There and Back Again");
     });
 
     it("falls back to book.title when query is empty", () => {
@@ -154,6 +171,7 @@ describe("searchForBooks", () => {
         book: { title: "The Hobbit" },
       });
       mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
+      mockBookPageSuccess();
 
       const results = searchForBooks(context);
 
@@ -187,25 +205,78 @@ describe("searchForBooks", () => {
       const results = searchForBooks(context);
       expect(results).toHaveLength(0);
     });
+  });
 
-    it("includes description from autocomplete HTML", () => {
-      const context = makeContext({ query: "The Hobbit" });
-      mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
+  describe("enriched search results", () => {
+    it("populates all fields from book page data", () => {
+      const context = makeContext({
+        book: {
+          identifiers: [{ type: "goodreads", value: "5907" }],
+        },
+      });
+      mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
+      mockBookPageSuccess();
 
       const results = searchForBooks(context);
-      expect(results[0].description).toBe(
-        "In a hole in the ground there lived a hobbit.",
+      const result = results[0];
+
+      expect(result.title).toBe("The Hobbit, or There and Back Again");
+      expect(result.authors).toEqual(["J.R.R. Tolkien"]);
+      expect(result.description).toBe(
+        "A fantasy novel about a hobbit's adventure.",
+      );
+      expect(result.publisher).toBe("HarperCollins");
+      expect(result.releaseDate).toBe("1937-09-21T00:00:00Z");
+      expect(result.series).toBe("Middle-earth");
+      expect(result.seriesNumber).toBe(1);
+      expect(result.genres).toEqual(["Fantasy", "Classics", "Fiction"]);
+      expect(result.tags).toEqual(["Adventure"]);
+      expect(result.imageUrl).toBe(
+        "https://m.media-amazon.com/images/books/5907.jpg",
+      );
+      expect(result.identifiers).toEqual([
+        { type: "goodreads", value: "5907" },
+        { type: "isbn_13", value: "9780261102217" },
+      ]);
+    });
+
+    it("includes metadata passthrough for enrich phase", () => {
+      const context = makeContext({
+        book: {
+          identifiers: [{ type: "goodreads", value: "5907" }],
+        },
+      });
+      mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
+      mockBookPageSuccess();
+
+      const results = searchForBooks(context);
+      expect(results[0].metadata).toBeDefined();
+      expect(results[0].metadata!.title).toBe(
+        "The Hobbit, or There and Back Again",
       );
     });
 
-    it("includes image URL from autocomplete", () => {
-      const context = makeContext({ query: "The Hobbit" });
-      mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
+    it("falls back to autocomplete-only when book page fails", () => {
+      const context = makeContext({
+        book: {
+          identifiers: [{ type: "goodreads", value: "5907" }],
+        },
+      });
+      mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
+      mockedFetchBookPage.mockReturnValue(null);
 
       const results = searchForBooks(context);
-      expect(results[0].imageUrl).toBe(
-        "https://i.gr-assets.com/images/books/5907._SY75_.jpg",
+      const result = results[0];
+
+      expect(result.title).toBe("The Hobbit, or There and Back Again");
+      expect(result.authors).toEqual(["J.R.R. Tolkien"]);
+      expect(result.description).toBe(
+        "In a hole in the ground there lived a hobbit.",
       );
+      // No rich metadata when page fetch fails
+      expect(result.metadata).toBeUndefined();
+      expect(result.series).toBeUndefined();
+      expect(result.publisher).toBeUndefined();
     });
   });
 
@@ -220,6 +291,7 @@ describe("searchForBooks", () => {
         },
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
+      mockBookPageSuccess();
 
       searchForBooks(context);
 
@@ -236,10 +308,9 @@ describe("searchForBooks", () => {
           ],
         },
       });
-      // First call (Goodreads ID) - no matching result
       mockedSearchAutocomplete.mockReturnValueOnce([sampleAutocomplete]);
-      // Second call (ISBN) - returns result
       mockedSearchAutocomplete.mockReturnValueOnce([sampleAutocomplete]);
+      mockBookPageSuccess();
 
       searchForBooks(context);
 
@@ -270,97 +341,5 @@ describe("searchForBooks", () => {
       const results = searchForBooks(context);
       expect(results).toHaveLength(0);
     });
-  });
-});
-
-describe("lookupByProviderData", () => {
-  const defaultPageData = {
-    schemaOrg: null,
-    description: null,
-    series: null,
-    seriesNumber: null,
-    genres: [],
-    publisher: null,
-    publishDate: null,
-  };
-
-  it("returns combined autocomplete and page data", () => {
-    const providerData: GRProviderData = { bookId: "5907" };
-    mockedFetchBookPage.mockReturnValue("<html>page</html>");
-    mockedParseBookPage.mockReturnValue({
-      schemaOrg: { name: "The Hobbit" },
-      description: "Full description.",
-      series: null,
-      seriesNumber: null,
-      genres: ["Fantasy"],
-      publisher: "HarperCollins",
-      publishDate: "September 21, 1937",
-    });
-    mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
-
-    const result = lookupByProviderData(providerData);
-
-    expect(result).not.toBeNull();
-    expect(result!.bookId).toBe("5907");
-    expect(result!.autocomplete).toEqual(sampleAutocomplete);
-    expect(result!.pageData.description).toBe("Full description.");
-    expect(result!.pageData.genres).toEqual(["Fantasy"]);
-  });
-
-  it("succeeds with page data only when autocomplete fails", () => {
-    const providerData: GRProviderData = { bookId: "56377548" };
-    mockedFetchBookPage.mockReturnValue("<html>page</html>");
-    mockedParseBookPage.mockReturnValue({
-      ...defaultPageData,
-      schemaOrg: { name: "Some Book" },
-      description: "A description.",
-    });
-    mockedSearchAutocomplete.mockReturnValue(null);
-
-    const result = lookupByProviderData(providerData);
-
-    expect(result).not.toBeNull();
-    expect(result!.bookId).toBe("56377548");
-    expect(result!.autocomplete).toBeUndefined();
-    expect(result!.pageData.description).toBe("A description.");
-  });
-
-  it("returns null when book page fetch fails", () => {
-    const providerData: GRProviderData = { bookId: "5907" };
-    mockedFetchBookPage.mockReturnValue(null);
-
-    expect(lookupByProviderData(providerData)).toBeNull();
-  });
-
-  it("matches exact bookId in autocomplete results", () => {
-    const providerData: GRProviderData = { bookId: "5907" };
-    const otherResult: GRAutocompleteResult = {
-      ...sampleAutocomplete,
-      bookId: "9999",
-      title: "Wrong Book",
-    };
-    mockedFetchBookPage.mockReturnValue("<html></html>");
-    mockedParseBookPage.mockReturnValue(defaultPageData);
-    mockedSearchAutocomplete.mockReturnValue([otherResult, sampleAutocomplete]);
-
-    const result = lookupByProviderData(providerData);
-
-    expect(result!.autocomplete!.bookId).toBe("5907");
-  });
-
-  it("falls back to first autocomplete result if exact match not found", () => {
-    const providerData: GRProviderData = { bookId: "5907" };
-    const otherResult: GRAutocompleteResult = {
-      ...sampleAutocomplete,
-      bookId: "9999",
-      title: "Close Match",
-    };
-    mockedFetchBookPage.mockReturnValue("<html></html>");
-    mockedParseBookPage.mockReturnValue(defaultPageData);
-    mockedSearchAutocomplete.mockReturnValue([otherResult]);
-
-    const result = lookupByProviderData(providerData);
-
-    expect(result!.autocomplete!.bookId).toBe("9999");
   });
 });

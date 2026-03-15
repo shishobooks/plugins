@@ -582,10 +582,10 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.57.1.tgz#a03348e7b559c792b6277cc58874b89ef46e1e72"
   integrity sha512-mxRFDdHIWRxg3UfIIAwCm6NzvxG0jDX/wBN6KsQFTvKFqqg9vTrWUE68qEjHt19A5wwx5X5aUi2zuZT7YR0jrA==
 
-"@shisho/plugin-types@0.0.19":
-  version "0.0.19"
-  resolved "https://registry.yarnpkg.com/@shisho/plugin-types/-/plugin-types-0.0.19.tgz#d9b8ba70ba4ef484fa42cb57368613a3c6ff5672"
-  integrity sha512-1KDU2AWT1dlNuuwOnGOVtGx/u8KpyW68eT5pgxN9gxrxyNF4U73j64GZWpcsZ5cv2f42jA1g5J0AUdPiekidPg==
+"@shisho/plugin-types@0.0.20":
+  version "0.0.20"
+  resolved "https://registry.yarnpkg.com/@shisho/plugin-types/-/plugin-types-0.0.20.tgz#53817df958c3484c92ffa5c5036d6ff60172292e"
+  integrity sha512-i85AAqim1gDNnxtt+oTI3vy8Uf9C09hRzH1hSZ7tskMY0t3kbgIgCkO1a+tIdoAv/54uMXH/6uOfpx4PYnfObw==
 
 "@types/chai@^5.2.2":
   version "5.2.3"

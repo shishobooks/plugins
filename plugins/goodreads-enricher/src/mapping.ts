@@ -1,4 +1,3 @@
-import { fetchCover } from "./api";
 import { stripHTML } from "./parsing";
 import type { GRLookupResult } from "./types";
 import { parseMonth } from "@shisho-plugins/shared";
@@ -75,16 +74,11 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
     metadata.identifiers = identifiers;
   }
 
-  // Cover image - prefer JSON-LD (full size), fall back to autocomplete
+  // Cover image — pass URL for server to download at apply time
   const coverUrl =
     pageData.schemaOrg?.image ?? autocomplete?.imageUrl ?? undefined;
   if (coverUrl) {
-    shisho.log.info("Fetching cover image");
-    const cover = fetchCover(coverUrl);
-    if (cover) {
-      metadata.coverData = cover.data;
-      metadata.coverMimeType = cover.mimeType;
-    }
+    metadata.coverUrl = coverUrl;
   }
 
   return metadata;

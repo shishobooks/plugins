@@ -26,8 +26,8 @@
       ]
     },
     "httpAccess": {
-      "description": "Calls Goodreads autocomplete API, fetches book pages, and downloads cover images",
-      "domains": ["*.goodreads.com", "i.gr-assets.com", "m.media-amazon.com"]
+      "description": "Calls Goodreads autocomplete API and fetches book pages",
+      "domains": ["*.goodreads.com"]
     },
     "identifierTypes": [
       {

@@ -1,9 +1,8 @@
-import { lookupByProviderData, searchForBooks } from "./lookup";
-import { toMetadata } from "./mapping";
-import type { GRProviderData } from "./types";
+import { searchForBooks } from "./lookup";
 import type {
   EnrichContext,
   EnrichmentResult,
+  ParsedMetadata,
   SearchContext,
   SearchResponse,
   ShishoPlugin,
@@ -23,29 +22,20 @@ const plugin: ShishoPlugin = {
     enrich(context: EnrichContext): EnrichmentResult {
       shisho.log.info("Goodreads enricher: enriching");
 
-      const providerData = context.selectedResult as GRProviderData;
-      if (!providerData?.bookId) {
-        shisho.log.warn("No provider data available for enrichment");
-        return { modified: false };
+      // Passthrough — metadata was built during search and attached to SearchResult.
+      // context.selectedResult is the full SearchResult object.
+      const selected = context.selectedResult as Record<string, unknown>;
+      const metadata = selected?.metadata as ParsedMetadata | undefined;
+
+      if (metadata) {
+        shisho.log.info(
+          `Applying metadata: ${metadata.title ?? "unknown title"}`,
+        );
+        return { modified: true, metadata };
       }
 
-      const result = lookupByProviderData(providerData);
-      if (!result) {
-        shisho.log.info("Could not complete lookup for enrichment");
-        return { modified: false };
-      }
-
-      const title =
-        result.autocomplete?.bookTitleBare ??
-        result.pageData.schemaOrg?.name ??
-        result.bookId;
-      shisho.log.info(`Enriching with: ${title}`);
-      const metadata = toMetadata(result);
-
-      return {
-        modified: true,
-        metadata,
-      };
+      shisho.log.warn("No metadata found in selected result");
+      return { modified: false };
     },
   },
 };
