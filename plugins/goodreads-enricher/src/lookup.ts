@@ -168,10 +168,8 @@ function enrichSearchResult(autocomplete: GRAutocompleteResult): SearchResult {
     url: `https://www.goodreads.com/book/show/${bookId}`,
   };
 
-  // Thumbnail for search result display (smaller image)
-  if (autocomplete.imageUrl) {
-    searchResult.imageUrl = autocomplete.imageUrl;
-  }
+  // Use full-size cover for search result display; fall back to autocomplete image
+  searchResult.imageUrl = metadata.coverUrl ?? autocomplete.imageUrl;
 
   return searchResult;
 }
@@ -190,7 +188,8 @@ function autocompleteToSearchResult(
   };
 
   if (result.imageUrl) {
-    searchResult.imageUrl = result.imageUrl;
+    // Upscale autocomplete thumbnail from _SY75_ to _SY400_
+    searchResult.imageUrl = result.imageUrl.replace(/_SY\d+_/, "_SY400_");
   }
 
   if (result.description?.html) {

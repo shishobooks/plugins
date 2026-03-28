@@ -234,7 +234,7 @@ describe("searchForBooks", () => {
         "https://m.media-amazon.com/images/books/5907.jpg",
       );
       expect(result.imageUrl).toBe(
-        "https://i.gr-assets.com/images/books/5907._SY75_.jpg",
+        "https://m.media-amazon.com/images/books/5907.jpg",
       );
       expect(result.url).toBe("https://www.goodreads.com/book/show/5907");
       expect(result.identifiers).toEqual([
