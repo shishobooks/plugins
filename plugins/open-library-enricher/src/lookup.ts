@@ -1,18 +1,5 @@
-import {
-  fetchAuthor,
-  fetchByISBN,
-  fetchEdition,
-  fetchWork,
-  searchBooks,
-} from "./api";
-import type {
-  OLAuthor,
-  OLEdition,
-  OLLookupResult,
-  OLProviderData,
-  OLSearchDoc,
-  OLWork,
-} from "./types";
+import { fetchByISBN, fetchEdition, fetchWork, searchBooks } from "./api";
+import type { OLEdition, OLSearchDoc, OLWork } from "./types";
 import {
   extractOLId,
   levenshteinDistance,
@@ -44,31 +31,6 @@ export function searchForBooks(context: SearchContext): SearchResult[] {
 
   // 3. Try title + author search
   return tryTitleAuthorSearch(context);
-}
-
-/**
- * Look up full book data from providerData (passed from search to enrich).
- */
-export function lookupByProviderData(
-  providerData: OLProviderData,
-): OLLookupResult | null {
-  if (providerData.editionId) {
-    shisho.log.info(`Enriching by edition ID: ${providerData.editionId}`);
-    const edition = fetchEdition(providerData.editionId);
-    if (edition) {
-      return completeEditionLookup(edition);
-    }
-  }
-
-  if (providerData.workId) {
-    shisho.log.info(`Enriching by work ID: ${providerData.workId}`);
-    const work = fetchWork(providerData.workId);
-    if (work) {
-      return completeWorkLookup(work);
-    }
-  }
-
-  return null;
 }
 
 /**
@@ -229,15 +191,14 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
  */
 function editionToSearchResult(
   edition: OLEdition,
-  providerData: OLProviderData,
+  ids: { editionId?: string; workId?: string },
   authorNames?: string[],
 ): SearchResult {
   const result: SearchResult = {
     title: edition.title,
-    providerData,
   };
   if (authorNames && authorNames.length > 0) {
-    result.authors = authorNames;
+    result.authors = authorNames.map((name) => ({ name }));
   }
   if (edition.publishers?.[0]) {
     result.publisher = edition.publishers[0];
@@ -247,13 +208,13 @@ function editionToSearchResult(
     if (date) result.releaseDate = date;
   }
   const identifiers: Array<{ type: string; value: string }> = [];
-  if (providerData.workId) {
-    identifiers.push({ type: "openlibrary_work", value: providerData.workId });
+  if (ids.workId) {
+    identifiers.push({ type: "openlibrary_work", value: ids.workId });
   }
-  if (providerData.editionId) {
+  if (ids.editionId) {
     identifiers.push({
       type: "openlibrary_edition",
-      value: providerData.editionId,
+      value: ids.editionId,
     });
   }
   for (const isbn of edition.isbn_13 ?? []) {
@@ -267,6 +228,12 @@ function editionToSearchResult(
   }
   if (edition.covers?.[0]) {
     result.imageUrl = `https://covers.openlibrary.org/b/id/${edition.covers[0]}-M.jpg`;
+    result.coverUrl = `https://covers.openlibrary.org/b/id/${edition.covers[0]}-L.jpg`;
+  }
+  if (ids.editionId) {
+    result.url = `https://openlibrary.org/books/${ids.editionId}`;
+  } else if (ids.workId) {
+    result.url = `https://openlibrary.org/works/${ids.workId}`;
   }
   return result;
 }
@@ -276,33 +243,34 @@ function editionToSearchResult(
  */
 function workToSearchResult(
   work: OLWork,
-  providerData: OLProviderData,
+  ids: { workId: string },
   searchDoc?: OLSearchDoc,
 ): SearchResult {
   const result: SearchResult = {
     title: work.title,
-    providerData,
   };
   const description = normalizeDescription(work.description);
   if (description) {
     result.description = description;
   }
   if (searchDoc?.author_name) {
-    result.authors = searchDoc.author_name;
+    result.authors = searchDoc.author_name.map((name) => ({ name }));
   }
   if (searchDoc?.first_publish_year) {
     result.releaseDate = `${searchDoc.first_publish_year}-01-01T00:00:00Z`;
   }
   const identifiers: Array<{ type: string; value: string }> = [];
-  if (providerData.workId) {
-    identifiers.push({ type: "openlibrary_work", value: providerData.workId });
+  if (ids.workId) {
+    identifiers.push({ type: "openlibrary_work", value: ids.workId });
   }
   if (identifiers.length > 0) {
     result.identifiers = identifiers;
   }
   if (work.covers?.[0]) {
     result.imageUrl = `https://covers.openlibrary.org/b/id/${work.covers[0]}-M.jpg`;
+    result.coverUrl = `https://covers.openlibrary.org/b/id/${work.covers[0]}-L.jpg`;
   }
+  result.url = `https://openlibrary.org/works/${ids.workId}`;
   return result;
 }
 
@@ -315,10 +283,9 @@ function searchDocToSearchResult(doc: OLSearchDoc): SearchResult {
 
   const result: SearchResult = {
     title: doc.title,
-    providerData: { workId, editionId } as OLProviderData,
   };
   if (doc.author_name) {
-    result.authors = doc.author_name;
+    result.authors = doc.author_name.map((name) => ({ name }));
   }
   const identifiers: Array<{ type: string; value: string }> = [];
   identifiers.push({ type: "openlibrary_work", value: workId });
@@ -331,86 +298,8 @@ function searchDocToSearchResult(doc: OLSearchDoc): SearchResult {
   }
   if (doc.cover_i) {
     result.imageUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
+    result.coverUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
   }
+  result.url = `https://openlibrary.org/works/${workId}`;
   return result;
-}
-
-/**
- * Complete lookup starting from an edition: fetch work and authors.
- */
-function completeEditionLookup(edition: OLEdition): OLLookupResult | null {
-  // Get work from edition
-  const workKey = edition.works?.[0]?.key;
-  if (!workKey) {
-    shisho.log.warn("Edition has no associated work");
-    return null;
-  }
-
-  const workId = extractOLId(workKey);
-  const work = fetchWork(workId);
-  if (!work) return null;
-
-  const authors = fetchAuthors(work);
-  return { edition, work, authors };
-}
-
-/**
- * Complete lookup starting from a work: fetch first edition and authors.
- */
-function completeWorkLookup(work: OLWork): OLLookupResult | null {
-  // We need to find an edition for this work
-  // Search for the work title to get edition keys
-  const searchResult = searchBooks(work.title);
-  if (!searchResult || searchResult.numFound === 0) {
-    shisho.log.warn("Could not find edition for work, using work data only");
-    const authors = fetchAuthors(work);
-    return {
-      edition: { key: "", title: work.title, covers: work.covers },
-      work,
-      authors,
-    };
-  }
-
-  // Find a matching doc with the same work key
-  const workId = extractOLId(work.key);
-  const matchingDoc = searchResult.docs.find(
-    (doc) => doc.key === work.key || extractOLId(doc.key) === workId,
-  );
-
-  if (matchingDoc?.edition_key?.[0]) {
-    const edition = fetchEdition(matchingDoc.edition_key[0]);
-    if (edition) {
-      const authors = fetchAuthors(work);
-      return { edition, work, authors };
-    }
-  }
-
-  // Return with minimal edition data
-  const authors = fetchAuthors(work);
-  return {
-    edition: {
-      key: "",
-      title: work.title,
-      covers: work.covers,
-    },
-    work,
-    authors,
-  };
-}
-
-/**
- * Fetch author details for a work.
- */
-function fetchAuthors(work: OLWork): OLAuthor[] {
-  const authors: OLAuthor[] = [];
-
-  for (const authorRef of work.authors ?? []) {
-    const authorId = extractOLId(authorRef.author.key);
-    const author = fetchAuthor(authorId);
-    if (author) {
-      authors.push(author);
-    }
-  }
-
-  return authors;
 }

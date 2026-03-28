@@ -88,7 +88,6 @@ describe("searchForBooks", () => {
 
       expect(mockedSearchAutocomplete).toHaveBeenCalledWith("5907");
       expect(results).toHaveLength(1);
-      expect(results[0].providerData).toEqual({ bookId: "5907" });
     });
 
     it("returns empty when Goodreads ID not found in results", () => {
@@ -221,7 +220,7 @@ describe("searchForBooks", () => {
       const result = results[0];
 
       expect(result.title).toBe("The Hobbit, or There and Back Again");
-      expect(result.authors).toEqual(["J.R.R. Tolkien"]);
+      expect(result.authors).toEqual([{ name: "J.R.R. Tolkien" }]);
       expect(result.description).toBe(
         "A fantasy novel about a hobbit's adventure.",
       );
@@ -231,29 +230,17 @@ describe("searchForBooks", () => {
       expect(result.seriesNumber).toBe(1);
       expect(result.genres).toEqual(["Fantasy", "Classics", "Fiction"]);
       expect(result.tags).toEqual(["Adventure"]);
-      expect(result.imageUrl).toBe(
+      expect(result.coverUrl).toBe(
         "https://m.media-amazon.com/images/books/5907.jpg",
       );
+      expect(result.imageUrl).toBe(
+        "https://i.gr-assets.com/images/books/5907._SY75_.jpg",
+      );
+      expect(result.url).toBe("https://www.goodreads.com/book/show/5907");
       expect(result.identifiers).toEqual([
         { type: "goodreads", value: "5907" },
         { type: "isbn_13", value: "9780261102217" },
       ]);
-    });
-
-    it("includes metadata passthrough for enrich phase", () => {
-      const context = makeContext({
-        book: {
-          identifiers: [{ type: "goodreads", value: "5907" }],
-        },
-      });
-      mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
-      mockBookPageSuccess();
-
-      const results = searchForBooks(context);
-      expect(results[0].metadata).toBeDefined();
-      expect(results[0].metadata!.title).toBe(
-        "The Hobbit, or There and Back Again",
-      );
     });
 
     it("falls back to autocomplete-only when book page fails", () => {
@@ -269,14 +256,15 @@ describe("searchForBooks", () => {
       const result = results[0];
 
       expect(result.title).toBe("The Hobbit, or There and Back Again");
-      expect(result.authors).toEqual(["J.R.R. Tolkien"]);
+      expect(result.authors).toEqual([{ name: "J.R.R. Tolkien" }]);
       expect(result.description).toBe(
         "In a hole in the ground there lived a hobbit.",
       );
+      expect(result.url).toBe("https://www.goodreads.com/book/show/5907");
       // No rich metadata when page fetch fails
-      expect(result.metadata).toBeUndefined();
       expect(result.series).toBeUndefined();
       expect(result.publisher).toBeUndefined();
+      expect(result.coverUrl).toBeUndefined();
     });
   });
 

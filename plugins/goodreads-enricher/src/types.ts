@@ -60,8 +60,3 @@ export interface GRLookupResult {
   autocomplete?: GRAutocompleteResult;
   pageData: GRBookPageData;
 }
-
-/** Data stored in SearchResult.providerData to pass between search and enrich phases */
-export interface GRProviderData {
-  bookId: string;
-}

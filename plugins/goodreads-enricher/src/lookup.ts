@@ -1,11 +1,7 @@
 import { fetchBookPage, searchAutocomplete } from "./api";
 import { toMetadata } from "./mapping";
 import { parseBookPage, stripHTML } from "./parsing";
-import type {
-  GRAutocompleteResult,
-  GRLookupResult,
-  GRProviderData,
-} from "./types";
+import type { GRAutocompleteResult, GRLookupResult } from "./types";
 import {
   levenshteinDistance,
   normalizeForComparison,
@@ -19,9 +15,8 @@ const MAX_LEVENSHTEIN_RATIO = 0.4;
  * Search for candidate books using the Goodreads autocomplete API.
  * Priority: Goodreads ID -> ISBN -> Title + Author
  *
- * For each candidate, fetches the book page and builds full metadata so the
- * user can evaluate all fields before selecting. The metadata is attached
- * via the passthrough pattern for the enrich phase.
+ * For each candidate, fetches the book page and builds full metadata
+ * so the server can apply it directly when the user selects a result.
  */
 export function searchForBooks(context: SearchContext): SearchResult[] {
   // 1. Try existing Goodreads ID
@@ -136,7 +131,8 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
 
 /**
  * Enrich an autocomplete result by fetching the book page and building
- * full metadata. Returns a SearchResult with all available fields populated.
+ * a full SearchResult. The server applies these fields directly as metadata
+ * when the user selects a result.
  *
  * Falls back to autocomplete-only data if the book page fetch fails.
  */
@@ -153,53 +149,28 @@ function enrichSearchResult(autocomplete: GRAutocompleteResult): SearchResult {
   }
 
   const pageData = parseBookPage(html);
-  const lookupResult: GRLookupResult = {
-    bookId,
-    autocomplete,
-    pageData,
-  };
+  const lookupResult: GRLookupResult = { bookId, autocomplete, pageData };
   const metadata = toMetadata(lookupResult);
 
+  // SearchResult fields map directly from ParsedMetadata
   const searchResult: SearchResult = {
     title: metadata.title ?? autocomplete.title,
-    providerData: { bookId } as GRProviderData,
-    metadata,
+    authors: metadata.authors,
+    description: metadata.description,
+    publisher: metadata.publisher,
+    releaseDate: metadata.releaseDate,
+    series: metadata.series,
+    seriesNumber: metadata.seriesNumber,
+    genres: metadata.genres,
+    tags: metadata.tags,
+    identifiers: metadata.identifiers,
+    coverUrl: metadata.coverUrl,
+    url: `https://www.goodreads.com/book/show/${bookId}`,
   };
 
-  // Populate all SearchResult display fields from metadata
-  if (metadata.authors) {
-    searchResult.authors = metadata.authors.map((a) => a.name);
-  }
-  if (metadata.description) {
-    searchResult.description = metadata.description;
-  }
-  if (metadata.publisher) {
-    searchResult.publisher = metadata.publisher;
-  }
-  if (metadata.releaseDate) {
-    searchResult.releaseDate = metadata.releaseDate;
-  }
-  if (metadata.series) {
-    searchResult.series = metadata.series;
-    if (metadata.seriesNumber !== undefined) {
-      searchResult.seriesNumber = metadata.seriesNumber;
-    }
-  }
-  if (metadata.genres) {
-    searchResult.genres = metadata.genres;
-  }
-  if (metadata.tags) {
-    searchResult.tags = metadata.tags;
-  }
-  if (metadata.identifiers) {
-    searchResult.identifiers = metadata.identifiers;
-  }
-
-  // Image URL for search result thumbnail
-  const imageUrl =
-    pageData.schemaOrg?.image ?? autocomplete.imageUrl ?? undefined;
-  if (imageUrl) {
-    searchResult.imageUrl = imageUrl;
+  // Thumbnail for search result display (smaller image)
+  if (autocomplete.imageUrl) {
+    searchResult.imageUrl = autocomplete.imageUrl;
   }
 
   return searchResult;
@@ -213,9 +184,9 @@ function autocompleteToSearchResult(
 ): SearchResult {
   const searchResult: SearchResult = {
     title: result.title,
-    authors: [result.author.name],
-    providerData: { bookId: result.bookId } as GRProviderData,
+    authors: [{ name: result.author.name }],
     identifiers: [{ type: "goodreads", value: result.bookId }],
+    url: `https://www.goodreads.com/book/show/${result.bookId}`,
   };
 
   if (result.imageUrl) {
