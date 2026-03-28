@@ -351,12 +351,12 @@ describe("toMetadata", () => {
       );
     });
 
-    it("falls back to autocomplete image URL", () => {
+    it("falls back to autocomplete image URL with size suffix stripped", () => {
       const result = makeResult();
 
       const metadata = toMetadata(result);
       expect(metadata.coverUrl).toBe(
-        "https://i.gr-assets.com/images/books/5907._SY75_.jpg",
+        "https://i.gr-assets.com/images/books/5907.jpg",
       );
     });
 

@@ -74,9 +74,13 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
     metadata.identifiers = identifiers;
   }
 
-  // Cover image — pass URL for server to download at apply time
+  // Cover image — pass URL for server to download at apply time.
+  // Autocomplete URLs contain size suffixes like _SY75_ or _SX50_; strip them for full-size.
   const coverUrl =
-    pageData.schemaOrg?.image ?? autocomplete?.imageUrl ?? undefined;
+    pageData.schemaOrg?.image ??
+    (autocomplete?.imageUrl
+      ? stripImageSuffix(autocomplete.imageUrl)
+      : undefined);
   if (coverUrl) {
     metadata.coverUrl = coverUrl;
   }
@@ -155,4 +159,11 @@ export function parseGRDate(dateStr: string): string | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Strip Goodreads image size suffixes (e.g., _SY75_, _SX50_) to get full-size URL.
+ */
+function stripImageSuffix(url: string): string {
+  return url.replace(/\._S[XY]\d+_\./, ".");
 }

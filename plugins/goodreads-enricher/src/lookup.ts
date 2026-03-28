@@ -188,8 +188,8 @@ function autocompleteToSearchResult(
   };
 
   if (result.imageUrl) {
-    // Upscale autocomplete thumbnail from _SY75_ to _SY400_
-    searchResult.imageUrl = result.imageUrl.replace(/_SY\d+_/, "_SY400_");
+    // Strip size suffix (e.g., _SY75_, _SX50_) to get full-size image
+    searchResult.imageUrl = result.imageUrl.replace(/\._S[XY]\d+_\./, ".");
   }
 
   if (result.description?.html) {
