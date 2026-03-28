@@ -1,5 +1,5 @@
 import { fetchBookPage, searchAutocomplete } from "./api";
-import { toMetadata } from "./mapping";
+import { stripImageSuffix, toMetadata } from "./mapping";
 import { parseBookPage, stripHTML } from "./parsing";
 import type { GRAutocompleteResult, GRLookupResult } from "./types";
 import {
@@ -169,7 +169,11 @@ function enrichSearchResult(autocomplete: GRAutocompleteResult): SearchResult {
   };
 
   // Use full-size cover for search result display; fall back to autocomplete image
-  searchResult.imageUrl = metadata.coverUrl ?? autocomplete.imageUrl;
+  searchResult.imageUrl =
+    metadata.coverUrl ??
+    (autocomplete.imageUrl
+      ? stripImageSuffix(autocomplete.imageUrl)
+      : undefined);
 
   return searchResult;
 }
@@ -188,8 +192,7 @@ function autocompleteToSearchResult(
   };
 
   if (result.imageUrl) {
-    // Strip size suffix (e.g., _SY75_, _SX50_) to get full-size image
-    searchResult.imageUrl = result.imageUrl.replace(/\._S[XY]\d+_\./, ".");
+    searchResult.imageUrl = stripImageSuffix(result.imageUrl);
   }
 
   if (result.description?.html) {

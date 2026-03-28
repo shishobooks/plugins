@@ -164,6 +164,6 @@ export function parseGRDate(dateStr: string): string | undefined {
 /**
  * Strip Goodreads image size suffixes (e.g., _SY75_, _SX50_) to get full-size URL.
  */
-function stripImageSuffix(url: string): string {
+export function stripImageSuffix(url: string): string {
   return url.replace(/\._S[XY]\d+_\./, ".");
 }
