@@ -75,14 +75,11 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
   }
 
   // Cover image — pass URL for server to download at apply time.
-  // Autocomplete URLs contain size suffixes like _SY75_ or _SX50_; strip them for full-size.
-  const coverUrl =
-    pageData.schemaOrg?.image ??
-    (autocomplete?.imageUrl
-      ? stripImageSuffix(autocomplete.imageUrl)
-      : undefined);
-  if (coverUrl) {
-    metadata.coverUrl = coverUrl;
+  // Both Apollo and autocomplete URLs may contain size suffixes (_SY75_, _SX50_); always strip.
+  const rawCoverUrl =
+    pageData.schemaOrg?.image ?? autocomplete?.imageUrl ?? undefined;
+  if (rawCoverUrl) {
+    metadata.coverUrl = stripImageSuffix(rawCoverUrl);
   }
 
   return metadata;
