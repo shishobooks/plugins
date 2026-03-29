@@ -10,10 +10,8 @@ function fetchJSON<T>(url: string): T | null {
     headers: { "User-Agent": USER_AGENT },
   });
 
-  if (!response.ok) {
-    shisho.log.warn(
-      `HTTP ${response.status} ${response.statusText} for ${url}`,
-    );
+  if (!response || !response.ok) {
+    shisho.log.warn(`HTTP ${response?.status ?? "no response"} for ${url}`);
     return null;
   }
 
@@ -26,10 +24,8 @@ function fetchText(url: string): string | null {
     headers: { "User-Agent": USER_AGENT },
   });
 
-  if (!response.ok) {
-    shisho.log.warn(
-      `HTTP ${response.status} ${response.statusText} for ${url}`,
-    );
+  if (!response || !response.ok) {
+    shisho.log.warn(`HTTP ${response?.status ?? "no response"} for ${url}`);
     return null;
   }
 
