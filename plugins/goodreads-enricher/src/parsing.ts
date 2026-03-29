@@ -46,11 +46,15 @@ export function extractFromNextData(html: string): GRBookPageData | null {
     const apolloState = nextData?.props?.pageProps?.apolloState;
     if (!apolloState) return null;
 
-    // Find the Book entity (key starts with "Book:")
+    // Find the Book entity with full data (not a minimal stub).
+    // Apollo state may contain multiple Book entities — stubs (v1) have only
+    // __typename/id/legacyId/webUrl, while the full entity (v3) has title,
+    // imageUrl, description, genres, etc.
     const bookEntry = Object.entries(apolloState).find(
       ([key, val]) =>
         key.startsWith("Book:") &&
-        (val as Record<string, unknown>).__typename === "Book",
+        (val as Record<string, unknown>).__typename === "Book" &&
+        (val as Record<string, unknown>).title !== undefined,
     );
     if (!bookEntry) return null;
 
