@@ -22,7 +22,8 @@
         "genres",
         "tags",
         "cover",
-        "identifiers"
+        "identifiers",
+        "url"
       ]
     },
     "httpAccess": {

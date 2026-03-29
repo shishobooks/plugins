@@ -427,6 +427,7 @@ export function extractPublicationInfo(html: string): {
  * Decode common HTML entities.
  */
 export function decodeHTMLEntities(text: string): string {
+  if (!text) return text ?? "";
   return text
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -441,5 +442,6 @@ export function decodeHTMLEntities(text: string): string {
  * Strip HTML tags from a string.
  */
 export function stripHTML(html: string): string {
+  if (!html) return "";
   return decodeHTMLEntities(html.replace(/<[^>]+>/g, "")).trim();
 }

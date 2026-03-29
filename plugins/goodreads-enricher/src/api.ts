@@ -15,7 +15,12 @@ function fetchJSON<T>(url: string): T | null {
     return null;
   }
 
-  return response.json() as T;
+  try {
+    return response.json() as T;
+  } catch {
+    shisho.log.warn(`Failed to parse JSON from ${url}`);
+    return null;
+  }
 }
 
 function fetchText(url: string): string | null {
