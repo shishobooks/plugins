@@ -19,15 +19,22 @@ const MAX_LEVENSHTEIN_RATIO = 0.4;
  * so the server can apply it directly when the user selects a result.
  */
 export function searchForBooks(context: SearchContext): SearchResult[] {
-  // 1. Try existing Goodreads ID
-  const idResults = tryGoodreadsIdSearch(context);
-  if (idResults.length > 0) return idResults;
+  // If the user typed a custom query (different from the book title),
+  // skip identifier-based searches and use their query directly.
+  const isManualQuery =
+    context.query !== "" && context.query !== context.book.title;
 
-  // 2. Try ISBN lookup
-  const isbnResults = tryISBNSearch(context);
-  if (isbnResults.length > 0) return isbnResults;
+  if (!isManualQuery) {
+    // 1. Try existing Goodreads ID
+    const idResults = tryGoodreadsIdSearch(context);
+    if (idResults.length > 0) return idResults;
 
-  // 3. Try title + author search
+    // 2. Try ISBN lookup
+    const isbnResults = tryISBNSearch(context);
+    if (isbnResults.length > 0) return isbnResults;
+  }
+
+  // 3. Title + author search (uses context.query or book.title)
   return tryTitleAuthorSearch(context);
 }
 
