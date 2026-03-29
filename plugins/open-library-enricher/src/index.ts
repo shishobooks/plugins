@@ -3,7 +3,7 @@ import type {
   SearchContext,
   SearchResponse,
   ShishoPlugin,
-} from "@shisho/plugin-types";
+} from "@shisho/plugin-sdk";
 
 const plugin: ShishoPlugin = {
   metadataEnricher: {

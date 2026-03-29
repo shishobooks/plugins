@@ -2,7 +2,7 @@ import { fetchBookPage, searchAutocomplete } from "../api";
 import { searchForBooks } from "../lookup";
 import { parseBookPage } from "../parsing";
 import type { GRAutocompleteResult } from "../types";
-import type { SearchContext } from "@shisho/plugin-types";
+import type { SearchContext } from "@shisho/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../api", () => ({
@@ -22,8 +22,6 @@ const mockedParseBookPage = vi.mocked(parseBookPage);
 function makeContext(overrides: Partial<SearchContext> = {}): SearchContext {
   return {
     query: "",
-    book: {},
-    file: {},
     ...overrides,
   };
 }
@@ -75,11 +73,9 @@ function mockBookPageSuccess() {
 
 describe("searchForBooks", () => {
   describe("Goodreads ID lookup", () => {
-    it("finds by Goodreads ID from book identifiers", () => {
+    it("finds by Goodreads ID from identifiers", () => {
       const context = makeContext({
-        book: {
-          identifiers: [{ type: "goodreads", value: "5907" }],
-        },
+        identifiers: [{ type: "goodreads", value: "5907" }],
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
       mockBookPageSuccess();
@@ -88,13 +84,12 @@ describe("searchForBooks", () => {
 
       expect(mockedSearchAutocomplete).toHaveBeenCalledWith("5907");
       expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(1.0);
     });
 
     it("returns empty when Goodreads ID not found in results", () => {
       const context = makeContext({
-        book: {
-          identifiers: [{ type: "goodreads", value: "99999" }],
-        },
+        identifiers: [{ type: "goodreads", value: "99999" }],
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
 
@@ -106,9 +101,7 @@ describe("searchForBooks", () => {
   describe("ISBN lookup", () => {
     it("finds by ISBN when no Goodreads ID", () => {
       const context = makeContext({
-        book: {
-          identifiers: [{ type: "isbn_13", value: "9780261102217" }],
-        },
+        identifiers: [{ type: "isbn_13", value: "9780261102217" }],
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
       mockBookPageSuccess();
@@ -117,16 +110,15 @@ describe("searchForBooks", () => {
 
       expect(mockedSearchAutocomplete).toHaveBeenCalledWith("9780261102217");
       expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(0.9);
     });
 
     it("tries ISBN-10 if ISBN-13 fails", () => {
       const context = makeContext({
-        book: {
-          identifiers: [
-            { type: "isbn_13", value: "0000000000000" },
-            { type: "isbn_10", value: "0261102214" },
-          ],
-        },
+        identifiers: [
+          { type: "isbn_13", value: "0000000000000" },
+          { type: "isbn_10", value: "0261102214" },
+        ],
       });
       mockedSearchAutocomplete
         .mockReturnValueOnce(null)
@@ -149,9 +141,7 @@ describe("searchForBooks", () => {
     it("searches by query and author", () => {
       const context = makeContext({
         query: "The Hobbit",
-        book: {
-          authors: [{ name: "J.R.R. Tolkien" }],
-        },
+        author: "J.R.R. Tolkien",
       });
       mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
       mockBookPageSuccess();
@@ -164,26 +154,17 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(1);
     });
 
-    it("falls back to book.title when query is empty", () => {
-      const context = makeContext({
-        query: "",
-        book: { title: "The Hobbit" },
-      });
-      mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
-      mockBookPageSuccess();
+    it("returns empty when query is empty", () => {
+      const context = makeContext({ query: "" });
 
       const results = searchForBooks(context);
-
-      expect(mockedSearchAutocomplete).toHaveBeenCalledWith("The Hobbit");
-      expect(results).toHaveLength(1);
+      expect(results).toHaveLength(0);
     });
 
     it("filters out results with author mismatch", () => {
       const context = makeContext({
         query: "The Hobbit",
-        book: {
-          authors: [{ name: "Wrong Author" }],
-        },
+        author: "Wrong Author",
       });
       mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
 
@@ -204,14 +185,21 @@ describe("searchForBooks", () => {
       const results = searchForBooks(context);
       expect(results).toHaveLength(0);
     });
+
+    it("computes confidence from Levenshtein distance", () => {
+      const context = makeContext({ query: "The Hobbit" });
+      mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
+      mockBookPageSuccess();
+
+      const results = searchForBooks(context);
+      expect(results[0].confidence).toBe(1.0);
+    });
   });
 
   describe("enriched search results", () => {
     it("populates all fields from book page data", () => {
       const context = makeContext({
-        book: {
-          identifiers: [{ type: "goodreads", value: "5907" }],
-        },
+        identifiers: [{ type: "goodreads", value: "5907" }],
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
       mockBookPageSuccess();
@@ -233,9 +221,6 @@ describe("searchForBooks", () => {
       expect(result.coverUrl).toBe(
         "https://m.media-amazon.com/images/books/5907.jpg",
       );
-      expect(result.imageUrl).toBe(
-        "https://m.media-amazon.com/images/books/5907.jpg",
-      );
       expect(result.url).toBe("https://www.goodreads.com/book/show/5907");
       expect(result.identifiers).toEqual([
         { type: "goodreads", value: "5907" },
@@ -245,9 +230,7 @@ describe("searchForBooks", () => {
 
     it("falls back to autocomplete-only when book page fails", () => {
       const context = makeContext({
-        book: {
-          identifiers: [{ type: "goodreads", value: "5907" }],
-        },
+        identifiers: [{ type: "goodreads", value: "5907" }],
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
       mockedFetchBookPage.mockReturnValue(null);
@@ -261,22 +244,21 @@ describe("searchForBooks", () => {
         "In a hole in the ground there lived a hobbit.",
       );
       expect(result.url).toBe("https://www.goodreads.com/book/show/5907");
-      // No rich metadata when page fetch fails
+      expect(result.coverUrl).toBe(
+        "https://i.gr-assets.com/images/books/5907.jpg",
+      );
       expect(result.series).toBeUndefined();
       expect(result.publisher).toBeUndefined();
-      expect(result.coverUrl).toBeUndefined();
     });
   });
 
   describe("priority ordering", () => {
     it("tries Goodreads ID before ISBN", () => {
       const context = makeContext({
-        book: {
-          identifiers: [
-            { type: "goodreads", value: "5907" },
-            { type: "isbn_13", value: "9780261102217" },
-          ],
-        },
+        identifiers: [
+          { type: "goodreads", value: "5907" },
+          { type: "isbn_13", value: "9780261102217" },
+        ],
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
       mockBookPageSuccess();
@@ -289,12 +271,10 @@ describe("searchForBooks", () => {
 
     it("falls back to ISBN when Goodreads ID lookup fails", () => {
       const context = makeContext({
-        book: {
-          identifiers: [
-            { type: "goodreads", value: "99999" },
-            { type: "isbn_13", value: "9780261102217" },
-          ],
-        },
+        identifiers: [
+          { type: "goodreads", value: "99999" },
+          { type: "isbn_13", value: "9780261102217" },
+        ],
       });
       mockedSearchAutocomplete.mockReturnValueOnce([sampleAutocomplete]);
       mockedSearchAutocomplete.mockReturnValueOnce([sampleAutocomplete]);

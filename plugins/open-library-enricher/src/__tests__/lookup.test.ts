@@ -1,7 +1,7 @@
 import { fetchByISBN, fetchEdition, fetchWork, searchBooks } from "../api";
 import { searchForBooks } from "../lookup";
 import type { OLEdition, OLSearchResult, OLWork } from "../types";
-import type { SearchContext } from "@shisho/plugin-types";
+import type { SearchContext } from "@shisho/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../api", () => ({
@@ -19,8 +19,6 @@ const mockedSearchBooks = vi.mocked(searchBooks);
 function makeContext(overrides: Partial<SearchContext> = {}): SearchContext {
   return {
     query: "",
-    book: {},
-    file: {},
     ...overrides,
   };
 }
@@ -39,11 +37,9 @@ const sampleWork: OLWork = {
 
 describe("searchForBooks", () => {
   describe("edition ID lookup", () => {
-    it("finds by edition ID from book identifiers", () => {
+    it("finds by edition ID from identifiers", () => {
       const context = makeContext({
-        book: {
-          identifiers: [{ type: "openlibrary_edition", value: "OL123M" }],
-        },
+        identifiers: [{ type: "openlibrary_edition", value: "OL123M" }],
       });
       mockedFetchEdition.mockReturnValue(sampleEdition);
       mockedSearchBooks.mockReturnValue({
@@ -64,6 +60,7 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(1);
       expect(results[0].title).toBe("The Hobbit");
       expect(results[0].authors).toEqual([{ name: "J.R.R. Tolkien" }]);
+      expect(results[0].confidence).toBe(1.0);
       expect(results[0].identifiers).toEqual(
         expect.arrayContaining([
           { type: "openlibrary_work", value: "OL456W" },
@@ -77,9 +74,7 @@ describe("searchForBooks", () => {
   describe("work ID lookup", () => {
     it("finds by work ID when no edition ID", () => {
       const context = makeContext({
-        book: {
-          identifiers: [{ type: "openlibrary_work", value: "OL456W" }],
-        },
+        identifiers: [{ type: "openlibrary_work", value: "OL456W" }],
       });
       mockedFetchWork.mockReturnValue(sampleWork);
       mockedSearchBooks.mockReturnValue({
@@ -101,6 +96,7 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(1);
       expect(results[0].title).toBe("The Hobbit");
       expect(results[0].authors).toEqual([{ name: "J.R.R. Tolkien" }]);
+      expect(results[0].confidence).toBe(1.0);
       expect(results[0].releaseDate).toBe("1937-01-01T00:00:00Z");
       expect(results[0].identifiers).toEqual([
         { type: "openlibrary_work", value: "OL456W" },
@@ -112,9 +108,7 @@ describe("searchForBooks", () => {
   describe("ISBN lookup", () => {
     it("finds by ISBN when no OL IDs present", () => {
       const context = makeContext({
-        book: {
-          identifiers: [{ type: "isbn_13", value: "9780123456789" }],
-        },
+        identifiers: [{ type: "isbn_13", value: "9780123456789" }],
       });
       mockedFetchByISBN.mockReturnValue(sampleEdition);
       mockedSearchBooks.mockReturnValue({
@@ -135,6 +129,7 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(1);
       expect(results[0].title).toBe("The Hobbit");
       expect(results[0].authors).toEqual([{ name: "J.R.R. Tolkien" }]);
+      expect(results[0].confidence).toBe(1.0);
     });
   });
 
@@ -142,9 +137,7 @@ describe("searchForBooks", () => {
     it("searches by query and author", () => {
       const context = makeContext({
         query: "The Hobbit",
-        book: {
-          authors: [{ name: "J.R.R. Tolkien" }],
-        },
+        author: "J.R.R. Tolkien",
       });
 
       const searchResult: OLSearchResult = {
@@ -170,6 +163,7 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(1);
       expect(results[0].title).toBe("The Hobbit");
       expect(results[0].authors).toEqual([{ name: "J.R.R. Tolkien" }]);
+      expect(results[0].confidence).toBe(1);
       expect(results[0].identifiers).toEqual([
         { type: "openlibrary_work", value: "OL456W" },
         { type: "openlibrary_edition", value: "OL123M" },
@@ -177,38 +171,19 @@ describe("searchForBooks", () => {
       expect(results[0].url).toBe("https://openlibrary.org/works/OL456W");
     });
 
-    it("falls back to book.title when query is empty", () => {
+    it("returns empty when query is empty", () => {
       const context = makeContext({
         query: "",
-        book: {
-          title: "The Hobbit",
-        },
       });
 
-      const searchResult: OLSearchResult = {
-        numFound: 1,
-        start: 0,
-        docs: [
-          {
-            key: "/works/OL456W",
-            title: "The Hobbit",
-          },
-        ],
-      };
-      mockedSearchBooks.mockReturnValue(searchResult);
-
       const results = searchForBooks(context);
-
-      expect(mockedSearchBooks).toHaveBeenCalledWith("The Hobbit", undefined);
-      expect(results).toHaveLength(1);
+      expect(results).toHaveLength(0);
     });
 
     it("filters out results with author mismatch", () => {
       const context = makeContext({
         query: "The Hobbit",
-        book: {
-          authors: [{ name: "J.R.R. Tolkien" }],
-        },
+        author: "J.R.R. Tolkien",
       });
 
       const searchResult: OLSearchResult = {
@@ -228,12 +203,10 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(0);
     });
 
-    it("filters out results with no author info when context has authors", () => {
+    it("filters out results with no author info when context has author", () => {
       const context = makeContext({
         query: "The Hobbit",
-        book: {
-          authors: [{ name: "J.R.R. Tolkien" }],
-        },
+        author: "J.R.R. Tolkien",
       });
 
       const searchResult: OLSearchResult = {
@@ -318,12 +291,10 @@ describe("searchForBooks", () => {
   describe("priority ordering", () => {
     it("tries edition ID before ISBN", () => {
       const context = makeContext({
-        book: {
-          identifiers: [
-            { type: "openlibrary_edition", value: "OL123M" },
-            { type: "isbn_13", value: "9780123456789" },
-          ],
-        },
+        identifiers: [
+          { type: "openlibrary_edition", value: "OL123M" },
+          { type: "isbn_13", value: "9780123456789" },
+        ],
       });
       mockedFetchEdition.mockReturnValue(sampleEdition);
 
@@ -335,12 +306,10 @@ describe("searchForBooks", () => {
 
     it("falls back to ISBN when edition ID lookup fails", () => {
       const context = makeContext({
-        book: {
-          identifiers: [
-            { type: "openlibrary_edition", value: "OL999M" },
-            { type: "isbn_13", value: "9780123456789" },
-          ],
-        },
+        identifiers: [
+          { type: "openlibrary_edition", value: "OL999M" },
+          { type: "isbn_13", value: "9780123456789" },
+        ],
       });
       mockedFetchEdition.mockReturnValue(null);
       mockedFetchByISBN.mockReturnValue(sampleEdition);

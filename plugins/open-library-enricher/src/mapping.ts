@@ -11,7 +11,7 @@ import type {
   ParsedAuthor,
   ParsedIdentifier,
   ParsedMetadata,
-} from "@shisho/plugin-types";
+} from "@shisho/plugin-sdk";
 
 /**
  * Transform Open Library lookup result to Shisho ParsedMetadata.

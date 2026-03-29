@@ -5,7 +5,7 @@ import type {
   ParsedAuthor,
   ParsedIdentifier,
   ParsedMetadata,
-} from "@shisho/plugin-types";
+} from "@shisho/plugin-sdk";
 
 const MAX_GENRES = 3;
 

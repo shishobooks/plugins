@@ -7,7 +7,7 @@ import {
   normalizeForComparison,
   parseOLDate,
 } from "./utils";
-import type { SearchContext, SearchResult } from "@shisho/plugin-types";
+import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
 
 const MAX_LEVENSHTEIN_DISTANCE = 5;
 const MAX_LEVENSHTEIN_RATIO = 0.4;
@@ -18,9 +18,9 @@ const MAX_LEVENSHTEIN_RATIO = 0.4;
  * 2. ISBN lookup
  * 3. Title + Author search (with confidence check)
  *
- * Returns lightweight SearchResult[] for the user to select from.
+ * Returns lightweight ParsedMetadata[] for the user to select from.
  */
-export function searchForBooks(context: SearchContext): SearchResult[] {
+export function searchForBooks(context: SearchContext): ParsedMetadata[] {
   // 1. Try existing Open Library IDs
   const idResults = tryExistingIdSearch(context);
   if (idResults.length > 0) return idResults;
@@ -36,8 +36,8 @@ export function searchForBooks(context: SearchContext): SearchResult[] {
 /**
  * Try search using existing Open Library identifiers.
  */
-function tryExistingIdSearch(context: SearchContext): SearchResult[] {
-  const identifiers = context.book.identifiers ?? [];
+function tryExistingIdSearch(context: SearchContext): ParsedMetadata[] {
+  const identifiers = context.identifiers ?? [];
 
   // Try edition ID first (more specific)
   const editionId = identifiers.find(
@@ -56,7 +56,7 @@ function tryExistingIdSearch(context: SearchContext): SearchResult[] {
         (doc) => workId && extractOLId(doc.key) === workId,
       );
       return [
-        editionToSearchResult(
+        editionToResult(
           edition,
           { editionId, workId },
           matchingDoc?.author_name,
@@ -78,7 +78,7 @@ function tryExistingIdSearch(context: SearchContext): SearchResult[] {
       const matchingDoc = search?.docs.find(
         (doc) => extractOLId(doc.key) === workId,
       );
-      return [workToSearchResult(work, { workId }, matchingDoc)];
+      return [workToResult(work, { workId }, matchingDoc)];
     }
   }
 
@@ -88,8 +88,8 @@ function tryExistingIdSearch(context: SearchContext): SearchResult[] {
 /**
  * Try search using ISBN identifiers.
  */
-function tryISBNSearch(context: SearchContext): SearchResult[] {
-  const identifiers = context.book.identifiers ?? [];
+function tryISBNSearch(context: SearchContext): ParsedMetadata[] {
+  const identifiers = context.identifiers ?? [];
 
   // Try ISBN-13 first, then ISBN-10
   const isbns = identifiers
@@ -110,7 +110,7 @@ function tryISBNSearch(context: SearchContext): SearchResult[] {
         (doc) => workId && extractOLId(doc.key) === workId,
       );
       return [
-        editionToSearchResult(
+        editionToResult(
           edition,
           { editionId, workId },
           matchingDoc?.author_name,
@@ -125,16 +125,15 @@ function tryISBNSearch(context: SearchContext): SearchResult[] {
 /**
  * Try search using title + author with confidence check.
  */
-function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
-  const title = context.query || context.book.title;
+function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
+  const title = context.query;
   if (!title) {
     shisho.log.debug("No title available for search");
     return [];
   }
 
   // Get author name for search
-  const authors = context.book.authors ?? [];
-  const authorName = authors[0]?.name;
+  const authorName = context.author;
 
   shisho.log.info(
     `Searching by title: "${title}"${authorName ? ` author: "${authorName}"` : ""}`,
@@ -146,7 +145,7 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
   }
 
   // Filter and convert matching results
-  const results: SearchResult[] = [];
+  const results: ParsedMetadata[] = [];
   const normalizedTarget = normalizeForComparison(title);
 
   for (const doc of searchResult.docs) {
@@ -161,18 +160,16 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
       continue;
     }
 
-    // If we have authors in context, require at least one overlap
-    if (authors.length > 0) {
+    // If we have an author in context, require overlap
+    if (authorName) {
       if (!doc.author_name) {
         shisho.log.debug(`Skipping "${doc.title}" - no author info to verify`);
         continue;
       }
-      const hasAuthorMatch = authors.some((ctxAuthor) =>
-        doc.author_name!.some(
-          (docAuthor) =>
-            normalizeForComparison(ctxAuthor.name) ===
-            normalizeForComparison(docAuthor),
-        ),
+      const hasAuthorMatch = doc.author_name.some(
+        (docAuthor) =>
+          normalizeForComparison(authorName) ===
+          normalizeForComparison(docAuthor),
       );
       if (!hasAuthorMatch) {
         shisho.log.debug(`Skipping "${doc.title}" - no author match`);
@@ -180,22 +177,24 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
       }
     }
 
-    results.push(searchDocToSearchResult(doc));
+    const confidence = maxLen > 0 ? 1 - distance / maxLen : 1;
+    results.push(searchDocToResult(doc, confidence));
   }
 
   return results;
 }
 
 /**
- * Convert an OL edition to a SearchResult.
+ * Convert an OL edition to a ParsedMetadata result.
  */
-function editionToSearchResult(
+function editionToResult(
   edition: OLEdition,
   ids: { editionId?: string; workId?: string },
   authorNames?: string[],
-): SearchResult {
-  const result: SearchResult = {
+): ParsedMetadata {
+  const result: ParsedMetadata = {
     title: edition.title,
+    confidence: 1.0,
   };
   if (authorNames && authorNames.length > 0) {
     result.authors = authorNames.map((name) => ({ name }));
@@ -227,7 +226,6 @@ function editionToSearchResult(
     result.identifiers = identifiers;
   }
   if (edition.covers?.[0]) {
-    result.imageUrl = `https://covers.openlibrary.org/b/id/${edition.covers[0]}-M.jpg`;
     result.coverUrl = `https://covers.openlibrary.org/b/id/${edition.covers[0]}-L.jpg`;
   }
   if (ids.editionId) {
@@ -239,15 +237,16 @@ function editionToSearchResult(
 }
 
 /**
- * Convert an OL work to a SearchResult.
+ * Convert an OL work to a ParsedMetadata result.
  */
-function workToSearchResult(
+function workToResult(
   work: OLWork,
   ids: { workId: string },
   searchDoc?: OLSearchDoc,
-): SearchResult {
-  const result: SearchResult = {
+): ParsedMetadata {
+  const result: ParsedMetadata = {
     title: work.title,
+    confidence: 1.0,
   };
   const description = normalizeDescription(work.description);
   if (description) {
@@ -267,7 +266,6 @@ function workToSearchResult(
     result.identifiers = identifiers;
   }
   if (work.covers?.[0]) {
-    result.imageUrl = `https://covers.openlibrary.org/b/id/${work.covers[0]}-M.jpg`;
     result.coverUrl = `https://covers.openlibrary.org/b/id/${work.covers[0]}-L.jpg`;
   }
   result.url = `https://openlibrary.org/works/${ids.workId}`;
@@ -275,14 +273,18 @@ function workToSearchResult(
 }
 
 /**
- * Convert a search doc to a SearchResult.
+ * Convert a search doc to a ParsedMetadata result.
  */
-function searchDocToSearchResult(doc: OLSearchDoc): SearchResult {
+function searchDocToResult(
+  doc: OLSearchDoc,
+  confidence: number,
+): ParsedMetadata {
   const workId = extractOLId(doc.key);
   const editionId = doc.edition_key?.[0];
 
-  const result: SearchResult = {
+  const result: ParsedMetadata = {
     title: doc.title,
+    confidence,
   };
   if (doc.author_name) {
     result.authors = doc.author_name.map((name) => ({ name }));
@@ -297,7 +299,6 @@ function searchDocToSearchResult(doc: OLSearchDoc): SearchResult {
     result.releaseDate = `${doc.first_publish_year}-01-01T00:00:00Z`;
   }
   if (doc.cover_i) {
-    result.imageUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
     result.coverUrl = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
   }
   result.url = `https://openlibrary.org/works/${workId}`;

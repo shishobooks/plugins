@@ -6,7 +6,7 @@ import {
   levenshteinDistance,
   normalizeForComparison,
 } from "@shisho-plugins/shared";
-import type { SearchContext, SearchResult } from "@shisho/plugin-types";
+import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
 
 const MAX_LEVENSHTEIN_DISTANCE = 5;
 const MAX_LEVENSHTEIN_RATIO = 0.4;
@@ -18,31 +18,24 @@ const MAX_LEVENSHTEIN_RATIO = 0.4;
  * For each candidate, fetches the book page and builds full metadata
  * so the server can apply it directly when the user selects a result.
  */
-export function searchForBooks(context: SearchContext): SearchResult[] {
-  // If the user typed a custom query (different from the book title),
-  // skip identifier-based searches and use their query directly.
-  const isManualQuery =
-    context.query !== "" && context.query !== context.book.title;
+export function searchForBooks(context: SearchContext): ParsedMetadata[] {
+  // 1. Try existing Goodreads ID
+  const idResults = tryGoodreadsIdSearch(context);
+  if (idResults.length > 0) return idResults;
 
-  if (!isManualQuery) {
-    // 1. Try existing Goodreads ID
-    const idResults = tryGoodreadsIdSearch(context);
-    if (idResults.length > 0) return idResults;
+  // 2. Try ISBN lookup
+  const isbnResults = tryISBNSearch(context);
+  if (isbnResults.length > 0) return isbnResults;
 
-    // 2. Try ISBN lookup
-    const isbnResults = tryISBNSearch(context);
-    if (isbnResults.length > 0) return isbnResults;
-  }
-
-  // 3. Title + author search (uses context.query or book.title)
+  // 3. Title + author search
   return tryTitleAuthorSearch(context);
 }
 
 /**
  * Try search using existing Goodreads identifier.
  */
-function tryGoodreadsIdSearch(context: SearchContext): SearchResult[] {
-  const identifiers = context.book.identifiers ?? [];
+function tryGoodreadsIdSearch(context: SearchContext): ParsedMetadata[] {
+  const identifiers = context.identifiers ?? [];
   const goodreadsId = identifiers.find((id) => id.type === "goodreads")?.value;
   if (!goodreadsId) return [];
 
@@ -51,7 +44,7 @@ function tryGoodreadsIdSearch(context: SearchContext): SearchResult[] {
   const match = results?.find((r) => r.bookId === goodreadsId);
 
   if (match) {
-    return [enrichSearchResult(match)];
+    return [enrichSearchResult(match, 1.0)];
   }
 
   return [];
@@ -62,8 +55,8 @@ function tryGoodreadsIdSearch(context: SearchContext): SearchResult[] {
  * Note: The autocomplete API is a fuzzy search, so results may not exactly match
  * the queried ISBN. There is no dedicated ISBN endpoint on Goodreads.
  */
-function tryISBNSearch(context: SearchContext): SearchResult[] {
-  const identifiers = context.book.identifiers ?? [];
+function tryISBNSearch(context: SearchContext): ParsedMetadata[] {
+  const identifiers = context.identifiers ?? [];
   const isbns = identifiers
     .filter((id) => id.type === "isbn_13" || id.type === "isbn_10")
     .map((id) => id.value);
@@ -72,7 +65,7 @@ function tryISBNSearch(context: SearchContext): SearchResult[] {
     shisho.log.info(`Searching by ISBN: ${isbn}`);
     const results = searchAutocomplete(isbn);
     if (results && results.length > 0) {
-      return [enrichSearchResult(results[0])];
+      return [enrichSearchResult(results[0], 0.9)];
     }
   }
 
@@ -82,15 +75,14 @@ function tryISBNSearch(context: SearchContext): SearchResult[] {
 /**
  * Try search using title + author with confidence check.
  */
-function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
-  const title = context.query || context.book.title;
+function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
+  const title = context.query;
   if (!title) {
     shisho.log.debug("No title available for search");
     return [];
   }
 
-  const authors = context.book.authors ?? [];
-  const authorName = authors[0]?.name;
+  const authorName = context.author;
   const query = authorName ? `${title} ${authorName}` : title;
 
   shisho.log.info(
@@ -103,7 +95,7 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
   }
 
   const normalizedTarget = normalizeForComparison(title);
-  const filtered: SearchResult[] = [];
+  const filtered: ParsedMetadata[] = [];
 
   for (const result of results) {
     const normalizedResult = normalizeForComparison(result.bookTitleBare);
@@ -117,20 +109,17 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
       continue;
     }
 
-    // If we have authors in context, require author match
-    if (authors.length > 0) {
-      const hasMatch = authors.some(
-        (ctxAuthor) =>
-          normalizeForComparison(ctxAuthor.name) ===
-          normalizeForComparison(result.author.name),
-      );
-      if (!hasMatch) {
+    // If we have an author in context, require match
+    if (authorName) {
+      const normalizedAuthor = normalizeForComparison(authorName);
+      if (normalizeForComparison(result.author.name) !== normalizedAuthor) {
         shisho.log.debug(`Skipping "${result.title}" - author mismatch`);
         continue;
       }
     }
 
-    filtered.push(enrichSearchResult(result));
+    const confidence = maxLen > 0 ? 1 - distance / maxLen : 1;
+    filtered.push(enrichSearchResult(result, confidence));
   }
 
   return filtered;
@@ -138,12 +127,15 @@ function tryTitleAuthorSearch(context: SearchContext): SearchResult[] {
 
 /**
  * Enrich an autocomplete result by fetching the book page and building
- * a full SearchResult. The server applies these fields directly as metadata
- * when the user selects a result.
+ * full ParsedMetadata. The server applies this directly when the user
+ * selects a result.
  *
  * Falls back to autocomplete-only data if the book page fetch fails.
  */
-function enrichSearchResult(autocomplete: GRAutocompleteResult): SearchResult {
+function enrichSearchResult(
+  autocomplete: GRAutocompleteResult,
+  confidence: number,
+): ParsedMetadata {
   const bookId = autocomplete.bookId;
 
   // Fetch book page for rich data
@@ -152,59 +144,46 @@ function enrichSearchResult(autocomplete: GRAutocompleteResult): SearchResult {
     shisho.log.debug(
       `Book page unavailable for ${bookId}, using autocomplete only`,
     );
-    return autocompleteToSearchResult(autocomplete);
+    return autocompleteToMetadata(autocomplete, confidence);
   }
 
   const pageData = parseBookPage(html);
   const lookupResult: GRLookupResult = { bookId, autocomplete, pageData };
   const metadata = toMetadata(lookupResult);
 
-  // SearchResult fields map directly from ParsedMetadata
-  const searchResult: SearchResult = {
-    title: metadata.title ?? autocomplete.title,
-    authors: metadata.authors,
-    description: metadata.description,
-    publisher: metadata.publisher,
-    releaseDate: metadata.releaseDate,
-    series: metadata.series,
-    seriesNumber: metadata.seriesNumber,
-    genres: metadata.genres,
-    tags: metadata.tags,
-    identifiers: metadata.identifiers,
-    coverUrl: metadata.coverUrl,
-    url: `https://www.goodreads.com/book/show/${bookId}`,
-  };
+  // Use full-size cover, falling back to stripped autocomplete image
+  if (!metadata.coverUrl && autocomplete.imageUrl) {
+    metadata.coverUrl = stripImageSuffix(autocomplete.imageUrl);
+  }
 
-  // Use full-size cover for search result display; fall back to autocomplete image
-  searchResult.imageUrl =
-    metadata.coverUrl ??
-    (autocomplete.imageUrl
-      ? stripImageSuffix(autocomplete.imageUrl)
-      : undefined);
+  metadata.url = `https://www.goodreads.com/book/show/${bookId}`;
+  metadata.confidence = confidence;
 
-  return searchResult;
+  return metadata;
 }
 
 /**
- * Fallback: convert autocomplete result to SearchResult without page data.
+ * Fallback: convert autocomplete result to ParsedMetadata without page data.
  */
-function autocompleteToSearchResult(
+function autocompleteToMetadata(
   result: GRAutocompleteResult,
-): SearchResult {
-  const searchResult: SearchResult = {
+  confidence: number,
+): ParsedMetadata {
+  const metadata: ParsedMetadata = {
     title: result.title,
     authors: [{ name: result.author.name }],
     identifiers: [{ type: "goodreads", value: result.bookId }],
     url: `https://www.goodreads.com/book/show/${result.bookId}`,
+    confidence,
   };
 
   if (result.imageUrl) {
-    searchResult.imageUrl = stripImageSuffix(result.imageUrl);
+    metadata.coverUrl = stripImageSuffix(result.imageUrl);
   }
 
   if (result.description?.html) {
-    searchResult.description = stripHTML(result.description.html);
+    metadata.description = stripHTML(result.description.html);
   }
 
-  return searchResult;
+  return metadata;
 }
