@@ -582,10 +582,10 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.57.1.tgz#a03348e7b559c792b6277cc58874b89ef46e1e72"
   integrity sha512-mxRFDdHIWRxg3UfIIAwCm6NzvxG0jDX/wBN6KsQFTvKFqqg9vTrWUE68qEjHt19A5wwx5X5aUi2zuZT7YR0jrA==
 
-"@shisho/plugin-sdk@0.0.23":
-  version "0.0.23"
-  resolved "https://registry.yarnpkg.com/@shisho/plugin-sdk/-/plugin-sdk-0.0.23.tgz#f23db113f78989790413e76b92512085ff210fb7"
-  integrity sha512-uLguK+jks03jAg2Zf/BnieFQEO0liW3hXxcoPWypV3fu1kEy3ZNPMVDJwHxjbCeNvUD28xtmV1X93F7UIQ6UXA==
+"@shisho/plugin-sdk@0.0.24":
+  version "0.0.24"
+  resolved "https://registry.yarnpkg.com/@shisho/plugin-sdk/-/plugin-sdk-0.0.24.tgz#409c100cc85ff184d045370a2a9ec477a9fa364b"
+  integrity sha512-yRamCISho5Z7CrjiU9js9+VnMu5DkO5nPXtTpUrfSNW7Y2EhXFo9+L9DVMVI9znIxMFBqJNi15ltduGXd3psNg==
   dependencies:
     fast-xml-parser "^5.5.9"
     linkedom "^0.18.12"
