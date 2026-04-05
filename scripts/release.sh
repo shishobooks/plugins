@@ -2,6 +2,8 @@
 set -euo pipefail
 
 # Per-plugin release script for Shisho Plugins
+# Validates locally, then dispatches the GitHub Actions release workflow.
+#
 # Usage: ./scripts/release.sh <plugin-id> <version> [<plugin-id> <version> ...] [--dry-run]
 # Examples:
 #   ./scripts/release.sh open-library-enricher 0.1.0
@@ -46,14 +48,12 @@ for (( i=0; i<${#POSITIONAL_ARGS[@]}; i+=2 )); do
     TAGS+=("${pid}@${ver}")
 done
 
-REPO_URL="https://github.com/shishobooks/plugins"
-
 # --- Helper functions ---
 available_plugins() {
     jq -r '.plugins[].id' repository.json | sed 's/^/  - /'
 }
 
-# --- Validate ALL plugins before making any changes ---
+# --- Validate ALL plugins before dispatching ---
 echo "Validating ${#PLUGIN_IDS[@]} plugin(s)..."
 
 # Check for duplicate plugin IDs
@@ -81,8 +81,6 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
 
     if [[ ! -f "$PLUGIN_MANIFEST" ]]; then
         echo "Error: Manifest not found at '$PLUGIN_MANIFEST'."
-        echo "Available plugins:"
-        available_plugins
         exit 1
     fi
 
@@ -109,30 +107,18 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
         exit 1
     fi
 
-    echo "  ✓ $TAG"
+    echo "  OK $TAG"
 done
 
-# Check for uncommitted changes
-if ! git diff --quiet || ! git diff --cached --quiet; then
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "Warning: You have uncommitted changes (ignored in dry-run mode)."
-    else
-        echo "Error: You have uncommitted changes. Please commit or stash them first."
-        exit 1
+# --- Build JSON payload ---
+JSON_ARRAY="["
+for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
+    if [[ $i -gt 0 ]]; then
+        JSON_ARRAY+=","
     fi
-fi
-
-# Check we're on master branch
-CURRENT_BRANCH=$(git branch --show-current)
-if [[ "$CURRENT_BRANCH" != "master" ]]; then
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "Warning: Not on master branch (ignored in dry-run mode). Current branch: $CURRENT_BRANCH"
-    else
-        echo "Error: You must be on the master branch to create a release."
-        echo "Current branch: $CURRENT_BRANCH"
-        exit 1
-    fi
-fi
+    JSON_ARRAY+="{\"id\":\"${PLUGIN_IDS[$i]}\",\"version\":\"${VERSIONS[$i]}\"}"
+done
+JSON_ARRAY+="]"
 
 # --- Format release description ---
 RELEASE_DESC="${TAGS[0]}"
@@ -140,297 +126,53 @@ for (( i=1; i<${#TAGS[@]}; i++ )); do
     RELEASE_DESC+=", ${TAGS[$i]}"
 done
 
-if [[ "$DRY_RUN" == "true" ]]; then
-    echo "=== DRY RUN: Creating release(s) $RELEASE_DESC ==="
-else
-    echo "Creating release(s) $RELEASE_DESC..."
-fi
-
-# --- Rollback on error: restore modified files if script fails mid-release ---
-RELEASE_COMMITTED=false
-cleanup_on_error() {
-    if [[ "$RELEASE_COMMITTED" == "true" ]]; then
-        return
-    fi
-    echo ""
-    echo "Error occurred — restoring modified files..."
-    rm -rf dist
-    FILES_TO_RESTORE=()
-    for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-        FILES_TO_RESTORE+=("plugins/${PLUGIN_IDS[$i]}/manifest.json" "plugins/${PLUGIN_IDS[$i]}/package.json" "plugins/${PLUGIN_IDS[$i]}/CHANGELOG.md")
-    done
-    FILES_TO_RESTORE+=("repository.json")
-    git checkout "${FILES_TO_RESTORE[@]}" 2>/dev/null || true
-}
-trap cleanup_on_error ERR
-
-# --- Bump versions in source files for all plugins ---
-for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-    PLUGIN_ID="${PLUGIN_IDS[$i]}"
-    VERSION="${VERSIONS[$i]}"
-    PLUGIN_MANIFEST="plugins/$PLUGIN_ID/manifest.json"
-    PLUGIN_PACKAGE="plugins/$PLUGIN_ID/package.json"
-
-    echo "Bumping $PLUGIN_ID to $VERSION..."
-    jq --arg v "$VERSION" '.version = $v' "$PLUGIN_MANIFEST" > "$PLUGIN_MANIFEST.tmp" && mv "$PLUGIN_MANIFEST.tmp" "$PLUGIN_MANIFEST"
-    jq --arg v "$VERSION" '.version = $v' "$PLUGIN_PACKAGE" > "$PLUGIN_PACKAGE.tmp" && mv "$PLUGIN_PACKAGE.tmp" "$PLUGIN_PACKAGE"
-done
-
-# --- Build all plugins (single build) ---
-echo "Building plugins..."
-pnpm build
-
-# --- Process each plugin: ZIP, SHA256, changelog, repository.json ---
-DIST_DIR="dist"
-declare -a CHANGELOG_SECTIONS=()
-
-for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-    PLUGIN_ID="${PLUGIN_IDS[$i]}"
-    VERSION="${VERSIONS[$i]}"
-    TAG="${TAGS[$i]}"
-    DIST_PLUGIN_DIR="$DIST_DIR/$PLUGIN_ID"
-
-    if [[ ! -d "$DIST_PLUGIN_DIR" ]]; then
-        echo "Error: Build output for '$PLUGIN_ID' not found at '$DIST_PLUGIN_DIR'."
-        exit 1
-    fi
-
-    MANIFEST_FILE="$DIST_PLUGIN_DIR/manifest.json"
-    if [[ ! -f "$MANIFEST_FILE" ]]; then
-        echo "Error: No manifest.json found in $DIST_PLUGIN_DIR."
-        exit 1
-    fi
-
-    BUILT_VERSION=$(jq -r '.version' "$MANIFEST_FILE")
-    echo "Processing plugin: $PLUGIN_ID v$BUILT_VERSION"
-
-    # Create ZIP file
-    ZIP_NAME="${PLUGIN_ID}-${VERSION}.zip"
-    ZIP_PATH="$DIST_DIR/$ZIP_NAME"
-    (cd "$DIST_PLUGIN_DIR" && zip -r "../$ZIP_NAME" manifest.json main.js)
-
-    # Calculate SHA256
-    if [[ "$(uname)" == "Darwin" ]]; then
-        SHA256=$(shasum -a 256 "$ZIP_PATH" | awk '{print $1}')
-    else
-        SHA256=$(sha256sum "$ZIP_PATH" | awk '{print $1}')
-    fi
-
-    echo "  ZIP: $ZIP_NAME"
-    echo "  SHA256: $SHA256"
-
-    # --- Generate changelog from commits since last release of this plugin ---
-    PREV_TAG=$(git tag -l "${PLUGIN_ID}@*" --sort=-v:refname | head -1 || true)
-
-    echo "Generating changelog for $PLUGIN_ID..."
-
-    if [[ -n "$PREV_TAG" ]]; then
-        COMMIT_RANGE="$PREV_TAG..HEAD"
-    else
-        COMMIT_RANGE=""
-    fi
-
-    COMMITS_FEATURES=""
-    COMMITS_BUGFIXES=""
-    COMMITS_DOCS=""
-    COMMITS_TESTING=""
-    COMMITS_CICD=""
-    COMMITS_OTHER=""
-
-    while IFS= read -r commit; do
-        [[ -z "$commit" ]] && continue
-
-        if [[ "$commit" =~ ^\[([^\]]+)\] ]]; then
-            commit_cat="${BASH_REMATCH[1]}"
-            commit_msg="${commit#\[$commit_cat\] }"
-
-            case "$commit_cat" in
-                Frontend|Backend|Feature|Feat)
-                    COMMITS_FEATURES+="- $commit_msg"$'\n'
-                    ;;
-                Fix)
-                    COMMITS_BUGFIXES+="- $commit_msg"$'\n'
-                    ;;
-                Docs|Doc)
-                    COMMITS_DOCS+="- $commit_msg"$'\n'
-                    ;;
-                Test|E2E)
-                    COMMITS_TESTING+="- $commit_msg"$'\n'
-                    ;;
-                CI|CD)
-                    COMMITS_CICD+="- $commit_msg"$'\n'
-                    ;;
-                *)
-                    COMMITS_OTHER+="- $commit_msg"$'\n'
-                    ;;
-            esac
-        else
-            COMMITS_OTHER+="- $commit"$'\n'
-        fi
-    done < <(git log --pretty=format:"%s" ${COMMIT_RANGE:+"$COMMIT_RANGE"} -- "plugins/$PLUGIN_ID")
-
-    CHANGELOG_SECTION="## [$VERSION] - $(date +%Y-%m-%d)"$'\n'
-
-    if [[ -n "$COMMITS_FEATURES" ]]; then
-        CHANGELOG_SECTION+=$'\n'"### Features"$'\n'
-        CHANGELOG_SECTION+="$COMMITS_FEATURES"
-    fi
-    if [[ -n "$COMMITS_BUGFIXES" ]]; then
-        CHANGELOG_SECTION+=$'\n'"### Bug Fixes"$'\n'
-        CHANGELOG_SECTION+="$COMMITS_BUGFIXES"
-    fi
-    if [[ -n "$COMMITS_DOCS" ]]; then
-        CHANGELOG_SECTION+=$'\n'"### Documentation"$'\n'
-        CHANGELOG_SECTION+="$COMMITS_DOCS"
-    fi
-    if [[ -n "$COMMITS_TESTING" ]]; then
-        CHANGELOG_SECTION+=$'\n'"### Testing"$'\n'
-        CHANGELOG_SECTION+="$COMMITS_TESTING"
-    fi
-    if [[ -n "$COMMITS_CICD" ]]; then
-        CHANGELOG_SECTION+=$'\n'"### CI/CD"$'\n'
-        CHANGELOG_SECTION+="$COMMITS_CICD"
-    fi
-    if [[ -n "$COMMITS_OTHER" ]]; then
-        CHANGELOG_SECTION+=$'\n'"### Other"$'\n'
-        CHANGELOG_SECTION+="$COMMITS_OTHER"
-    fi
-
-    CHANGELOG_SECTIONS+=("$CHANGELOG_SECTION")
-
-    # --- Update repository.json ---
-    echo "Updating repository.json for $PLUGIN_ID..."
-
-    DOWNLOAD_URL="$REPO_URL/releases/download/$TAG/$ZIP_NAME"
-    RELEASE_DATE=$(date +%Y-%m-%d)
-
-    MANIFEST_VER=$(jq -r '.manifestVersion' "$MANIFEST_FILE")
-    MIN_SHISHO_VER=$(jq -r '.minShishoVersion // ""' "$MANIFEST_FILE")
-    CAPABILITIES=$(jq '.capabilities // null' "$MANIFEST_FILE")
-
-    NEW_VERSION=$(jq -n \
-        --arg version "$VERSION" \
-        --arg manifestVersion "$MANIFEST_VER" \
-        --arg minShishoVersion "$MIN_SHISHO_VER" \
-        --arg releaseDate "$RELEASE_DATE" \
-        --arg changelog "$CHANGELOG_SECTION" \
-        --arg downloadUrl "$DOWNLOAD_URL" \
-        --arg sha256 "$SHA256" \
-        --argjson capabilities "$CAPABILITIES" \
-        '{
-            version: $version,
-            manifestVersion: ($manifestVersion | tonumber),
-            releaseDate: $releaseDate,
-            changelog: $changelog,
-            downloadUrl: $downloadUrl,
-            sha256: $sha256
-        } + (if $minShishoVersion != "" then {minShishoVersion: $minShishoVersion} else {} end)
-          + (if $capabilities != null then {capabilities: $capabilities} else {} end)')
-
-    jq --arg id "$PLUGIN_ID" --argjson newVersion "$NEW_VERSION" '
-        .plugins = [.plugins[] | if .id == $id then .versions = [$newVersion] + .versions else . end]
-    ' repository.json > repository.json.tmp && mv repository.json.tmp repository.json
-done
-
-# --- Dry-run: show results and clean up ---
+# --- Dry run: show what would be dispatched ---
 if [[ "$DRY_RUN" == "true" ]]; then
     echo ""
-    for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-        echo "=== Changelog entry for ${PLUGIN_IDS[$i]} ==="
-        echo "${CHANGELOG_SECTIONS[$i]}"
-        echo "=== End changelog entry ==="
-        echo ""
-    done
-    echo "=== repository.json updates ==="
-    cat repository.json
-    echo "=== End repository.json ==="
+    echo "=== DRY RUN ==="
+    echo "Would dispatch release workflow with:"
+    echo "  Plugins: $JSON_ARRAY"
     echo ""
-    echo "Would update:"
-    for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-        echo "  - plugins/${PLUGIN_IDS[$i]}/CHANGELOG.md"
-        echo "  - plugins/${PLUGIN_IDS[$i]}/manifest.json"
-        echo "  - plugins/${PLUGIN_IDS[$i]}/package.json"
-    done
-    echo "  - repository.json"
-    echo ""
-    echo "Would commit: [Release] $RELEASE_DESC"
+    echo "Releases:"
     for (( i=0; i<${#TAGS[@]}; i++ )); do
-        echo "Would create tag: ${TAGS[$i]}"
+        echo "  - ${TAGS[$i]}"
     done
-    echo "Would push: master and all tags to origin"
     echo ""
-
-    # Clean up — restore all modified files
-    rm -rf dist
-    FILES_TO_RESTORE=()
-    for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-        FILES_TO_RESTORE+=("plugins/${PLUGIN_IDS[$i]}/manifest.json" "plugins/${PLUGIN_IDS[$i]}/package.json" "plugins/${PLUGIN_IDS[$i]}/CHANGELOG.md")
-    done
-    FILES_TO_RESTORE+=("repository.json")
-    git checkout "${FILES_TO_RESTORE[@]}"
-
     echo "=== DRY RUN COMPLETE ==="
     exit 0
 fi
 
-# --- Update per-plugin CHANGELOG.md files ---
-for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-    PLUGIN_ID="${PLUGIN_IDS[$i]}"
-    PLUGIN_CHANGELOG="plugins/$PLUGIN_ID/CHANGELOG.md"
-    CHANGELOG_SECTION="${CHANGELOG_SECTIONS[$i]}"
-
-    echo "Updating $PLUGIN_CHANGELOG..."
-
-    {
-        found=false
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            echo "$line"
-            if [[ "$line" =~ ^##\ \[Unreleased\] ]] && [[ "$found" == "false" ]]; then
-                echo ""
-                echo "$CHANGELOG_SECTION"
-                found=true
-            fi
-        done < "$PLUGIN_CHANGELOG"
-
-        # If no ## [Unreleased] header exists, append one with the new section
-        if [[ "$found" == "false" ]]; then
-            echo "  Warning: No '## [Unreleased]' header found in $PLUGIN_CHANGELOG. Appending one." >&2
-            echo ""
-            echo "## [Unreleased]"
-            echo ""
-            echo "$CHANGELOG_SECTION"
-        fi
-    } > "$PLUGIN_CHANGELOG.tmp" && mv "$PLUGIN_CHANGELOG.tmp" "$PLUGIN_CHANGELOG"
-done
-
-# Clean up dist (we don't commit build artifacts)
-rm -rf dist
-
-# Commit changes (all relevant files)
-echo "Committing changes..."
-GIT_ADD_FILES=()
-for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-    GIT_ADD_FILES+=("plugins/${PLUGIN_IDS[$i]}/manifest.json" "plugins/${PLUGIN_IDS[$i]}/package.json" "plugins/${PLUGIN_IDS[$i]}/CHANGELOG.md")
-done
-GIT_ADD_FILES+=("repository.json")
-git add "${GIT_ADD_FILES[@]}"
-git commit -m "[Release] $RELEASE_DESC"
-RELEASE_COMMITTED=true
-
-# Create tags
-for (( i=0; i<${#TAGS[@]}; i++ )); do
-    echo "Creating tag ${TAGS[$i]}..."
-    git tag -a "${TAGS[$i]}" -m "Release ${TAGS[$i]}"
-done
-
-# Push
-echo "Pushing to origin..."
-git push origin master "${TAGS[@]}"
-
+# --- Dispatch the release workflow ---
 echo ""
-echo "Release(s) created successfully!"
-echo "GitHub Actions will now build and publish each release."
-echo ""
-for (( i=0; i<${#TAGS[@]}; i++ )); do
-    echo "  $REPO_URL/releases/tag/${TAGS[$i]}"
+echo "Dispatching release workflow for $RELEASE_DESC..."
+
+# Record the latest run ID before dispatch so we can find the new one
+BEFORE_RUN_ID=$(gh run list --workflow=release.yml --limit=1 --json databaseId --jq '.[0].databaseId // 0' 2>/dev/null || echo "0")
+
+gh workflow run release.yml -f plugins="$JSON_ARRAY"
+
+echo "Waiting for workflow to start..."
+
+# Poll until the new run appears
+RUN_ID=""
+for (( attempt=0; attempt<30; attempt++ )); do
+    sleep 2
+    LATEST_RUN_ID=$(gh run list --workflow=release.yml --limit=1 --json databaseId --jq '.[0].databaseId // 0' 2>/dev/null || echo "0")
+    if [[ "$LATEST_RUN_ID" != "$BEFORE_RUN_ID" && "$LATEST_RUN_ID" != "0" ]]; then
+        RUN_ID="$LATEST_RUN_ID"
+        break
+    fi
 done
+
+if [[ -z "$RUN_ID" ]]; then
+    echo "Could not detect the workflow run. Check manually:"
+    echo "  https://github.com/shishobooks/plugins/actions/workflows/release.yml"
+    exit 1
+fi
+
+REPO_URL=$(gh repo view --json url --jq '.url')
+echo "Workflow started: $REPO_URL/actions/runs/$RUN_ID"
+echo ""
+
+# Stream logs and wait for completion
+gh run watch "$RUN_ID"
