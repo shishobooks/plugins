@@ -388,6 +388,14 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
                 found=true
             fi
         done < "$PLUGIN_CHANGELOG"
+
+        # If no ## [Unreleased] header exists, append one with the new section
+        if [[ "$found" == "false" ]]; then
+            echo ""
+            echo "## [Unreleased]"
+            echo ""
+            echo "$CHANGELOG_SECTION"
+        fi
     } > "$PLUGIN_CHANGELOG.tmp" && mv "$PLUGIN_CHANGELOG.tmp" "$PLUGIN_CHANGELOG"
 done
 
