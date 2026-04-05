@@ -61,10 +61,10 @@ tmux split-window -d -v -l "$HALF_SIZE" -t "${TASK_NAME}.1" -c "$WORKTREE_DIR"
 
 # Pane layout:
 #   Pane 0 (top): claude
-#   Pane 1 (middle): yarn start (pre-typed, not executed)
-#   Pane 2 (bottom): other commands / yarn
-tmux send-keys -t "${TASK_NAME}.2" "yarn" Enter
-tmux send-keys -t "${TASK_NAME}.1" "yarn start"
+#   Pane 1 (middle): pnpm start (pre-typed, not executed)
+#   Pane 2 (bottom): other commands / pnpm
+tmux send-keys -t "${TASK_NAME}.2" "pnpm install" Enter
+tmux send-keys -t "${TASK_NAME}.1" "pnpm start"
 tmux send-keys -t "${TASK_NAME}.0" "claude --dangerously-skip-permissions" Enter
 tmux select-window -t "$TASK_NAME"
 tmux select-pane -t "${TASK_NAME}.0"

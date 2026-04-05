@@ -28,40 +28,40 @@ docker-compose.yml         # Local Shisho instance for development
 esbuild.config.cjs         # Build config — bundles each plugin into a single IIFE
 ```
 
-This is a **Yarn workspaces monorepo**. Each plugin under `plugins/` is its own workspace.
+This is a **pnpm workspaces monorepo**. Each plugin under `plugins/` is its own workspace.
 
 ## Development
 
 ### Prerequisites
 
 - Node.js (see `.node-version`)
-- Yarn
+- pnpm
 - Docker (for running Shisho locally)
 
 ### Getting started
 
 ```bash
-yarn install
-yarn build
-yarn start              # Starts Shisho at http://localhost:8080 with plugins mounted
+pnpm install
+pnpm build
+pnpm start              # Starts Shisho at http://localhost:8080 with plugins mounted
 ```
 
 ### Commands
 
 ```bash
-yarn build              # Build all plugins to dist/
-yarn build:watch        # Rebuild on file changes
-yarn clean              # Remove dist/
+pnpm build              # Build all plugins to dist/
+pnpm build:watch        # Rebuild on file changes
+pnpm clean              # Remove dist/
 
-yarn test               # Run all tests
-yarn test:watch         # Run tests in watch mode
+pnpm test               # Run all tests
+pnpm test:watch         # Run tests in watch mode
 
-yarn lint               # Run all linters (ESLint, Prettier, TypeScript)
-yarn lint:eslint        # ESLint only
-yarn lint:prettier      # Prettier check only
-yarn lint:types         # TypeScript type check only
+pnpm lint               # Run all linters (ESLint, Prettier, TypeScript)
+pnpm lint:eslint        # ESLint only
+pnpm lint:prettier      # Prettier check only
+pnpm lint:types         # TypeScript type check only
 
-yarn start              # Start Shisho via Docker with plugins mounted
+pnpm start              # Start Shisho via Docker with plugins mounted
 ```
 
 ### How it works
@@ -73,8 +73,8 @@ Plugins are written in TypeScript and bundled by esbuild into a single IIFE file
 Tests live alongside source code in `src/__tests__/` and run with vitest. A global setup file (`test/setup.ts`) mocks the `shisho` runtime object since it's only available inside goja. Use `vi.mock("../api")` to mock the HTTP layer when testing higher-level modules.
 
 ```bash
-yarn test               # Run once
-yarn test:watch         # Watch mode
+pnpm test               # Run once
+pnpm test:watch         # Watch mode
 ```
 
 ### Plugin anatomy
@@ -92,15 +92,15 @@ The `src/index.ts` entry point exports a `ShishoPlugin` object with hook impleme
 Plugins are released independently. Each plugin has its own version and changelog.
 
 ```bash
-yarn release <plugin-id> <version>
-yarn release <plugin-id> <version> --dry-run
+pnpm release <plugin-id> <version>
+pnpm release <plugin-id> <version> --dry-run
 ```
 
 For example:
 
 ```bash
-yarn release open-library-enricher 0.2.0
-yarn release open-library-enricher 0.2.0 --dry-run
+pnpm release open-library-enricher 0.2.0
+pnpm release open-library-enricher 0.2.0 --dry-run
 ```
 
 The release script will:
