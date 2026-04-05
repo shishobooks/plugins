@@ -43,6 +43,10 @@ for (( i=0; i<${#POSITIONAL_ARGS[@]}; i+=2 )); do
     pid="${POSITIONAL_ARGS[$i]}"
     ver="${POSITIONAL_ARGS[$i+1]}"
     ver="${ver#v}"  # Strip leading 'v'
+    if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Error: Version '$ver' is not valid semver (expected X.Y.Z)."
+        exit 1
+    fi
     PLUGIN_IDS+=("$pid")
     VERSIONS+=("$ver")
     TAGS+=("${pid}@${ver}")
