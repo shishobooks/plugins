@@ -306,6 +306,7 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
 
     MANIFEST_VER=$(jq -r '.manifestVersion' "$MANIFEST_FILE")
     MIN_SHISHO_VER=$(jq -r '.minShishoVersion // ""' "$MANIFEST_FILE")
+    CAPABILITIES=$(jq '.capabilities // null' "$MANIFEST_FILE")
 
     NEW_VERSION=$(jq -n \
         --arg version "$VERSION" \
@@ -315,6 +316,7 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
         --arg changelog "$CHANGELOG_SECTION" \
         --arg downloadUrl "$DOWNLOAD_URL" \
         --arg sha256 "$SHA256" \
+        --argjson capabilities "$CAPABILITIES" \
         '{
             version: $version,
             manifestVersion: ($manifestVersion | tonumber),
@@ -322,7 +324,8 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
             changelog: $changelog,
             downloadUrl: $downloadUrl,
             sha256: $sha256
-        } + (if $minShishoVersion != "" then {minShishoVersion: $minShishoVersion} else {} end)')
+        } + (if $minShishoVersion != "" then {minShishoVersion: $minShishoVersion} else {} end)
+          + (if $capabilities != null then {capabilities: $capabilities} else {} end)')
 
     jq --arg id "$PLUGIN_ID" --argjson newVersion "$NEW_VERSION" '
         .plugins = [.plugins[] | if .id == $id then .versions = [$newVersion] + .versions else . end]
