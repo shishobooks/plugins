@@ -17,7 +17,8 @@
     "lint": "concurrently --kill-others-on-fail --group \"yarn:lint:*\"",
     "lint:eslint": "eslint --max-warnings 0 .",
     "lint:prettier": "prettier --check .",
-    "lint:types": "tsc --noEmit"
+    "lint:types": "tsc --noEmit",
+    "release": "./scripts/release.sh"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

@@ -26,8 +26,8 @@ Tests use **vitest** and live in `plugins/<plugin-id>/src/__tests__/*.test.ts`. 
 ### Releasing a plugin
 
 ```bash
-make release plugin=open-library-enricher tag=0.2.0
-make release plugin=open-library-enricher tag=0.2.0 dry-run=1
+yarn release open-library-enricher 0.2.0
+yarn release open-library-enricher 0.2.0 --dry-run
 ```
 
 This runs `scripts/release.sh` which: validates the plugin, bumps versions in `manifest.json` and `package.json`, builds, generates a changelog from path-filtered commits, updates `repository.json`, commits as `[Release] <plugin-id>@<version>`, tags, and pushes. The GitHub Actions workflow then creates the GitHub Release with the ZIP artifact.
@@ -38,7 +38,7 @@ This is a **Yarn workspaces monorepo** for Shisho application plugins. Each plug
 
 ### Build pipeline
 
-Plugins are TypeScript, bundled by esbuild (`esbuild.config.js`) into a single **IIFE** (`dist/<plugin-id>/main.js`) targeting **ES2020** with platform `neutral`. The IIFE exports a global `plugin` object. The build also copies `manifest.json` into the dist output. There are no Node.js APIs available at runtime — plugins run in a [goja](https://github.com/nicholasgasior/goja) JavaScript engine.
+Plugins are TypeScript, bundled by esbuild (`esbuild.config.cjs`) into a single **IIFE** (`dist/<plugin-id>/main.js`) targeting **ES2020** with platform `neutral`. The IIFE exports a global `plugin` object. The build also copies `manifest.json` into the dist output. There are no Node.js APIs available at runtime — plugins run in a [goja](https://github.com/nicholasgasior/goja) JavaScript engine.
 
 ### Plugin structure
 
@@ -51,11 +51,11 @@ Each plugin lives in `plugins/<plugin-id>/` with:
 
 ### Version pinning
 
-The `@shisho/plugin-types` version in `package.json` and the Docker image tag in `docker-compose.yml` must always be kept in sync — both track the same Shisho release. When updating one, update the other to match.
+The `@shisho/plugin-sdk` version in `package.json` and the Docker image tag in `docker-compose.yml` must always be kept in sync — both track the same Shisho release. When updating one, update the other to match.
 
 ### Runtime environment
 
-Plugins access the host via a global `shisho` object providing: `shisho.log.*`, `shisho.config.*`, `shisho.http.fetch()`, plus filesystem/archive/XML/FFmpeg APIs. Types come from `@shisho/plugin-types` (declared in root `tsconfig.json` via `types`).
+Plugins access the host via a global `shisho` object providing: `shisho.log.*`, `shisho.config.*`, `shisho.http.fetch()`, plus filesystem/archive/XML/FFmpeg APIs. Types come from `@shisho/plugin-sdk` (declared in root `tsconfig.json` via `types`).
 
 ### Release model
 
