@@ -20,7 +20,7 @@ plugins/
     package.json           # Workspace-level package
     CHANGELOG.md           # Per-plugin changelog
 packages/
-  shared/                  # Shared utilities (string similarity, date parsing, etc.)
+  shared/                  # Shared utilities (string similarity, date parsing)
 scripts/
   release.sh               # Per-plugin release automation
 repository.json            # Plugin registry — consumed by Shisho to discover available plugins
