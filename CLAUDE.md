@@ -19,6 +19,8 @@ pnpm lint:prettier      # Prettier check
 pnpm lint:types         # TypeScript type check (tsc --noEmit)
 ```
 
+**Before pushing or creating a PR, always run `pnpm lint` and `pnpm test` to catch issues locally.** CI runs both, and PRs will fail if either has errors.
+
 ### Testing
 
 Tests use **vitest** and live in `plugins/<plugin-id>/src/__tests__/*.test.ts`. A global setup file (`test/setup.ts`) mocks the `shisho` runtime object (`log`, `http.fetch`, `url.searchParams`) since it's injected by goja at runtime. Mocks are reset via `vi.restoreAllMocks()` in `beforeEach`. Use `vi.mock("../api")` to mock the HTTP layer when testing higher-level modules (lookup, mapping).
