@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     name: Release Plugins
@@ -31,8 +35,15 @@ jobs:
             exit 1
           }
 
+          # Check for duplicate plugin IDs
+          DUPLICATES=$(echo "$PLUGINS_JSON" | jq -r '[.[].id] | group_by(.) | map(select(length > 1)) | flatten | unique | .[]')
+          if [[ -n "$DUPLICATES" ]]; then
+            echo "ERROR: Duplicate plugin IDs: $DUPLICATES"
+            exit 1
+          fi
+
           # Validate each plugin entry
-          for row in $(echo "$PLUGINS_JSON" | jq -c '.[]'); do
+          while IFS= read -r row; do
             ID=$(echo "$row" | jq -r '.id')
             VERSION=$(echo "$row" | jq -r '.version')
             TAG="${ID}@${VERSION}"
@@ -69,7 +80,7 @@ jobs:
             fi
 
             echo "  OK $TAG"
-          done
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -87,14 +98,14 @@ jobs:
         env:
           PLUGINS_JSON: ${{ inputs.plugins }}
         run: |
-          for row in $(echo "$PLUGINS_JSON" | jq -c '.[]'); do
+          while IFS= read -r row; do
             ID=$(echo "$row" | jq -r '.id')
             VERSION=$(echo "$row" | jq -r '.version')
 
             echo "Bumping $ID to $VERSION..."
             jq --arg v "$VERSION" '.version = $v' "plugins/$ID/manifest.json" > tmp.json && mv tmp.json "plugins/$ID/manifest.json"
             jq --arg v "$VERSION" '.version = $v' "plugins/$ID/package.json" > tmp.json && mv tmp.json "plugins/$ID/package.json"
-          done
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
 
       - name: Build plugins
         run: pnpm build
@@ -105,7 +116,7 @@ jobs:
         run: |
           REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
 
-          for row in $(echo "$PLUGINS_JSON" | jq -c '.[]'); do
+          while IFS= read -r row; do
             ID=$(echo "$row" | jq -r '.id')
             VERSION=$(echo "$row" | jq -r '.version')
             TAG="${ID}@${VERSION}"
@@ -239,7 +250,7 @@ jobs:
 
             # Save changelog section and tag for later steps
             echo "$CHANGELOG_SECTION" > "/tmp/changelog_${ID}.md"
-          done
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
 
       - name: Commit, tag, and push
         env:
@@ -253,7 +264,7 @@ jobs:
           GIT_ADD_FILES=("repository.json")
           RELEASE_DESC=""
 
-          for row in $(echo "$PLUGINS_JSON" | jq -c '.[]'); do
+          while IFS= read -r row; do
             ID=$(echo "$row" | jq -r '.id')
             VERSION=$(echo "$row" | jq -r '.version')
             TAG="${ID}@${VERSION}"
@@ -265,7 +276,7 @@ jobs:
               RELEASE_DESC+=", "
             fi
             RELEASE_DESC+="$TAG"
-          done
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
 
           git add "${GIT_ADD_FILES[@]}"
           git commit -m "[Release] $RELEASE_DESC"
@@ -274,14 +285,14 @@ jobs:
             git tag -a "$TAG" -m "Release $TAG"
           done
 
-          git push origin master "${TAGS[@]}"
+          git push origin HEAD:"$GITHUB_REF_NAME" "${TAGS[@]}"
 
       - name: Create GitHub Releases
         env:
           PLUGINS_JSON: ${{ inputs.plugins }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          for row in $(echo "$PLUGINS_JSON" | jq -c '.[]'); do
+          while IFS= read -r row; do
             ID=$(echo "$row" | jq -r '.id')
             VERSION=$(echo "$row" | jq -r '.version')
             TAG="${ID}@${VERSION}"
@@ -292,4 +303,4 @@ jobs:
             gh release create "$TAG" "$ZIP_PATH" \
               --title "$ID v$VERSION" \
               --notes-file "$NOTES_FILE"
-          done
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
