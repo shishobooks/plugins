@@ -6,17 +6,21 @@
     {
       "id": "open-library-enricher",
       "name": "Open Library Enricher",
+      "overview": "Fetches book metadata, covers, and identifiers from Open Library's free API",
       "description": "Enriches book metadata from Open Library",
       "author": "Shisho Team",
       "homepage": "https://github.com/shishobooks/plugins",
+      "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/open-library-enricher/logo.svg",
       "versions": []
     },
     {
       "id": "goodreads-enricher",
       "name": "Goodreads Enricher",
+      "overview": "Fetches book metadata, ratings, and covers from Goodreads",
       "description": "Enriches book metadata from Goodreads",
       "author": "Shisho Team",
       "homepage": "https://github.com/shishobooks/plugins",
+      "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": []
     }
   ]

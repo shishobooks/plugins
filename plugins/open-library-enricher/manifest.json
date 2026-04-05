@@ -4,6 +4,7 @@
   "name": "Open Library Enricher",
   "version": "0.1.0",
   "description": "Enriches book metadata from Open Library",
+  "minShishoVersion": "0.0.23",
   "author": "Shisho Team",
   "homepage": "https://github.com/shishobooks/plugins",
   "license": "MIT",
