@@ -5,18 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Development Commands
 
 ```bash
-yarn build              # Build all plugins to dist/
-yarn build:watch        # Watch mode for development
-yarn clean              # Remove dist/
-yarn start              # Start Shisho app via Docker with plugins mounted at localhost:8080
+pnpm build              # Build all plugins to dist/
+pnpm build:watch        # Watch mode for development
+pnpm clean              # Remove dist/
+pnpm start              # Start Shisho app via Docker with plugins mounted at localhost:8080
 
-yarn test               # Run all tests (vitest run)
-yarn test:watch         # Watch mode (vitest)
+pnpm test               # Run all tests (vitest run)
+pnpm test:watch         # Watch mode (vitest)
 
-yarn lint               # Run all linters concurrently (fails fast)
-yarn lint:eslint        # ESLint only (--max-warnings 0)
-yarn lint:prettier      # Prettier check
-yarn lint:types         # TypeScript type check (tsc --noEmit)
+pnpm lint               # Run all linters concurrently (fails fast)
+pnpm lint:eslint        # ESLint only (--max-warnings 0)
+pnpm lint:prettier      # Prettier check
+pnpm lint:types         # TypeScript type check (tsc --noEmit)
 ```
 
 ### Testing
@@ -26,15 +26,15 @@ Tests use **vitest** and live in `plugins/<plugin-id>/src/__tests__/*.test.ts`. 
 ### Releasing a plugin
 
 ```bash
-yarn release open-library-enricher 0.2.0
-yarn release open-library-enricher 0.2.0 --dry-run
+pnpm release open-library-enricher 0.2.0
+pnpm release open-library-enricher 0.2.0 --dry-run
 ```
 
 This runs `scripts/release.sh` which: validates the plugin, bumps versions in `manifest.json` and `package.json`, builds, generates a changelog from path-filtered commits, updates `repository.json`, commits as `[Release] <plugin-id>@<version>`, tags, and pushes. The GitHub Actions workflow then creates the GitHub Release with the ZIP artifact.
 
 ## Architecture
 
-This is a **Yarn workspaces monorepo** for Shisho application plugins. Each plugin under `plugins/` is a workspace member.
+This is a **pnpm workspaces monorepo** for Shisho application plugins. Each plugin under `plugins/` is a workspace member.
 
 ### Build pipeline
 

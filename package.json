@@ -3,10 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "packages/*",
-    "plugins/*"
-  ],
+  "packageManager": "pnpm@10.12.1",
   "scripts": {
     "build": "node esbuild.config.cjs",
     "build:watch": "node esbuild.config.cjs --watch",
@@ -14,7 +11,7 @@
     "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "concurrently --kill-others-on-fail --group \"yarn:lint:*\"",
+    "lint": "concurrently --kill-others-on-fail --group \"pnpm:lint:*\"",
     "lint:eslint": "eslint --max-warnings 0 .",
     "lint:prettier": "prettier --check .",
     "lint:types": "tsc --noEmit",
@@ -32,5 +29,10 @@
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.53.1",
     "vitest": "^3.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

@@ -2,3 +2,4 @@ tsconfig.json
 .prettierrc
 dist/
 docs/
+pnpm-lock.yaml

@@ -116,7 +116,7 @@ jq --arg v "$VERSION" '.version = $v' "$PLUGIN_PACKAGE" > "$PLUGIN_PACKAGE.tmp" 
 
 # --- Build plugins ---
 echo "Building plugins..."
-yarn build
+pnpm build
 
 # Check dist output exists for target plugin
 DIST_DIR="dist"
