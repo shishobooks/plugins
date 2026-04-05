@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
+    "packages/*",
     "plugins/*"
   ],
   "scripts": {
@@ -21,7 +22,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
-    "@shisho/plugin-types": "0.0.19",
+    "@shisho/plugin-sdk": "0.0.25",
     "concurrently": "^9.1.2",
     "esbuild": "^0.24.0",
     "eslint": "^9.39.2",

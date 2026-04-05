@@ -1,8 +1,8 @@
 services:
   shisho:
-    image: ghcr.io/shishobooks/shisho:0.0.19
+    image: ghcr.io/shishobooks/shisho:0.0.25
     ports:
-      - "8080:8080"
+      - "8080:5173"
     volumes:
       - ./dist:/plugins/local
       # Library is shared from main worktree so all worktrees use the same data

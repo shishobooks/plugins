@@ -8,7 +8,7 @@ import type {
 const plugin: ShishoPlugin = {
   metadataEnricher: {
     search(context: SearchContext): SearchResponse {
-      shisho.log.info("Open Library enricher: searching");
+      shisho.log.info("Goodreads enricher: searching");
 
       const results = searchForBooks(context);
       shisho.log.info(`Found ${results.length} candidate(s)`);

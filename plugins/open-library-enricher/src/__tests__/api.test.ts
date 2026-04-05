@@ -14,11 +14,13 @@ function mockFetch(response: {
   ok: boolean;
   body?: unknown;
   arrayBuffer?: ArrayBuffer;
+  headers?: Record<string, string>;
 }) {
   vi.mocked(shisho.http.fetch).mockReturnValue({
     status: response.status,
     statusText: response.statusText ?? "",
     ok: response.ok,
+    headers: response.headers ?? {},
     json: () => response.body,
     arrayBuffer: () => response.arrayBuffer,
   } as ReturnType<typeof shisho.http.fetch>);
@@ -139,16 +141,42 @@ describe("searchBooks", () => {
 });
 
 describe("fetchCover", () => {
-  it("returns ArrayBuffer on success", () => {
+  it("returns data and MIME type from content-type header", () => {
     const buffer = new ArrayBuffer(8);
-    mockFetch({ status: 200, ok: true, arrayBuffer: buffer });
+    mockFetch({
+      status: 200,
+      ok: true,
+      arrayBuffer: buffer,
+      headers: { "content-type": "image/jpeg" },
+    });
 
     const result = fetchCover(12345);
-    expect(result).toBe(buffer);
+    expect(result).toEqual({ data: buffer, mimeType: "image/jpeg" });
     expect(shisho.http.fetch).toHaveBeenCalledWith(
       "https://covers.openlibrary.org/b/id/12345-L.jpg",
       expect.any(Object),
     );
+  });
+
+  it("strips charset from content-type header", () => {
+    const buffer = new ArrayBuffer(8);
+    mockFetch({
+      status: 200,
+      ok: true,
+      arrayBuffer: buffer,
+      headers: { "content-type": "image/png; charset=utf-8" },
+    });
+
+    const result = fetchCover(12345);
+    expect(result!.mimeType).toBe("image/png");
+  });
+
+  it("defaults to image/jpeg when no content-type header", () => {
+    const buffer = new ArrayBuffer(8);
+    mockFetch({ status: 200, ok: true, arrayBuffer: buffer });
+
+    const result = fetchCover(12345);
+    expect(result).toEqual({ data: buffer, mimeType: "image/jpeg" });
   });
 
   it("returns null on failure", () => {

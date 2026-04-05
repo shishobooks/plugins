@@ -10,6 +10,14 @@
       "author": "Shisho Team",
       "homepage": "https://github.com/shishobooks/plugins",
       "versions": []
+    },
+    {
+      "id": "goodreads-enricher",
+      "name": "Goodreads Enricher",
+      "description": "Enriches book metadata from Goodreads",
+      "author": "Shisho Team",
+      "homepage": "https://github.com/shishobooks/plugins",
+      "versions": []
     }
   ]
 }

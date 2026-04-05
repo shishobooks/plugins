@@ -9,7 +9,7 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": false,
     "noEmit": true,
-    "types": ["@shisho/plugin-types"]
+    "types": ["@shisho/plugin-sdk"]
   },
   "exclude": ["node_modules", "dist"]
 }

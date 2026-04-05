@@ -53,6 +53,13 @@ export interface OLSearchResult {
   docs: OLSearchDoc[];
 }
 
+/** Combined result from lookup containing both edition and work data. */
+export interface OLLookupResult {
+  edition: OLEdition;
+  work: OLWork;
+  authors: OLAuthor[];
+}
+
 /** Individual search result document */
 export interface OLSearchDoc {
   key: string; // "/works/OL456W"
@@ -63,17 +70,4 @@ export interface OLSearchDoc {
   cover_i?: number;
   edition_key?: string[];
   isbn?: string[];
-}
-
-/** Combined result from lookup containing both edition and work data */
-export interface OLLookupResult {
-  edition: OLEdition;
-  work: OLWork;
-  authors: OLAuthor[];
-}
-
-/** Data stored in SearchResult.providerData to pass between search and enrich phases. */
-export interface OLProviderData {
-  workId?: string;
-  editionId?: string;
 }
