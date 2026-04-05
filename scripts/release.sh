@@ -86,6 +86,11 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
         exit 1
     fi
 
+    if [[ ! -f "$PLUGIN_DIR/package.json" ]]; then
+        echo "Error: package.json not found at '$PLUGIN_DIR/package.json'."
+        exit 1
+    fi
+
     MANIFEST_ID=$(jq -r '.id' "$PLUGIN_MANIFEST")
     if [[ "$MANIFEST_ID" != "$PLUGIN_ID" ]]; then
         echo "Error: Manifest id '$MANIFEST_ID' does not match plugin-id '$PLUGIN_ID'."
@@ -130,7 +135,10 @@ if [[ "$CURRENT_BRANCH" != "master" ]]; then
 fi
 
 # --- Format release description ---
-RELEASE_DESC=$(printf "%s" "${TAGS[0]}"; printf ", %s" "${TAGS[@]:1}")
+RELEASE_DESC="${TAGS[0]}"
+for (( i=1; i<${#TAGS[@]}; i++ )); do
+    RELEASE_DESC+=", ${TAGS[$i]}"
+done
 
 if [[ "$DRY_RUN" == "true" ]]; then
     echo "=== DRY RUN: Creating release(s) $RELEASE_DESC ==="
@@ -155,14 +163,13 @@ echo "Building plugins..."
 pnpm build
 
 # --- Process each plugin: ZIP, SHA256, changelog, repository.json ---
+DIST_DIR="dist"
 declare -a CHANGELOG_SECTIONS=()
 
 for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
     PLUGIN_ID="${PLUGIN_IDS[$i]}"
     VERSION="${VERSIONS[$i]}"
     TAG="${TAGS[$i]}"
-
-    DIST_DIR="dist"
     DIST_PLUGIN_DIR="$DIST_DIR/$PLUGIN_ID"
 
     if [[ ! -d "$DIST_PLUGIN_DIR" ]]; then

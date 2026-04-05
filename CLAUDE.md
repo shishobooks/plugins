@@ -28,7 +28,7 @@ Tests use **vitest** and live in `plugins/<plugin-id>/src/__tests__/*.test.ts`. 
 ```bash
 pnpm release open-library-enricher 0.2.0
 pnpm release open-library-enricher 0.2.0 goodreads-enricher 0.1.0
-pnpm release open-library-enricher 0.2.0 --dry-run
+pnpm release open-library-enricher 0.2.0 goodreads-enricher 0.1.0 --dry-run
 ```
 
 This runs `scripts/release.sh` which: validates all plugins upfront, bumps versions in `manifest.json` and `package.json`, builds, generates changelogs from path-filtered commits, updates `repository.json`, commits as `[Release] <plugin-id>@<version>[, ...]`, creates one tag per plugin, and pushes. The GitHub Actions workflow then creates a GitHub Release per tag with the ZIP artifact. Multiple plugins can be released in a single invocation.
