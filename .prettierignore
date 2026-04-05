@@ -3,3 +3,5 @@ tsconfig.json
 dist/
 docs/
 pnpm-lock.yaml
+**/manifest.json
+**/CHANGELOG.md
