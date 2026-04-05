@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 - Add minShishoVersion to release process and enrich plugin metadata (#5)
-- Goodreads metadata enricher plugin (#4)
 - Open Library metadata enricher plugin (#1)
 - Add per-plugin release process
 
