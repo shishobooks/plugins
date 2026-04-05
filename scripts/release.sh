@@ -157,7 +157,7 @@ cleanup_on_error() {
     rm -rf dist
     FILES_TO_RESTORE=()
     for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-        FILES_TO_RESTORE+=("plugins/${PLUGIN_IDS[$i]}/manifest.json" "plugins/${PLUGIN_IDS[$i]}/package.json")
+        FILES_TO_RESTORE+=("plugins/${PLUGIN_IDS[$i]}/manifest.json" "plugins/${PLUGIN_IDS[$i]}/package.json" "plugins/${PLUGIN_IDS[$i]}/CHANGELOG.md")
     done
     FILES_TO_RESTORE+=("repository.json")
     git checkout "${FILES_TO_RESTORE[@]}" 2>/dev/null || true
@@ -361,7 +361,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
     rm -rf dist
     FILES_TO_RESTORE=()
     for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-        FILES_TO_RESTORE+=("plugins/${PLUGIN_IDS[$i]}/manifest.json" "plugins/${PLUGIN_IDS[$i]}/package.json")
+        FILES_TO_RESTORE+=("plugins/${PLUGIN_IDS[$i]}/manifest.json" "plugins/${PLUGIN_IDS[$i]}/package.json" "plugins/${PLUGIN_IDS[$i]}/CHANGELOG.md")
     done
     FILES_TO_RESTORE+=("repository.json")
     git checkout "${FILES_TO_RESTORE[@]}"
@@ -380,7 +380,7 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
 
     {
         found=false
-        while IFS= read -r line; do
+        while IFS= read -r line || [[ -n "$line" ]]; do
             echo "$line"
             if [[ "$line" =~ ^##\ \[Unreleased\] ]] && [[ "$found" == "false" ]]; then
                 echo ""
@@ -391,6 +391,7 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
 
         # If no ## [Unreleased] header exists, append one with the new section
         if [[ "$found" == "false" ]]; then
+            echo "  Warning: No '## [Unreleased]' header found in $PLUGIN_CHANGELOG. Appending one." >&2
             echo ""
             echo "## [Unreleased]"
             echo ""
