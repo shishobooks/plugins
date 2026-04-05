@@ -4,10 +4,10 @@ Official plugin repository for [Shisho](https://github.com/shishobooks/shisho), 
 
 ## Available Plugins
 
-| Plugin | Description |
-|--------|-------------|
-| [Open Library Enricher](plugins/open-library-enricher/) | Fetches book metadata, covers, and identifiers from [Open Library](https://openlibrary.org)'s free API |
-| [Goodreads Enricher](plugins/goodreads-enricher/) | Fetches book metadata and covers from [Goodreads](https://www.goodreads.com) via autocomplete and page scraping |
+| Plugin                                                  | Description                                                                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| [Open Library Enricher](plugins/open-library-enricher/) | Fetches book metadata, covers, and identifiers from [Open Library](https://openlibrary.org)'s free API          |
+| [Goodreads Enricher](plugins/goodreads-enricher/)       | Fetches book metadata and covers from [Goodreads](https://www.goodreads.com) via autocomplete and page scraping |
 
 ## Repository Structure
 
