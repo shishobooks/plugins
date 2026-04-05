@@ -241,10 +241,12 @@ DOWNLOAD_URL="$REPO_URL/releases/download/$TAG/$ZIP_NAME"
 RELEASE_DATE=$(date +%Y-%m-%d)
 
 MANIFEST_VER=$(jq -r '.manifestVersion' "$MANIFEST_FILE")
+MIN_SHISHO_VER=$(jq -r '.minShishoVersion // ""' "$MANIFEST_FILE")
 
 NEW_VERSION=$(jq -n \
     --arg version "$VERSION" \
     --arg manifestVersion "$MANIFEST_VER" \
+    --arg minShishoVersion "$MIN_SHISHO_VER" \
     --arg releaseDate "$RELEASE_DATE" \
     --arg changelog "$CHANGELOG_SECTION" \
     --arg downloadUrl "$DOWNLOAD_URL" \
@@ -256,7 +258,7 @@ NEW_VERSION=$(jq -n \
         changelog: $changelog,
         downloadUrl: $downloadUrl,
         sha256: $sha256
-    }')
+    } + (if $minShishoVersion != "" then {minShishoVersion: $minShishoVersion} else {} end)')
 
 jq --arg id "$PLUGIN_ID" --argjson newVersion "$NEW_VERSION" '
     .plugins = [.plugins[] | if .id == $id then .versions = [$newVersion] + .versions else . end]
