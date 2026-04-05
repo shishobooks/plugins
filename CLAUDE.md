@@ -26,8 +26,8 @@ Tests use **vitest** and live in `plugins/<plugin-id>/src/__tests__/*.test.ts`. 
 ### Releasing a plugin
 
 ```bash
-make release plugin=open-library-enricher tag=0.2.0
-make release plugin=open-library-enricher tag=0.2.0 dry-run=1
+yarn release open-library-enricher 0.2.0
+yarn release open-library-enricher 0.2.0 --dry-run
 ```
 
 This runs `scripts/release.sh` which: validates the plugin, bumps versions in `manifest.json` and `package.json`, builds, generates a changelog from path-filtered commits, updates `repository.json`, commits as `[Release] <plugin-id>@<version>`, tags, and pushes. The GitHub Actions workflow then creates the GitHub Release with the ZIP artifact.
