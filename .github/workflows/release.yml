@@ -165,6 +165,7 @@ jobs:
                 commit_msg="${commit#\[$commit_cat\] }"
 
                 case "$commit_cat" in
+                  Release)                       ;; # Skip release commits
                   Frontend|Backend|Feature|Feat) COMMITS_FEATURES+="- $commit_msg"$'\n' ;;
                   Fix)                           COMMITS_BUGFIXES+="- $commit_msg"$'\n' ;;
                   Docs|Doc)                      COMMITS_DOCS+="- $commit_msg"$'\n' ;;
