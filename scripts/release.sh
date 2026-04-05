@@ -146,6 +146,24 @@ else
     echo "Creating release(s) $RELEASE_DESC..."
 fi
 
+# --- Rollback on error: restore modified files if script fails mid-release ---
+RELEASE_COMMITTED=false
+cleanup_on_error() {
+    if [[ "$RELEASE_COMMITTED" == "true" ]]; then
+        return
+    fi
+    echo ""
+    echo "Error occurred — restoring modified files..."
+    rm -rf dist
+    FILES_TO_RESTORE=()
+    for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
+        FILES_TO_RESTORE+=("plugins/${PLUGIN_IDS[$i]}/manifest.json" "plugins/${PLUGIN_IDS[$i]}/package.json")
+    done
+    FILES_TO_RESTORE+=("repository.json")
+    git checkout "${FILES_TO_RESTORE[@]}" 2>/dev/null || true
+}
+trap cleanup_on_error ERR
+
 # --- Bump versions in source files for all plugins ---
 for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
     PLUGIN_ID="${PLUGIN_IDS[$i]}"
@@ -385,6 +403,7 @@ done
 GIT_ADD_FILES+=("repository.json")
 git add "${GIT_ADD_FILES[@]}"
 git commit -m "[Release] $RELEASE_DESC"
+RELEASE_COMMITTED=true
 
 # Create tags
 for (( i=0; i<${#TAGS[@]}; i++ )); do
