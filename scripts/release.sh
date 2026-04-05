@@ -111,14 +111,13 @@ for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
 done
 
 # --- Build JSON payload ---
-JSON_ARRAY="["
+JSON_ARRAY="[]"
 for (( i=0; i<${#PLUGIN_IDS[@]}; i++ )); do
-    if [[ $i -gt 0 ]]; then
-        JSON_ARRAY+=","
-    fi
-    JSON_ARRAY+="{\"id\":\"${PLUGIN_IDS[$i]}\",\"version\":\"${VERSIONS[$i]}\"}"
+    JSON_ARRAY=$(echo "$JSON_ARRAY" | jq -c \
+        --arg id "${PLUGIN_IDS[$i]}" \
+        --arg version "${VERSIONS[$i]}" \
+        '. + [{id: $id, version: $version}]')
 done
-JSON_ARRAY+="]"
 
 # --- Format release description ---
 RELEASE_DESC="${TAGS[0]}"
