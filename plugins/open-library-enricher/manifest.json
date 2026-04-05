@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "open-library-enricher",
   "name": "Open Library Enricher",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Enriches book metadata from Open Library",
   "minShishoVersion": "0.0.23",
   "author": "Shisho Team",

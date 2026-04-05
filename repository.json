@@ -13,17 +13,21 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/open-library-enricher/logo.svg",
       "versions": [
         {
-          "version": "0.2.0",
+          "version": "0.3.0",
           "manifestVersion": 1,
           "releaseDate": "2026-04-05",
-          "changelog": "## [0.2.0] - 2026-04-05\n",
-          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.2.0/open-library-enricher-0.2.0.zip",
-          "sha256": "dfd53b760538b2e0b202e764cf203417dce58e6513b41fb5aac9e6d5ce801db8",
+          "changelog": "## [0.3.0] - 2026-04-05\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.3.0/open-library-enricher-0.3.0.zip",
+          "sha256": "0b415cc0813ef21c6b982127c5407f10d73641b08b9e918b4aeb5e29107469ba",
           "minShishoVersion": "0.0.23",
           "capabilities": {
             "metadataEnricher": {
               "description": "Fetches metadata from Open Library API",
-              "fileTypes": ["epub", "m4b", "pdf"],
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
               "fields": [
                 "title",
                 "subtitle",
@@ -42,7 +46,65 @@
             },
             "httpAccess": {
               "description": "Calls Open Library API and fetches cover images",
-              "domains": ["*.openlibrary.org", "*.archive.org"]
+              "domains": [
+                "*.openlibrary.org",
+                "*.archive.org"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "openlibrary_work",
+                "name": "Open Library Work",
+                "urlTemplate": "https://openlibrary.org/works/{value}",
+                "pattern": "^OL\\d+W$"
+              },
+              {
+                "id": "openlibrary_edition",
+                "name": "Open Library Edition",
+                "urlTemplate": "https://openlibrary.org/books/{value}",
+                "pattern": "^OL\\d+M$"
+              }
+            ]
+          }
+        },
+        {
+          "version": "0.2.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-05",
+          "changelog": "## [0.2.0] - 2026-04-05\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.2.0/open-library-enricher-0.2.0.zip",
+          "sha256": "dfd53b760538b2e0b202e764cf203417dce58e6513b41fb5aac9e6d5ce801db8",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Open Library API",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "narrators",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Open Library API and fetches cover images",
+              "domains": [
+                "*.openlibrary.org",
+                "*.archive.org"
+              ]
             },
             "identifierTypes": [
               {
@@ -71,7 +133,11 @@
           "capabilities": {
             "metadataEnricher": {
               "description": "Fetches metadata from Open Library API",
-              "fileTypes": ["epub", "m4b", "pdf"],
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
               "fields": [
                 "title",
                 "subtitle",
@@ -90,7 +156,10 @@
             },
             "httpAccess": {
               "description": "Calls Open Library API and fetches cover images",
-              "domains": ["*.openlibrary.org", "*.archive.org"]
+              "domains": [
+                "*.openlibrary.org",
+                "*.archive.org"
+              ]
             },
             "identifierTypes": [
               {
@@ -120,6 +189,55 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.3.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-05",
+          "changelog": "## [0.3.0] - 2026-04-05\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.3.0/goodreads-enricher-0.3.0.zip",
+          "sha256": "e35bfd1ab637c76996c6dff443f123adce917afc4f601a218179ea346d323062",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.2.0",
           "manifestVersion": 1,
           "releaseDate": "2026-04-05",
@@ -130,7 +248,11 @@
           "capabilities": {
             "metadataEnricher": {
               "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
-              "fileTypes": ["epub", "m4b", "pdf"],
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
               "fields": [
                 "title",
                 "authors",
@@ -175,7 +297,11 @@
           "capabilities": {
             "metadataEnricher": {
               "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
-              "fileTypes": ["epub", "m4b", "pdf"],
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
               "fields": [
                 "title",
                 "authors",
