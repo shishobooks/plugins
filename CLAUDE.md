@@ -19,6 +19,8 @@ pnpm lint:prettier      # Prettier check
 pnpm lint:types         # TypeScript type check (tsc --noEmit)
 ```
 
+**Before pushing or creating a PR, always run `pnpm lint` and `pnpm test` to catch issues locally.** CI runs both, and PRs will fail if either has errors.
+
 ### Testing
 
 Tests use **vitest** and live in `plugins/<plugin-id>/src/__tests__/*.test.ts`. A global setup file (`test/setup.ts`) mocks the `shisho` runtime object (`log`, `http.fetch`, `url.searchParams`) since it's injected by goja at runtime. Mocks are reset via `vi.restoreAllMocks()` in `beforeEach`. Use `vi.mock("../api")` to mock the HTTP layer when testing higher-level modules (lookup, mapping).
@@ -31,7 +33,7 @@ pnpm release open-library-enricher 0.2.0 goodreads-enricher 0.1.0
 pnpm release open-library-enricher 0.2.0 goodreads-enricher 0.1.0 --dry-run
 ```
 
-This runs `scripts/release.sh` which: validates all plugins upfront, bumps versions in `manifest.json` and `package.json`, builds, generates changelogs from path-filtered commits, updates `repository.json`, commits as `[Release] <plugin-id>@<version>[, ...]`, creates one tag per plugin, and pushes. The GitHub Actions workflow then creates a GitHub Release per tag with the ZIP artifact. Multiple plugins can be released in a single invocation.
+This runs `scripts/release.sh` which: validates all plugins locally, then dispatches a GitHub Actions workflow that bumps versions in `manifest.json` and `package.json`, builds, generates changelogs from path-filtered commits, updates `repository.json` with SHA256 hashes, commits as `[Release] <plugin-id>@<version>[, ...]`, creates one tag per plugin, pushes, and creates a GitHub Release per tag with the ZIP artifact. The script streams the workflow logs so you can watch progress. Multiple plugins can be released in a single invocation.
 
 ## Architecture
 

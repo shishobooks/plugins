@@ -1,38 +1,91 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "*@*.*.*"
+  workflow_dispatch:
+    inputs:
+      plugins:
+        description: 'JSON array of plugins to release, e.g. [{"id":"open-library-enricher","version":"0.2.0"}]'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
-    name: Build and Release
+    name: Release Plugins
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history needed for changelog generation
 
-      - name: Parse tag
-        id: parse
+      - name: Validate input
+        env:
+          PLUGINS_JSON: ${{ inputs.plugins }}
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          PLUGIN_ID="${TAG%%@*}"
-          VERSION="${TAG##*@}"
-          echo "plugin_id=$PLUGIN_ID" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Plugin: $PLUGIN_ID, Version: $VERSION"
+          # Validate JSON
+          echo "$PLUGINS_JSON" | jq -e 'type == "array" and length > 0' > /dev/null 2>&1 || {
+            echo "ERROR: Input must be a non-empty JSON array"
+            echo "Example: [{\"id\":\"open-library-enricher\",\"version\":\"0.2.0\"}]"
+            exit 1
+          }
 
-      - name: Verify manifest version matches tag
-        run: |
-          MANIFEST_VERSION=$(jq -r '.version' "plugins/${{ steps.parse.outputs.plugin_id }}/manifest.json")
-          if [[ "$MANIFEST_VERSION" != "${{ steps.parse.outputs.version }}" ]]; then
-            echo "ERROR: Manifest version ($MANIFEST_VERSION) does not match tag version (${{ steps.parse.outputs.version }})"
+          # Check for duplicate plugin IDs
+          DUPLICATES=$(echo "$PLUGINS_JSON" | jq -r '[.[].id] | group_by(.) | map(select(length > 1)) | flatten | unique | .[]')
+          if [[ -n "$DUPLICATES" ]]; then
+            echo "ERROR: Duplicate plugin IDs: $DUPLICATES"
             exit 1
           fi
+
+          # Validate each plugin entry
+          while IFS= read -r row; do
+            ID=$(echo "$row" | jq -r '.id')
+            VERSION=$(echo "$row" | jq -r '.version')
+            TAG="${ID}@${VERSION}"
+
+            if [[ -z "$ID" || "$ID" == "null" || -z "$VERSION" || "$VERSION" == "null" ]]; then
+              echo "ERROR: Each entry must have 'id' and 'version' fields"
+              exit 1
+            fi
+
+            if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "ERROR: Version '$VERSION' is not valid semver (expected X.Y.Z)"
+              exit 1
+            fi
+
+            if [[ ! -d "plugins/$ID" ]]; then
+              echo "ERROR: Plugin directory 'plugins/$ID' does not exist"
+              exit 1
+            fi
+
+            if [[ ! -f "plugins/$ID/manifest.json" ]]; then
+              echo "ERROR: manifest.json not found for '$ID'"
+              exit 1
+            fi
+
+            MANIFEST_ID=$(jq -r '.id' "plugins/$ID/manifest.json")
+            if [[ "$MANIFEST_ID" != "$ID" ]]; then
+              echo "ERROR: Manifest id '$MANIFEST_ID' does not match plugin-id '$ID'"
+              exit 1
+            fi
+
+            if ! jq -e --arg id "$ID" '.plugins[] | select(.id == $id)' repository.json > /dev/null 2>&1; then
+              echo "ERROR: Plugin '$ID' is not registered in repository.json"
+              exit 1
+            fi
+
+            if git rev-parse "$TAG" > /dev/null 2>&1; then
+              echo "ERROR: Tag '$TAG' already exists"
+              exit 1
+            fi
+
+            echo "  OK $TAG"
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -46,68 +99,214 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Bump versions
+        env:
+          PLUGINS_JSON: ${{ inputs.plugins }}
+        run: |
+          while IFS= read -r row; do
+            ID=$(echo "$row" | jq -r '.id')
+            VERSION=$(echo "$row" | jq -r '.version')
+
+            echo "Bumping $ID to $VERSION..."
+            jq --arg v "$VERSION" '.version = $v' "plugins/$ID/manifest.json" > "plugins/$ID/manifest.json.tmp" && mv "plugins/$ID/manifest.json.tmp" "plugins/$ID/manifest.json"
+            jq --arg v "$VERSION" '.version = $v' "plugins/$ID/package.json" > "plugins/$ID/package.json.tmp" && mv "plugins/$ID/package.json.tmp" "plugins/$ID/package.json"
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
+
       - name: Build plugins
         run: pnpm build
 
-      - name: Create ZIP and verify SHA256
+      - name: Package and update registry
+        env:
+          PLUGINS_JSON: ${{ inputs.plugins }}
         run: |
-          PLUGIN_ID="${{ steps.parse.outputs.plugin_id }}"
-          VERSION="${{ steps.parse.outputs.version }}"
-          PLUGIN_DIR="dist/$PLUGIN_ID"
-          ZIP_NAME="${PLUGIN_ID}-${VERSION}.zip"
+          REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
 
-          if [[ ! -d "$PLUGIN_DIR" ]]; then
-            echo "ERROR: Build output for '$PLUGIN_ID' not found"
-            exit 1
-          fi
+          while IFS= read -r row; do
+            ID=$(echo "$row" | jq -r '.id')
+            VERSION=$(echo "$row" | jq -r '.version')
+            TAG="${ID}@${VERSION}"
+            ZIP_NAME="${ID}-${VERSION}.zip"
 
-          # Create ZIP
-          (cd "$PLUGIN_DIR" && zip -r "../$ZIP_NAME" manifest.json main.js)
+            echo "Packaging $ID v$VERSION..."
 
-          # Calculate SHA256
-          ACTUAL_SHA256=$(sha256sum "dist/$ZIP_NAME" | awk '{print $1}')
+            if [[ ! -d "dist/$ID" ]]; then
+              echo "ERROR: Build output for '$ID' not found at 'dist/$ID'"
+              exit 1
+            fi
 
-          # Get expected SHA256 from repository.json
-          EXPECTED_SHA256=$(jq -r --arg id "$PLUGIN_ID" --arg version "$VERSION" \
-            '.plugins[] | select(.id == $id) | .versions[] | select(.version == $version) | .sha256' \
-            repository.json)
+            # Create ZIP
+            (cd "dist/$ID" && zip -r "../$ZIP_NAME" manifest.json main.js)
 
-          echo "Plugin: $PLUGIN_ID v$VERSION"
-          echo "  Expected SHA256: $EXPECTED_SHA256"
-          echo "  Actual SHA256:   $ACTUAL_SHA256"
+            # Compute SHA256
+            SHA256=$(sha256sum "dist/$ZIP_NAME" | awk '{print $1}')
+            echo "  SHA256: $SHA256"
 
-          if [[ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]]; then
-            echo "ERROR: SHA256 mismatch for $PLUGIN_ID!"
-            exit 1
-          fi
+            # Generate changelog from commits since last release of this plugin
+            PREV_TAG=$(git tag -l "${ID}@*" --sort=-v:refname | head -1 || true)
 
-          echo "  SHA256 verified!"
+            if [[ -n "$PREV_TAG" ]]; then
+              COMMIT_RANGE="$PREV_TAG..HEAD"
+            else
+              COMMIT_RANGE=""
+            fi
 
-      - name: Extract release notes
-        id: notes
+            COMMITS_FEATURES=""
+            COMMITS_BUGFIXES=""
+            COMMITS_DOCS=""
+            COMMITS_TESTING=""
+            COMMITS_CICD=""
+            COMMITS_OTHER=""
+
+            while IFS= read -r commit; do
+              [[ -z "$commit" ]] && continue
+
+              if [[ "$commit" =~ ^\[([^\]]+)\] ]]; then
+                commit_cat="${BASH_REMATCH[1]}"
+                commit_msg="${commit#\[$commit_cat\] }"
+
+                case "$commit_cat" in
+                  Release)                       ;; # Skip release commits
+                  Frontend|Backend|Feature|Feat) COMMITS_FEATURES+="- $commit_msg"$'\n' ;;
+                  Fix)                           COMMITS_BUGFIXES+="- $commit_msg"$'\n' ;;
+                  Docs|Doc)                      COMMITS_DOCS+="- $commit_msg"$'\n' ;;
+                  Test|E2E)                      COMMITS_TESTING+="- $commit_msg"$'\n' ;;
+                  CI|CD)                         COMMITS_CICD+="- $commit_msg"$'\n' ;;
+                  *)                             COMMITS_OTHER+="- $commit_msg"$'\n' ;;
+                esac
+              else
+                COMMITS_OTHER+="- $commit"$'\n'
+              fi
+            done < <(git log --pretty=format:"%s" ${COMMIT_RANGE:+"$COMMIT_RANGE"} -- "plugins/$ID")
+
+            CHANGELOG_SECTION="## [$VERSION] - $(date +%Y-%m-%d)"$'\n'
+
+            if [[ -n "$COMMITS_FEATURES" ]]; then
+              CHANGELOG_SECTION+=$'\n'"### Features"$'\n'"$COMMITS_FEATURES"
+            fi
+            if [[ -n "$COMMITS_BUGFIXES" ]]; then
+              CHANGELOG_SECTION+=$'\n'"### Bug Fixes"$'\n'"$COMMITS_BUGFIXES"
+            fi
+            if [[ -n "$COMMITS_DOCS" ]]; then
+              CHANGELOG_SECTION+=$'\n'"### Documentation"$'\n'"$COMMITS_DOCS"
+            fi
+            if [[ -n "$COMMITS_TESTING" ]]; then
+              CHANGELOG_SECTION+=$'\n'"### Testing"$'\n'"$COMMITS_TESTING"
+            fi
+            if [[ -n "$COMMITS_CICD" ]]; then
+              CHANGELOG_SECTION+=$'\n'"### CI/CD"$'\n'"$COMMITS_CICD"
+            fi
+            if [[ -n "$COMMITS_OTHER" ]]; then
+              CHANGELOG_SECTION+=$'\n'"### Other"$'\n'"$COMMITS_OTHER"
+            fi
+
+            # Update CHANGELOG.md — insert after ## [Unreleased]
+            PLUGIN_CHANGELOG="plugins/$ID/CHANGELOG.md"
+            {
+              found=false
+              while IFS= read -r line || [[ -n "$line" ]]; do
+                echo "$line"
+                if [[ "$line" =~ ^##\ \[Unreleased\] ]] && [[ "$found" == "false" ]]; then
+                  echo ""
+                  echo "$CHANGELOG_SECTION"
+                  found=true
+                fi
+              done < "$PLUGIN_CHANGELOG"
+
+              if [[ "$found" == "false" ]]; then
+                echo "" >&2
+                echo "Warning: No '## [Unreleased]' header found in $PLUGIN_CHANGELOG. Appending one." >&2
+                echo ""
+                echo "## [Unreleased]"
+                echo ""
+                echo "$CHANGELOG_SECTION"
+              fi
+            } > "$PLUGIN_CHANGELOG.tmp" && mv "$PLUGIN_CHANGELOG.tmp" "$PLUGIN_CHANGELOG"
+
+            # Update repository.json
+            MANIFEST_FILE="dist/$ID/manifest.json"
+            DOWNLOAD_URL="$REPO_URL/releases/download/$TAG/$ZIP_NAME"
+            RELEASE_DATE=$(date +%Y-%m-%d)
+
+            MANIFEST_VER=$(jq -r '.manifestVersion' "$MANIFEST_FILE")
+            MIN_SHISHO_VER=$(jq -r '.minShishoVersion // ""' "$MANIFEST_FILE")
+            CAPABILITIES=$(jq '.capabilities // null' "$MANIFEST_FILE")
+
+            NEW_VERSION=$(jq -n \
+              --arg version "$VERSION" \
+              --arg manifestVersion "$MANIFEST_VER" \
+              --arg minShishoVersion "$MIN_SHISHO_VER" \
+              --arg releaseDate "$RELEASE_DATE" \
+              --arg changelog "$CHANGELOG_SECTION" \
+              --arg downloadUrl "$DOWNLOAD_URL" \
+              --arg sha256 "$SHA256" \
+              --argjson capabilities "$CAPABILITIES" \
+              '{
+                version: $version,
+                manifestVersion: ($manifestVersion | tonumber),
+                releaseDate: $releaseDate,
+                changelog: $changelog,
+                downloadUrl: $downloadUrl,
+                sha256: $sha256
+              } + (if $minShishoVersion != "" then {minShishoVersion: $minShishoVersion} else {} end)
+                + (if $capabilities != null then {capabilities: $capabilities} else {} end)')
+
+            jq --arg id "$ID" --argjson newVersion "$NEW_VERSION" '
+              .plugins = [.plugins[] | if .id == $id then .versions = [$newVersion] + .versions else . end]
+            ' repository.json > repository.json.tmp && mv repository.json.tmp repository.json
+
+            # Save changelog section and tag for later steps
+            echo "$CHANGELOG_SECTION" > "/tmp/changelog_${ID}.md"
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
+
+      - name: Commit, tag, and push
+        env:
+          PLUGINS_JSON: ${{ inputs.plugins }}
         run: |
-          PLUGIN_ID="${{ steps.parse.outputs.plugin_id }}"
-          VERSION="${{ steps.parse.outputs.version }}"
-          CHANGELOG="plugins/$PLUGIN_ID/CHANGELOG.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Extract the section for this version from the changelog
-          NOTES=$(awk -v ver="$VERSION" '
-            /^## \[/ {
-              if (found) exit
-              if (index($0, "## [" ver "]")) found=1
-            }
-            found { print }
-          ' "$CHANGELOG")
+          # Build commit message and collect files
+          TAGS=()
+          GIT_ADD_FILES=("repository.json")
+          RELEASE_DESC=""
 
-          # Write to file for the release action
-          echo "$NOTES" > release_notes.md
-          echo "Release notes extracted:"
-          cat release_notes.md
+          while IFS= read -r row; do
+            ID=$(echo "$row" | jq -r '.id')
+            VERSION=$(echo "$row" | jq -r '.version')
+            TAG="${ID}@${VERSION}"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: "${{ steps.parse.outputs.plugin_id }} v${{ steps.parse.outputs.version }}"
-          files: "dist/${{ steps.parse.outputs.plugin_id }}-${{ steps.parse.outputs.version }}.zip"
-          generate_release_notes: false
-          body_path: release_notes.md
+            TAGS+=("$TAG")
+            GIT_ADD_FILES+=("plugins/$ID/manifest.json" "plugins/$ID/package.json" "plugins/$ID/CHANGELOG.md")
+
+            if [[ -n "$RELEASE_DESC" ]]; then
+              RELEASE_DESC+=", "
+            fi
+            RELEASE_DESC+="$TAG"
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
+
+          git add "${GIT_ADD_FILES[@]}"
+          git commit -m "[Release] $RELEASE_DESC"
+
+          for TAG in "${TAGS[@]}"; do
+            git tag -a "$TAG" -m "Release $TAG"
+          done
+
+          git push origin HEAD:"$GITHUB_REF_NAME" "${TAGS[@]}"
+
+      - name: Create GitHub Releases
+        env:
+          PLUGINS_JSON: ${{ inputs.plugins }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          while IFS= read -r row; do
+            ID=$(echo "$row" | jq -r '.id')
+            VERSION=$(echo "$row" | jq -r '.version')
+            TAG="${ID}@${VERSION}"
+            ZIP_PATH="dist/${ID}-${VERSION}.zip"
+            NOTES_FILE="/tmp/changelog_${ID}.md"
+
+            echo "Creating GitHub Release for $TAG..."
+            gh release create "$TAG" "$ZIP_PATH" \
+              --title "$ID v$VERSION" \
+              --notes-file "$NOTES_FILE"
+          done < <(echo "$PLUGINS_JSON" | jq -c '.[]')
