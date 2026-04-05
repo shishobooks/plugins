@@ -15,8 +15,8 @@ importers:
         specifier: ^4.7.0
         version: 4.7.1(prettier@3.8.1)
       '@shisho/plugin-sdk':
-        specifier: 0.0.25
-        version: 0.0.25
+        specifier: 0.0.26
+        version: 0.0.26
       concurrently:
         specifier: ^9.1.2
         version: 9.2.1
@@ -611,8 +611,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shisho/plugin-sdk@0.0.25':
-    resolution: {integrity: sha512-xQ69pqZf6pKdeO9KVIJou6+5gcs2xA+Rgsatg08aTGKo7EfU/5JEXAwMAGUU2cre6yoRR2Ihocu2qWl5N9SLcw==}
+  '@shisho/plugin-sdk@0.0.26':
+    resolution: {integrity: sha512-Vf3pYvKcaeqepjMXLp2iQJ8yG3iUjHmUgmt0kCihqBRAcGFuyM+xD38QXQAVRV7yZFw3Vp7sqR0lzJe6ppjuFQ==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -1756,7 +1756,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.1':
     optional: true
 
-  '@shisho/plugin-sdk@0.0.25':
+  '@shisho/plugin-sdk@0.0.26':
     dependencies:
       fast-xml-parser: 5.5.10
       linkedom: 0.18.12

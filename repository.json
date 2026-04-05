@@ -19,7 +19,46 @@
           "changelog": "## [0.1.0] - 2026-04-05\n\n### Features\n- Add minShishoVersion to release process and enrich plugin metadata (#5)\n- Goodreads metadata enricher plugin (#4)\n- Open Library metadata enricher plugin (#1)\n- Add per-plugin release process\n\n### Bug Fixes\n- Address code review findings for enricher plugin (#2)\n\n### Other\n- Migrate from Yarn to pnpm workspaces (#7)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.1.0/open-library-enricher-0.1.0.zip",
           "sha256": "180f24565cd4c305b30f3cc93bc5660984ba94572da94f537b0026fbf47dc691",
-          "minShishoVersion": "0.0.23"
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Open Library API",
+              "fileTypes": ["epub", "m4b", "pdf"],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "narrators",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Open Library API and fetches cover images",
+              "domains": ["*.openlibrary.org", "*.archive.org"]
+            },
+            "identifierTypes": [
+              {
+                "id": "openlibrary_work",
+                "name": "Open Library Work",
+                "urlTemplate": "https://openlibrary.org/works/{value}",
+                "pattern": "^OL\\d+W$"
+              },
+              {
+                "id": "openlibrary_edition",
+                "name": "Open Library Edition",
+                "urlTemplate": "https://openlibrary.org/books/{value}",
+                "pattern": "^OL\\d+M$"
+              }
+            ]
+          }
         }
       ]
     },
@@ -39,7 +78,43 @@
           "changelog": "## [0.1.0] - 2026-04-05\n\n### Features\n- Add minShishoVersion to release process and enrich plugin metadata (#5)\n\n### Other\n- Migrate from Yarn to pnpm workspaces (#7)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.1.0/goodreads-enricher-0.1.0.zip",
           "sha256": "d5fb3ca6a0b3f5703cafa2c5731163d648830168993eef2ecfcb6f5ae1e1abc1",
-          "minShishoVersion": "0.0.23"
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": ["epub", "m4b", "pdf"],
+              "fields": [
+                "title",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
         }
       ]
     }
