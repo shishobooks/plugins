@@ -11,7 +11,17 @@
       "author": "Shisho Team",
       "homepage": "https://github.com/shishobooks/plugins",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/open-library-enricher/logo.svg",
-      "versions": []
+      "versions": [
+        {
+          "version": "0.1.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-05",
+          "changelog": "## [0.1.0] - 2026-04-05\n\n### Features\n- Add minShishoVersion to release process and enrich plugin metadata (#5)\n- Goodreads metadata enricher plugin (#4)\n- Open Library metadata enricher plugin (#1)\n- Add per-plugin release process\n\n### Bug Fixes\n- Address code review findings for enricher plugin (#2)\n\n### Other\n- Migrate from Yarn to pnpm workspaces (#7)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.1.0/open-library-enricher-0.1.0.zip",
+          "sha256": "180f24565cd4c305b30f3cc93bc5660984ba94572da94f537b0026fbf47dc691",
+          "minShishoVersion": "0.0.23"
+        }
+      ]
     },
     {
       "id": "goodreads-enricher",
@@ -21,7 +31,17 @@
       "author": "Shisho Team",
       "homepage": "https://github.com/shishobooks/plugins",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
-      "versions": []
+      "versions": [
+        {
+          "version": "0.1.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-05",
+          "changelog": "## [0.1.0] - 2026-04-05\n\n### Features\n- Add minShishoVersion to release process and enrich plugin metadata (#5)\n\n### Other\n- Migrate from Yarn to pnpm workspaces (#7)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.1.0/goodreads-enricher-0.1.0.zip",
+          "sha256": "d5fb3ca6a0b3f5703cafa2c5731163d648830168993eef2ecfcb6f5ae1e1abc1",
+          "minShishoVersion": "0.0.23"
+        }
+      ]
     }
   ]
 }

@@ -11,7 +11,11 @@
   "capabilities": {
     "metadataEnricher": {
       "description": "Fetches metadata from Open Library API",
-      "fileTypes": ["epub", "m4b", "pdf"],
+      "fileTypes": [
+        "epub",
+        "m4b",
+        "pdf"
+      ],
       "fields": [
         "title",
         "subtitle",
@@ -30,7 +34,10 @@
     },
     "httpAccess": {
       "description": "Calls Open Library API and fetches cover images",
-      "domains": ["*.openlibrary.org", "*.archive.org"]
+      "domains": [
+        "*.openlibrary.org",
+        "*.archive.org"
+      ]
     },
     "identifierTypes": [
       {
