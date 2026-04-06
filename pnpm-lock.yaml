@@ -44,6 +44,12 @@ importers:
 
   packages/shared: {}
 
+  plugins/audible-enricher:
+    dependencies:
+      '@shisho-plugins/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+
   plugins/goodreads-enricher:
     dependencies:
       '@shisho-plugins/shared':
