@@ -124,16 +124,10 @@ function tryTitleAuthorSearch(
 
     // Try Audnexus for genre/tag enrichment
     const audnexusBook = fetchAudnexusBook(product.asin, marketplace);
-    if (audnexusBook?.genres && audnexusBook.genres.length > 0) {
-      const genres = audnexusBook.genres
-        .filter((g) => g.type === "genre")
-        .map((g) => g.name);
-      const tags = audnexusBook.genres
-        .filter((g) => g.type === "tag")
-        .map((g) => g.name);
-
-      if (genres.length > 0) metadata.genres = genres;
-      if (tags.length > 0) metadata.tags = tags;
+    if (audnexusBook) {
+      const enriched = audnexusToMetadata(audnexusBook, marketplace);
+      if (enriched.genres) metadata.genres = enriched.genres;
+      if (enriched.tags) metadata.tags = enriched.tags;
     }
 
     results.push(metadata);

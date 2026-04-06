@@ -152,11 +152,11 @@ export function audnexusToMetadata(
     metadata.subtitle = book.subtitle;
   }
 
-  if (book.authors.length > 0) {
+  if (book.authors && book.authors.length > 0) {
     metadata.authors = book.authors.map((a) => ({ name: a.name }));
   }
 
-  if (book.narrators.length > 0) {
+  if (book.narrators && book.narrators.length > 0) {
     metadata.narrators = book.narrators.map((n) => n.name);
   }
 
