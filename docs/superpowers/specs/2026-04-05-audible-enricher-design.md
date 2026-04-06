@@ -29,7 +29,7 @@ plugins/audible-enricher/
   src/
     index.ts      -- Plugin export, metadataEnricher.search() hook
     api.ts        -- HTTP calls to Audible API and Audnexus
-    lookup.ts     -- 3-tier search strategy with marketplace iteration
+    lookup.ts     -- 2-tier search strategy with marketplace iteration
     mapping.ts    -- Transform API responses to ParsedMetadata
     types.ts      -- TypeScript types for Audible + Audnexus responses
     __tests__/
