@@ -5,3 +5,4 @@ docs/
 pnpm-lock.yaml
 **/manifest.json
 **/CHANGELOG.md
+repository.json
