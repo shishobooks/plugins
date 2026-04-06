@@ -83,7 +83,7 @@ At runtime: `shisho.config.get("marketplaces")` returns a string like `"us,uk"`.
     "fields": [
       "title", "subtitle", "authors", "narrators", "description",
       "publisher", "releaseDate", "series", "seriesNumber",
-      "genres", "tags", "cover", "identifiers", "url"
+      "genres", "cover", "identifiers", "url"
     ]
   },
   "httpAccess": {
@@ -183,8 +183,8 @@ Audible API returns HTTP 429 with `Retry-After` header. No retry logic in the pl
 | releaseDate | `release_date` → ISO 8601 | `releaseDate` → ISO 8601 |
 | series | `series[0].title` | `seriesPrimary.name` |
 | seriesNumber | `series[0].sequence` (parse to number) | `seriesPrimary.position` (parse to number) |
-| genres | `category_ladders` leaf names (single-product only) | `genres[].name` where type="genre" (first 3) |
-| tags | — | `genres[].name` where type="tag" (remainder) |
+| genres | `category_ladders` leaf names (single-product only) | `genres[].name` (all entries, regardless of type) |
+| tags | — | — |
 | coverUrl | `product_images.1024` or `product_images.500` | `image` |
 | url | Constructed: `https://www.audible.{tld}/pd/{ASIN}` | — |
 | identifiers | `[{type: "asin", value: asin}]` | `[{type: "asin", value: asin}]` |
