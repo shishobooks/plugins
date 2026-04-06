@@ -50,6 +50,35 @@ describe("searchAutocomplete", () => {
     expect(searchAutocomplete("test")).toBeNull();
   });
 
+  it("retries on 503 and succeeds", () => {
+    const results = [{ bookId: "5907", title: "The Hobbit" }];
+    vi.mocked(shisho.http.fetch)
+      .mockReturnValueOnce({
+        status: 503,
+        statusText: "Service Unavailable",
+        ok: false,
+        json: () => null,
+        text: () => "",
+      } as ReturnType<typeof shisho.http.fetch>)
+      .mockReturnValueOnce({
+        status: 200,
+        statusText: "OK",
+        ok: true,
+        json: () => results,
+        text: () => "",
+      } as ReturnType<typeof shisho.http.fetch>);
+
+    expect(searchAutocomplete("the hobbit")).toEqual(results);
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after max retries on repeated 503", () => {
+    mockFetch({ status: 503, statusText: "Service Unavailable", ok: false });
+
+    expect(searchAutocomplete("test")).toBeNull();
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(3);
+  });
+
   it("passes query to searchParams", () => {
     mockFetch({ status: 200, ok: true, body: [] });
 
@@ -85,5 +114,36 @@ describe("fetchBookPage", () => {
     mockFetch({ status: 500, statusText: "Internal Server Error", ok: false });
 
     expect(fetchBookPage("5907")).toBeNull();
+    // 500 is not retryable, so only 1 attempt
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries on 503 and returns HTML on success", () => {
+    const html = "<html><body>Book</body></html>";
+    vi.mocked(shisho.http.fetch)
+      .mockReturnValueOnce({
+        status: 503,
+        statusText: "Service Unavailable",
+        ok: false,
+        json: () => null,
+        text: () => "",
+      } as ReturnType<typeof shisho.http.fetch>)
+      .mockReturnValueOnce({
+        status: 503,
+        statusText: "Service Unavailable",
+        ok: false,
+        json: () => null,
+        text: () => "",
+      } as ReturnType<typeof shisho.http.fetch>)
+      .mockReturnValueOnce({
+        status: 200,
+        statusText: "OK",
+        ok: true,
+        json: () => null,
+        text: () => html,
+      } as ReturnType<typeof shisho.http.fetch>);
+
+    expect(fetchBookPage("5907")).toBe(html);
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(3);
   });
 });
