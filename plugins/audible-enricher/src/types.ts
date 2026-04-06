@@ -52,7 +52,10 @@ export interface AudibleProduct {
     root: string;
   }>;
   rating?: {
-    overall_distribution: { display_average_rating: number; num_ratings: number };
+    overall_distribution: {
+      display_average_rating: number;
+      num_ratings: number;
+    };
   };
 }
 
