@@ -45,9 +45,10 @@ describe("searchAutocomplete", () => {
   });
 
   it("returns null on HTTP error", () => {
-    mockFetch({ status: 503, statusText: "Service Unavailable", ok: false });
+    mockFetch({ status: 500, statusText: "Internal Server Error", ok: false });
 
     expect(searchAutocomplete("test")).toBeNull();
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(1);
   });
 
   it("retries on 503 and succeeds", () => {

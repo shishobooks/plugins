@@ -24,7 +24,7 @@ function fetchWithRetry(
     const status = response?.status;
     if (status && RETRYABLE_STATUSES.has(status) && attempt < MAX_ATTEMPTS) {
       shisho.log.warn(
-        `HTTP ${status} for ${url}, retrying (${attempt}/${MAX_ATTEMPTS - 1})…`,
+        `HTTP ${status} for ${url}, retrying (attempt ${attempt + 1}/${MAX_ATTEMPTS})…`,
       );
       continue;
     }
