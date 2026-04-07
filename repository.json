@@ -189,6 +189,55 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.3.1",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-07",
+          "changelog": "## [0.3.1] - 2026-04-07\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.3.1/goodreads-enricher-0.3.1.zip",
+          "sha256": "da711d4c9c03d37d66f4d4ba1459b6570cf86d5d79c08aa7078677d401f7554a",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.3.0",
           "manifestVersion": 1,
           "releaseDate": "2026-04-05",
