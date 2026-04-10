@@ -176,7 +176,10 @@ jobs:
               else
                 COMMITS_OTHER+="- $commit"$'\n'
               fi
-            done < <(git log --pretty=format:"%s" ${COMMIT_RANGE:+"$COMMIT_RANGE"} -- "plugins/$ID")
+            done < <(git log --pretty=tformat:"%s" ${COMMIT_RANGE:+"$COMMIT_RANGE"} -- "plugins/$ID")
+
+            COMMIT_COUNT=$(printf '%s' "$COMMITS_FEATURES$COMMITS_BUGFIXES$COMMITS_DOCS$COMMITS_TESTING$COMMITS_CICD$COMMITS_OTHER" | grep -c '^- ' || true)
+            echo "  Changelog: $COMMIT_COUNT commit(s) since ${PREV_TAG:-initial}"
 
             CHANGELOG_SECTION="## [$VERSION] - $(date +%Y-%m-%d)"$'\n'
 
@@ -197,6 +200,10 @@ jobs:
             fi
             if [[ -n "$COMMITS_OTHER" ]]; then
               CHANGELOG_SECTION+=$'\n'"### Other"$'\n'"$COMMITS_OTHER"
+            fi
+
+            if [[ -z "$COMMITS_FEATURES$COMMITS_BUGFIXES$COMMITS_DOCS$COMMITS_TESTING$COMMITS_CICD$COMMITS_OTHER" ]]; then
+              CHANGELOG_SECTION+=$'\n'"_No plugin code changes in this release._"$'\n'
             fi
 
             # Update CHANGELOG.md — insert after ## [Unreleased]
