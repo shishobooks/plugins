@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.1] - 2026-04-07
 
+### Bug Fixes
+- Add retry logic for Goodreads HTTP 503 errors (#14)
 
 ## [0.3.0] - 2026-04-05
 
