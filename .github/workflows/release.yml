@@ -178,6 +178,9 @@ jobs:
               fi
             done < <(git log --pretty=tformat:"%s" ${COMMIT_RANGE:+"$COMMIT_RANGE"} -- "plugins/$ID")
 
+            COMMIT_COUNT=$(printf '%s' "$COMMITS_FEATURES$COMMITS_BUGFIXES$COMMITS_DOCS$COMMITS_TESTING$COMMITS_CICD$COMMITS_OTHER" | grep -c '^- ' || true)
+            echo "  Changelog: $COMMIT_COUNT commit(s) since ${PREV_TAG:-initial}"
+
             CHANGELOG_SECTION="## [$VERSION] - $(date +%Y-%m-%d)"$'\n'
 
             if [[ -n "$COMMITS_FEATURES" ]]; then
