@@ -12,9 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2026-04-05
 
+_No plugin code changes in this release._
 
 ## [0.2.0] - 2026-04-05
 
+### Bug Fixes
+- Handle missing Unreleased header in plugin changelogs during release (#10)
 
 ## [0.1.0] - 2026-04-05
 
