@@ -155,18 +155,24 @@ function pickReleaseDate(book: JsonLdBook): string | undefined {
  * the page always has an og:description meta tag with the synopsis.
  */
 function extractOgDescription(html: string): string | undefined {
-  const m = html.match(
-    /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i,
+  const match = html.match(
+    /<meta[^>]*property=["']og:description["'][^>]*content=(?:"([^"]*)"|'([^']*)')/i,
   );
-  if (!m) {
+  if (!match) {
     // Try the other attribute order: content before property.
-    const m2 = html.match(
-      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i,
+    const match2 = html.match(
+      /<meta[^>]*content=(?:"([^"]*)"|'([^']*)')[\s\S]*?property=["']og:description["']/i,
     );
-    if (m2) return m2[1].trim();
+    if (match2) {
+      const content = match2[1] ?? match2[2];
+      if (!content) return undefined;
+      return content.trim();
+    }
     return undefined;
   }
-  return m[1].trim();
+  const content = match[1] ?? match[2];
+  if (!content) return undefined;
+  return content.trim();
 }
 
 /**

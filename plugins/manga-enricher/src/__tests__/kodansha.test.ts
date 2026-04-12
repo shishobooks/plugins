@@ -105,4 +105,23 @@ ${JSON.stringify({
     const result = kodanshaScraper.searchVolume("Test", 1);
     expect(result?.isbn13).toBe("9782222222222");
   });
+
+  it("reads og:description containing apostrophes without truncation", () => {
+    const synthetic = `<html><head>
+<meta property="og:description" content="Eren's dream drives the Survey Corps to a world they'd never imagined.">
+<script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Book",
+      name: "Test",
+      workExample: [],
+    })}</script>
+</head><body></body></html>`;
+
+    mockFetch(200, true, synthetic);
+    const result = kodanshaScraper.searchVolume("Test", 1);
+
+    expect(result?.description).toBe(
+      "Eren's dream drives the Survey Corps to a world they'd never imagined.",
+    );
+  });
 });
