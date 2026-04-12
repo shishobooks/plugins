@@ -13,6 +13,61 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/open-library-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.3.1",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-12",
+          "changelog": "## [0.3.1] - 2026-04-12\n\n### Bug Fixes\n- Capture last commit in release changelog generation (#15)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.3.1/open-library-enricher-0.3.1.zip",
+          "sha256": "a57ad85cbe1b3288aa3e7f3d38a279f40f4e12aa14c6925094aec629d061cf99",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Open Library API",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "narrators",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Open Library API and fetches cover images",
+              "domains": [
+                "*.openlibrary.org",
+                "*.archive.org"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "openlibrary_work",
+                "name": "Open Library Work",
+                "urlTemplate": "https://openlibrary.org/works/{value}",
+                "pattern": "^OL\\d+W$"
+              },
+              {
+                "id": "openlibrary_edition",
+                "name": "Open Library Edition",
+                "urlTemplate": "https://openlibrary.org/books/{value}",
+                "pattern": "^OL\\d+M$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.3.0",
           "manifestVersion": 1,
           "releaseDate": "2026-04-05",
@@ -188,6 +243,55 @@
       "homepage": "https://github.com/shishobooks/plugins",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
+        {
+          "version": "0.3.2",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-12",
+          "changelog": "## [0.3.2] - 2026-04-12\n\n### Bug Fixes\n- Capture last commit in release changelog generation (#15)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.3.2/goodreads-enricher-0.3.2.zip",
+          "sha256": "ae5a079e1e56dd7cd0d5c49aaa623dc37ee8aee3e3c1d317562e5b239c72e8ff",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
         {
           "version": "0.3.1",
           "manifestVersion": 1,
