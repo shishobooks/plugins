@@ -489,6 +489,16 @@
           }
         }
       ]
+    },
+    {
+      "id": "audible-enricher",
+      "name": "Audible Enricher",
+      "overview": "Fetches audiobook metadata from Audible and Audnexus",
+      "description": "Enriches audiobook metadata from Audible and Audnexus",
+      "author": "Shisho Team",
+      "homepage": "https://github.com/shishobooks/plugins",
+      "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/audible-enricher/logo.svg",
+      "versions": []
     }
   ]
 }
