@@ -4,7 +4,7 @@
   "name": "Audible Enricher",
   "version": "0.1.0",
   "description": "Enriches audiobook metadata from Audible and Audnexus",
-  "minShishoVersion": "0.0.26",
+  "minShishoVersion": "0.0.28",
   "author": "Shisho Team",
   "homepage": "https://github.com/shishobooks/plugins",
   "license": "MIT",
