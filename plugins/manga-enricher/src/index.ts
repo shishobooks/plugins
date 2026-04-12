@@ -1,0 +1,22 @@
+import { searchForManga } from "./lookup";
+import type {
+  SearchContext,
+  SearchResponse,
+  ShishoPlugin,
+} from "@shisho/plugin-sdk";
+
+const plugin: ShishoPlugin = {
+  metadataEnricher: {
+    search(context: SearchContext): SearchResponse {
+      shisho.log.info("Manga enricher: searching");
+
+      const results = searchForManga(context);
+      shisho.log.info(`Found ${results.length} candidate(s)`);
+
+      return { results };
+    },
+  },
+};
+
+// Export for esbuild IIFE bundling - this becomes the return value
+export default plugin;
