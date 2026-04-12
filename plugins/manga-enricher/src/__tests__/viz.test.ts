@@ -56,6 +56,12 @@ describe("vizScraper.searchVolume", () => {
 
     const result = vizScraper.searchVolume("One Piece", 1);
 
+    // Verify URLs passed to fetch
+    const calls = vi.mocked(shisho.http.fetch).mock.calls;
+    expect(calls[0][0]).toContain("viz.com/search");
+    expect((calls[0][0] as string).toLowerCase()).toContain("one+piece");
+    expect(calls[1][0]).toContain("viz.com/manga-books/manga/");
+
     expect(result).not.toBeNull();
     // Title should contain "One Piece" and "Vol. 1"
     expect(result?.title).toMatch(/one piece/i);
@@ -98,5 +104,25 @@ describe("vizScraper.searchVolume", () => {
       { status: 500, ok: false, body: "" },
     ]);
     expect(vizScraper.searchVolume("One Piece", 1)).toBeNull();
+  });
+
+  it("includes the edition variant in the search query", () => {
+    mockFetchSequence([
+      {
+        status: 200,
+        ok: true,
+        body: '<html><body><a href="/manga-books/manga/one-piece-omnibus-edition-volume-1-0/product/999">x</a></body></html>',
+      },
+      { status: 200, ok: true, body: "<html><body></body></html>" },
+    ]);
+
+    vizScraper.searchVolume("One Piece", 1, "Omnibus Edition");
+
+    const searchUrl = vi.mocked(shisho.http.fetch).mock.calls[0][0] as string;
+    expect(searchUrl).toContain("viz.com/search");
+    // The URL must carry both the series title and the edition in the search param.
+    // The exact encoding depends on searchParams — check that both words are present.
+    expect(searchUrl.toLowerCase()).toContain("one+piece");
+    expect(searchUrl.toLowerCase()).toContain("omnibus");
   });
 });
