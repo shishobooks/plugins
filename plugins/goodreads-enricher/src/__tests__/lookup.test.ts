@@ -15,7 +15,8 @@ vi.mock("../parsing", () => ({
 }));
 
 vi.mock("@shisho-plugins/shared", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@shisho-plugins/shared")>();
+  const actual =
+    await importOriginal<typeof import("@shisho-plugins/shared")>();
   return {
     ...actual,
     stripHTML: vi.fn((html: string) => html.replace(/<[^>]+>/g, "").trim()),

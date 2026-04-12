@@ -438,4 +438,3 @@ export function decodeHTMLEntities(text: string): string {
     .replace(/&#x27;/g, "'")
     .replace(/&apos;/g, "'");
 }
-

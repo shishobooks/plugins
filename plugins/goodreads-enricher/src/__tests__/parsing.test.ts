@@ -338,7 +338,6 @@ describe("decodeHTMLEntities", () => {
   });
 });
 
-
 describe("extractFromNextData", () => {
   function makeNextDataHtml(apolloState: Record<string, unknown>): string {
     const nextData = {
