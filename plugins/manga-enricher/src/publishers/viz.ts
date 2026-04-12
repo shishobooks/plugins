@@ -131,14 +131,6 @@ export function parseProduct(html: string, url: string): VolumeMetadata {
   );
   if (imprint) metadata.imprint = imprint;
 
-  // Age Rating: text node after the tooltip anchor and &nbsp;.
-  // Actual HTML: <strong>Age Rating</strong>\n  <a ...></a>&nbsp;\n  Teen
-  const ageRating = matchOne(
-    html,
-    /<strong>Age\s+Rating<\/strong>[\s\S]*?<\/a>&nbsp;\s*\n\s*([^\s<][^<]*?)\s*\n/i,
-  );
-  if (ageRating) metadata.ageRating = ageRating;
-
   return metadata;
 }
 

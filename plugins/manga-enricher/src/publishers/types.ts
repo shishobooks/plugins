@@ -19,8 +19,6 @@ export interface VolumeMetadata {
   pageCount?: number;
   /** Publisher imprint (e.g., "Shonen Jump" on Viz). */
   imprint?: string;
-  /** Age rating string (e.g., "Teen", "16+"). */
-  ageRating?: string;
   /** Publisher product page URL. */
   url?: string;
 }

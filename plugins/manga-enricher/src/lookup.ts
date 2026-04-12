@@ -207,7 +207,7 @@ function findVolumeData(
  * Merge per-volume data into the (already series-level) metadata. The
  * volume data overrides series fields where it is more specific (title,
  * description, url) and adds new fields (releaseDate, pageCount, imprint,
- * isbn, ageRating, subtitle).
+ * isbn, subtitle).
  */
 function mergeVolumeData(
   metadata: ParsedMetadata,
