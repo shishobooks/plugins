@@ -73,3 +73,24 @@ const MONTHS: Record<string, string> = {
 export function parseMonth(monthStr: string): string | undefined {
   return MONTHS[monthStr.toLowerCase()];
 }
+
+/**
+ * Strip HTML tags and decode common entities, preserving line breaks.
+ * Converts <br> to newlines and </p><p> to double newlines before
+ * stripping remaining tags.
+ */
+export function stripHTML(html: string): string {
+  if (!html) return "";
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+}

@@ -2,6 +2,7 @@ import {
   levenshteinDistance,
   normalizeForComparison,
   parseMonth,
+  stripHTML,
 } from "../index";
 import { describe, expect, it } from "vitest";
 
@@ -115,5 +116,39 @@ describe("parseMonth", () => {
   it("returns undefined for invalid input", () => {
     expect(parseMonth("notamonth")).toBeUndefined();
     expect(parseMonth("")).toBeUndefined();
+  });
+});
+
+describe("stripHTML", () => {
+  it("removes HTML tags", () => {
+    expect(stripHTML("<p>Hello <b>world</b></p>")).toBe("Hello world");
+  });
+
+  it("converts <br> tags to newlines", () => {
+    expect(stripHTML("line one<br />line two")).toBe("line one\nline two");
+    expect(stripHTML("line one<br/>line two")).toBe("line one\nline two");
+    expect(stripHTML("line one<br>line two")).toBe("line one\nline two");
+  });
+
+  it("converts </p><p> boundaries to double newlines", () => {
+    expect(stripHTML("<p>First</p><p>Second</p>")).toBe("First\n\nSecond");
+  });
+
+  it("decodes HTML entities", () => {
+    expect(stripHTML("one &amp; two")).toBe("one & two");
+    expect(stripHTML("It&apos;s &quot;great&quot;")).toBe('It\'s "great"');
+    expect(stripHTML("a &lt; b &gt; c")).toBe("a < b > c");
+  });
+
+  it("handles empty and falsy input", () => {
+    expect(stripHTML("")).toBe("");
+  });
+
+  it("handles plain text", () => {
+    expect(stripHTML("no tags here")).toBe("no tags here");
+  });
+
+  it("trims whitespace", () => {
+    expect(stripHTML("  <p>text</p>  ")).toBe("text");
   });
 });

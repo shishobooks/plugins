@@ -3,7 +3,6 @@ import {
   audnexusToMetadata,
   parseAbridged,
   parseLanguage,
-  stripHTML,
 } from "../mapping";
 import type { AudibleProduct, AudnexusBook } from "../types";
 import { describe, expect, it } from "vitest";
@@ -272,35 +271,7 @@ describe("audnexusToMetadata", () => {
   });
 });
 
-describe("stripHTML", () => {
-  it("removes HTML tags", () => {
-    expect(stripHTML("<p>Hello <b>world</b></p>")).toBe("Hello world");
-  });
-
-  it("converts <br> tags to newlines", () => {
-    expect(stripHTML("line one<br />line two")).toBe("line one\nline two");
-    expect(stripHTML("line one<br/>line two")).toBe("line one\nline two");
-    expect(stripHTML("line one<br>line two")).toBe("line one\nline two");
-  });
-
-  it("converts </p><p> boundaries to double newlines", () => {
-    expect(stripHTML("<p>First paragraph</p><p>Second paragraph</p>")).toBe(
-      "First paragraph\n\nSecond paragraph",
-    );
-  });
-
-  it("decodes HTML entities", () => {
-    expect(stripHTML("one &amp; two")).toBe("one & two");
-  });
-
-  it("handles empty string", () => {
-    expect(stripHTML("")).toBe("");
-  });
-
-  it("handles plain text", () => {
-    expect(stripHTML("no tags here")).toBe("no tags here");
-  });
-});
+// stripHTML tests are in packages/shared/src/__tests__/index.test.ts
 
 describe("parseLanguage", () => {
   it("maps english to en", () => {

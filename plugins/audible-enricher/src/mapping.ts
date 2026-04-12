@@ -3,24 +3,8 @@ import {
   type AudibleProduct,
   type AudnexusBook,
 } from "./types";
+import { stripHTML } from "@shisho-plugins/shared";
 import type { ParsedMetadata } from "@shisho/plugin-sdk";
-
-/**
- * Strip HTML tags and decode common HTML entities.
- */
-export function stripHTML(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .trim();
-}
 
 /**
  * Parse a date string to ISO 8601 format.
