@@ -19,7 +19,12 @@ function fetchHtml(url: string): string | null {
     shisho.log.warn(`Viz: HTTP ${response?.status ?? "no response"} ${url}`);
     return null;
   }
-  return response.text();
+  try {
+    return response.text();
+  } catch {
+    shisho.log.warn(`Viz: failed to read response body for ${url}`);
+    return null;
+  }
 }
 
 /**

@@ -20,7 +20,12 @@ function fetchHtml(url: string): string | null {
     );
     return null;
   }
-  return response.text();
+  try {
+    return response.text();
+  } catch {
+    shisho.log.warn(`Kodansha: failed to read response body for ${url}`);
+    return null;
+  }
 }
 
 /**
