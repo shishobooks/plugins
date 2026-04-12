@@ -610,6 +610,16 @@
           }
         }
       ]
+    },
+    {
+      "id": "manga-enricher",
+      "name": "Manga Enricher",
+      "overview": "Fetches manga metadata from MangaUpdates and per-volume details from Viz Media and Kodansha USA",
+      "description": "Enriches manga metadata from MangaUpdates and publisher websites (Viz, Kodansha USA)",
+      "author": "Shisho Team",
+      "homepage": "https://github.com/shishobooks/plugins",
+      "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/manga-enricher/logo.svg",
+      "versions": []
     }
   ]
 }
