@@ -20,9 +20,9 @@ describe("parseQuery", () => {
     });
 
     it("strips multiple trailing parenthesized groups", () => {
-      expect(
-        parseQuery("One Piece (2023) (Digital) (1r0n)").seriesTitle,
-      ).toBe("One Piece");
+      expect(parseQuery("One Piece (2023) (Digital) (1r0n)").seriesTitle).toBe(
+        "One Piece",
+      );
     });
 
     it("strips noise that appears before the extension", () => {
