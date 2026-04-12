@@ -12,7 +12,6 @@ vi.mock("../api", () => ({
 
 vi.mock("../parsing", () => ({
   parseBookPage: vi.fn(),
-  stripHTML: vi.fn((html: string) => html.replace(/<[^>]+>/g, "").trim()),
 }));
 
 const mockedSearchAutocomplete = vi.mocked(searchAutocomplete);

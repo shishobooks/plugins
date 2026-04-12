@@ -15,6 +15,7 @@
     "lint:eslint": "eslint --max-warnings 0 .",
     "lint:prettier": "prettier --check .",
     "lint:types": "tsc --noEmit",
+    "check": "pnpm lint && pnpm test",
     "release": "./scripts/release.sh"
   },
   "devDependencies": {

@@ -1,10 +1,11 @@
 import { fetchBookPage, searchAutocomplete } from "./api";
 import { stripImageSuffix, toMetadata } from "./mapping";
-import { parseBookPage, stripHTML } from "./parsing";
+import { parseBookPage } from "./parsing";
 import type { GRAutocompleteResult, GRLookupResult } from "./types";
 import {
   levenshteinDistance,
   normalizeForComparison,
+  stripHTML,
 } from "@shisho-plugins/shared";
 import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
 
