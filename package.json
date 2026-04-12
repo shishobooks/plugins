@@ -14,7 +14,7 @@
     "lint": "concurrently --kill-others-on-fail --group \"pnpm:lint:*\"",
     "lint:eslint": "eslint --max-warnings 0 .",
     "lint:prettier": "prettier --check .",
-    "lint:types": "tsc --noEmit",
+    "lint:types": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "check": "pnpm lint && pnpm test",
     "release": "./scripts/release.sh"
   },
