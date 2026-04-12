@@ -1,0 +1,69 @@
+{
+  "manifestVersion": 1,
+  "id": "audible-enricher",
+  "name": "Audible Enricher",
+  "version": "0.1.0",
+  "description": "Enriches audiobook metadata from Audible and Audnexus",
+  "minShishoVersion": "0.0.28",
+  "author": "Shisho Team",
+  "homepage": "https://github.com/shishobooks/plugins",
+  "license": "MIT",
+  "capabilities": {
+    "metadataEnricher": {
+      "description": "Fetches audiobook metadata from Audible catalog API and Audnexus",
+      "fileTypes": ["m4b"],
+      "fields": [
+        "title",
+        "subtitle",
+        "authors",
+        "narrators",
+        "description",
+        "publisher",
+        "releaseDate",
+        "series",
+        "seriesNumber",
+        "genres",
+        "tags",
+        "cover",
+        "identifiers",
+        "url",
+        "language",
+        "abridged"
+      ]
+    },
+    "httpAccess": {
+      "description": "Calls Audible catalog API, Audnexus API, and fetches cover images from Amazon CDN",
+      "domains": [
+        "api.audible.com",
+        "api.audible.co.uk",
+        "api.audible.de",
+        "api.audible.fr",
+        "api.audible.it",
+        "api.audible.es",
+        "api.audible.ca",
+        "api.audible.com.au",
+        "api.audible.in",
+        "api.audible.co.jp",
+        "api.audible.com.br",
+        "api.audnex.us",
+        "m.media-amazon.com"
+      ]
+    },
+    "identifierTypes": [
+      {
+        "id": "asin",
+        "name": "ASIN",
+        "urlTemplate": "https://www.audible.com/pd/{value}",
+        "pattern": "^(B[\\dA-Z]{9}|\\d{9}[\\dX])$"
+      }
+    ]
+  },
+  "configSchema": {
+    "marketplaces": {
+      "type": "string",
+      "label": "Audible Marketplaces",
+      "description": "Comma-separated list of marketplace codes to search, in priority order. Available: us, uk, de, fr, it, es, ca, au, in, jp, br",
+      "default": "us"
+    }
+  }
+}
