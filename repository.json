@@ -244,6 +244,55 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.3.3",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-12",
+          "changelog": "## [0.3.3] - 2026-04-12\n\n### Other\n- Use shared stripHTML in goodreads-enricher (#18)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.3.3/goodreads-enricher-0.3.3.zip",
+          "sha256": "e01bce359eed5d8ec4cd99e1d8a103cdaa088f6121ebef4eefa9692cce090f9c",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.3.2",
           "manifestVersion": 1,
           "releaseDate": "2026-04-12",
