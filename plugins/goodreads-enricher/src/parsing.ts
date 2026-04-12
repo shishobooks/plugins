@@ -1,4 +1,5 @@
 import type { GRBookPageData, GRSchemaOrg } from "./types";
+import { stripHTML } from "@shisho-plugins/shared";
 
 /**
  * Parse a Goodreads book page HTML to extract structured metadata.
@@ -438,10 +439,3 @@ export function decodeHTMLEntities(text: string): string {
     .replace(/&apos;/g, "'");
 }
 
-/**
- * Strip HTML tags from a string.
- */
-export function stripHTML(html: string): string {
-  if (!html) return "";
-  return decodeHTMLEntities(html.replace(/<[^>]+>/g, "")).trim();
-}

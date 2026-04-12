@@ -1,6 +1,5 @@
-import { stripHTML } from "./parsing";
 import type { GRLookupResult } from "./types";
-import { parseMonth } from "@shisho-plugins/shared";
+import { parseMonth, stripHTML } from "@shisho-plugins/shared";
 import type {
   ParsedAuthor,
   ParsedIdentifier,

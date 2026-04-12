@@ -2,9 +2,13 @@ import { toMetadata } from "../mapping";
 import type { GRAutocompleteResult, GRLookupResult } from "../types";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../parsing", () => ({
-  stripHTML: vi.fn((html: string) => html.replace(/<[^>]+>/g, "").trim()),
-}));
+vi.mock("@shisho-plugins/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@shisho-plugins/shared")>();
+  return {
+    ...actual,
+    stripHTML: vi.fn((html: string) => html.replace(/<[^>]+>/g, "").trim()),
+  };
+});
 
 const baseAutocomplete: GRAutocompleteResult = {
   imageUrl: "https://i.gr-assets.com/images/books/5907._SY75_.jpg",

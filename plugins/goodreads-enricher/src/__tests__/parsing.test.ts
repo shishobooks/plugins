@@ -7,7 +7,6 @@ import {
   extractSchemaOrg,
   extractSeries,
   parseBookPage,
-  stripHTML,
 } from "../parsing";
 import { describe, expect, it } from "vitest";
 
@@ -339,25 +338,6 @@ describe("decodeHTMLEntities", () => {
   });
 });
 
-describe("stripHTML", () => {
-  it("removes HTML tags", () => {
-    expect(stripHTML("<b>Bold</b> and <i>italic</i>")).toBe("Bold and italic");
-  });
-
-  it("decodes HTML entities after stripping tags", () => {
-    expect(stripHTML("It&apos;s a <b>great</b> book &amp; more")).toBe(
-      "It's a great book & more",
-    );
-  });
-
-  it("trims whitespace", () => {
-    expect(stripHTML("  <p>text</p>  ")).toBe("text");
-  });
-
-  it("handles empty input", () => {
-    expect(stripHTML("")).toBe("");
-  });
-});
 
 describe("extractFromNextData", () => {
   function makeNextDataHtml(apolloState: Record<string, unknown>): string {
