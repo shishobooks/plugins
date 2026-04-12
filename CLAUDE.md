@@ -17,9 +17,11 @@ pnpm lint               # Run all linters concurrently (fails fast)
 pnpm lint:eslint        # ESLint only (--max-warnings 0)
 pnpm lint:prettier      # Prettier check
 pnpm lint:types         # TypeScript type check (tsc --noEmit)
+
+pnpm check              # Run lint + test (use before committing)
 ```
 
-**Before pushing or creating a PR, always run `pnpm lint` and `pnpm test` to catch issues locally.** CI runs both, and PRs will fail if either has errors.
+**Always run `pnpm check` before committing.** CI runs both lint and test, and PRs will fail if either has errors.
 
 ### Testing
 

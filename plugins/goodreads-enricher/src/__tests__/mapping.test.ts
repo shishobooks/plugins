@@ -1,6 +1,6 @@
 import { toMetadata } from "../mapping";
 import type { GRAutocompleteResult, GRLookupResult } from "../types";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const baseAutocomplete: GRAutocompleteResult = {
   imageUrl: "https://i.gr-assets.com/images/books/5907._SY75_.jpg",
