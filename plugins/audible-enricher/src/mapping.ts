@@ -10,6 +10,8 @@ import type { ParsedMetadata } from "@shisho/plugin-sdk";
  */
 export function stripHTML(html: string): string {
   return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")

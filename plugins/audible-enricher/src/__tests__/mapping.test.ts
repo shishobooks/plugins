@@ -277,6 +277,18 @@ describe("stripHTML", () => {
     expect(stripHTML("<p>Hello <b>world</b></p>")).toBe("Hello world");
   });
 
+  it("converts <br> tags to newlines", () => {
+    expect(stripHTML("line one<br />line two")).toBe("line one\nline two");
+    expect(stripHTML("line one<br/>line two")).toBe("line one\nline two");
+    expect(stripHTML("line one<br>line two")).toBe("line one\nline two");
+  });
+
+  it("converts </p><p> boundaries to double newlines", () => {
+    expect(stripHTML("<p>First paragraph</p><p>Second paragraph</p>")).toBe(
+      "First paragraph\n\nSecond paragraph",
+    );
+  });
+
   it("decodes HTML entities", () => {
     expect(stripHTML("one &amp; two")).toBe("one & two");
   });
