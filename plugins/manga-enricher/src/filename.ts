@@ -27,15 +27,37 @@ export function parseQuery(query: string): ParsedQuery {
   working = working.replace(/\.(cbz|cbr)$/i, "");
 
   // 2. Strip trailing parenthesized groups, repeatedly, from right to left.
-  //    e.g. "Foo v01 (2023) (Digital) (1r0n)" -> "Foo v01"
   while (true) {
     const stripped = working.replace(/\s*\([^()]*\)\s*$/, "");
     if (stripped === working) break;
     working = stripped;
   }
 
-  // 3. Clean up trailing whitespace, dashes, and hyphens.
+  // 3. Extract a volume number. Try explicit markers first, then a bare
+  //    trailing number as a last resort (restricted to 2-3 digits to avoid
+  //    matching years).
+  let volumeNumber: number | undefined;
+  const volumePatterns: RegExp[] = [
+    /\s*[Vv](\d+)\b\s*$/, // "v01", "v1"
+    /\s*[Vv]ol(?:ume)?\.?\s*(\d+)\b\s*$/, // "Vol. 03", "Volume 001"
+    /\s*#(\d+)\b\s*$/, // "#001"
+    /\s(\d{2,3})$/, // trailing 2-3 digit number
+  ];
+
+  for (const pattern of volumePatterns) {
+    const match = working.match(pattern);
+    if (match) {
+      volumeNumber = parseInt(match[1], 10);
+      working = working.slice(0, match.index).trimEnd();
+      break;
+    }
+  }
+
+  // 4. Clean up trailing whitespace, dashes, and hyphens.
   working = working.replace(/[\s\-–—]+$/, "").trim();
 
-  return { seriesTitle: working };
+  return {
+    seriesTitle: working,
+    volumeNumber,
+  };
 }
