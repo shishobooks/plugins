@@ -134,10 +134,20 @@ describe("stripHTML", () => {
     expect(stripHTML("<p>First</p><p>Second</p>")).toBe("First\n\nSecond");
   });
 
-  it("decodes HTML entities", () => {
+  it("decodes named HTML entities", () => {
     expect(stripHTML("one &amp; two")).toBe("one & two");
     expect(stripHTML("It&apos;s &quot;great&quot;")).toBe('It\'s "great"');
     expect(stripHTML("a &lt; b &gt; c")).toBe("a < b > c");
+  });
+
+  it("decodes decimal numeric entities", () => {
+    expect(stripHTML("&#169; 2025")).toBe("© 2025");
+    expect(stripHTML("smart&#8217;s")).toBe("smart\u2019s");
+  });
+
+  it("decodes hexadecimal numeric entities", () => {
+    expect(stripHTML("&#xA9; 2025")).toBe("© 2025");
+    expect(stripHTML("&#x2019;s")).toBe("\u2019s");
   });
 
   it("handles empty and falsy input", () => {

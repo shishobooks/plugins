@@ -85,6 +85,10 @@ export function stripHTML(html: string): string {
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
     .replace(/<[^>]+>/g, "")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16)),
+    )
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
