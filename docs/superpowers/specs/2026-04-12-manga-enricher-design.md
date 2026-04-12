@@ -70,13 +70,15 @@ plugins/manga-enricher/
 
 The `publishers/` directory is the extension point: each scraper is a self-contained module implementing a shared interface. Adding a new publisher means adding one file and registering it in `lookup.ts`.
 
-## Filename Parsing (`src/filename.ts`)
+## Query Parsing (`src/filename.ts`)
 
-We never look at the folder path — only the filename. The parser extracts three things: **series title**, **volume number**, and **edition variant** (if any).
+The plugin receives a `SearchContext` with a `query` string from Shisho. For CBZ/CBR files, Shisho's scan pipeline populates this query from file metadata — which for comics often means something derived from the filename, since CBZ files frequently lack embedded metadata. We don't know exactly how clean or messy that query will be, so the parser is defensive: it handles both already-cleaned titles and raw filename-like strings gracefully.
+
+The parser extracts three things from `context.query`: **series title**, **volume number**, and **edition variant** (if any). It never looks at a file path — only the query string.
 
 ### Parsing Steps
 
-1. Remove the file extension (`.cbz`, `.cbr`).
+1. Remove a file extension suffix if present (`.cbz`, `.cbr`) — defensive in case the query includes it.
 2. Strip parenthesized groups from the right: `(2018)`, `(Digital)`, `(danke-Empire)`, etc. These are year/format/scan group tags. We discard them.
 3. Detect edition variants by matching against a known list (case-insensitive) before the volume marker. If one is found, split it out and remove it from the series title.
 4. Extract the volume number via regex patterns, in this order:
@@ -130,7 +132,7 @@ If the search context already contains a `mangaupdates_series` identifier, fetch
 
 ### Tier 2: Title Search (variable confidence)
 
-1. Parse the filename (or manual query) using `filename.ts`.
+1. Parse `context.query` using `filename.ts` to extract series title, volume number, and edition variant.
 2. Search MangaUpdates via `POST /v1/series/search` with the parsed title.
 3. For each result, compare the query against the result's primary title and all associated titles using Levenshtein distance (same shared utility as other enrichers: `levenshteinDistance`, `normalizeForComparison`).
 4. Accept matches where `distance ≤ 5` and `ratio ≤ 0.4`. Confidence is `1 - ratio`.
