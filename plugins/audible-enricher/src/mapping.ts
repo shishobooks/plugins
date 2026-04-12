@@ -284,7 +284,15 @@ export function audnexusToMetadata(
   }
 
   metadata.url = productUrl(book.asin, marketplace);
-  metadata.identifiers = [{ type: "asin", value: book.asin }];
+
+  const identifiers: Array<{ type: string; value: string }> = [
+    { type: "asin", value: book.asin },
+  ];
+  if (book.isbn) {
+    const type = book.isbn.length === 13 ? "isbn_13" : "isbn_10";
+    identifiers.push({ type, value: book.isbn });
+  }
+  metadata.identifiers = identifiers;
 
   return metadata;
 }

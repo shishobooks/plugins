@@ -235,7 +235,46 @@ describe("searchForBooks", () => {
       );
     });
 
-    it("still returns results when Audnexus genre enrichment fails", () => {
+    it("prefers Audnexus series over Audible API series", () => {
+      setupDefaultMocks();
+      const productWithMultipleSeries: AudibleProduct = {
+        ...sampleProduct,
+        series: [
+          { title: "The Hail Mary Sequence", sequence: "12" },
+          { title: "Hail Mary", sequence: "1" },
+        ],
+      };
+      mockedSearchProducts.mockReturnValue([productWithMultipleSeries]);
+      mockedFetchAudnexusBook.mockReturnValue({
+        ...sampleAudnexusBook,
+        seriesPrimary: { name: "Hail Mary", position: "1" },
+      });
+
+      const context = makeContext({ query: "Project Hail Mary" });
+      const results = searchForBooks(context);
+
+      expect(results[0].series).toBe("Hail Mary");
+      expect(results[0].seriesNumber).toBe(1);
+    });
+
+    it("includes ISBN from Audnexus in identifiers", () => {
+      setupDefaultMocks();
+      mockedSearchProducts.mockReturnValue([sampleProduct]);
+      mockedFetchAudnexusBook.mockReturnValue({
+        ...sampleAudnexusBook,
+        isbn: "9781603935470",
+      });
+
+      const context = makeContext({ query: "Project Hail Mary" });
+      const results = searchForBooks(context);
+
+      expect(results[0].identifiers).toEqual([
+        { type: "asin", value: "B08G9PRS1K" },
+        { type: "isbn_13", value: "9781603935470" },
+      ]);
+    });
+
+    it("still returns results when Audnexus enrichment fails", () => {
       setupDefaultMocks();
       mockedSearchProducts.mockReturnValue([sampleProduct]);
       mockedFetchAudnexusBook.mockReturnValue(null);

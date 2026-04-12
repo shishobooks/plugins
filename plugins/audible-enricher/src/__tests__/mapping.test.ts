@@ -223,6 +223,24 @@ describe("audnexusToMetadata", () => {
     expect(metadata.tags).toBeUndefined();
   });
 
+  it("includes ISBN-13 in identifiers when present", () => {
+    const book = makeAudnexusBook({ isbn: "9781603935470" });
+    const metadata = audnexusToMetadata(book, "us");
+    expect(metadata.identifiers).toEqual([
+      { type: "asin", value: "B08G9PRS1K" },
+      { type: "isbn_13", value: "9781603935470" },
+    ]);
+  });
+
+  it("includes ISBN-10 in identifiers when present", () => {
+    const book = makeAudnexusBook({ isbn: "0739322214" });
+    const metadata = audnexusToMetadata(book, "us");
+    expect(metadata.identifiers).toEqual([
+      { type: "asin", value: "B08G9PRS1K" },
+      { type: "isbn_10", value: "0739322214" },
+    ]);
+  });
+
   it("separates genres and tags by type field", () => {
     const book = makeAudnexusBook({
       genres: [

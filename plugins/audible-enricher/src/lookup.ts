@@ -122,13 +122,20 @@ function tryTitleAuthorSearch(
     const metadata = audibleToMetadata(product, marketplace);
     metadata.confidence = confidence;
 
-    // Enrich with Audnexus data (genres, tags, higher-res cover)
+    // Enrich with Audnexus data (genres, tags, cover, series, identifiers)
+    // Audnexus provides better series selection (primary vs first-in-array),
+    // higher-res cover images, and ISBN identifiers not in the Audible API.
     const audnexusBook = fetchAudnexusBook(product.asin, marketplace);
     if (audnexusBook) {
       const enriched = audnexusToMetadata(audnexusBook, marketplace);
       if (enriched.genres) metadata.genres = enriched.genres;
       if (enriched.tags) metadata.tags = enriched.tags;
       if (enriched.coverUrl) metadata.coverUrl = enriched.coverUrl;
+      if (enriched.series) {
+        metadata.series = enriched.series;
+        metadata.seriesNumber = enriched.seriesNumber;
+      }
+      if (enriched.identifiers) metadata.identifiers = enriched.identifiers;
     }
 
     results.push(metadata);

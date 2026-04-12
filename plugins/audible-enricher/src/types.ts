@@ -79,6 +79,7 @@ export interface AudnexusBook {
   summary?: string;
   releaseDate?: string;
   image?: string;
+  isbn?: string;
   genres?: Array<{ asin: string; name: string; type: string }>;
   seriesPrimary?: { asin?: string; name: string; position?: string };
   seriesSecondary?: { asin?: string; name: string; position?: string };
