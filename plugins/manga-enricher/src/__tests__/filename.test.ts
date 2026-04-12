@@ -93,4 +93,67 @@ describe("parseQuery", () => {
       expect(result.seriesTitle).toBe("Chained Soldier");
     });
   });
+
+  describe("edition variant detection", () => {
+    it("detects Collector's Edition", () => {
+      const result = parseQuery(
+        "Fruits Basket Collector's Edition v01 (2016).cbz",
+      );
+      expect(result.seriesTitle).toBe("Fruits Basket");
+      expect(result.edition).toBe("Collector's Edition");
+      expect(result.volumeNumber).toBe(1);
+    });
+
+    it("detects Omnibus Edition", () => {
+      const result = parseQuery("One Piece Omnibus Edition v05 (2020).cbz");
+      expect(result.seriesTitle).toBe("One Piece");
+      expect(result.edition).toBe("Omnibus Edition");
+      expect(result.volumeNumber).toBe(5);
+    });
+
+    it("detects bare Omnibus", () => {
+      const result = parseQuery("Some Series Omnibus v02.cbz");
+      expect(result.seriesTitle).toBe("Some Series");
+      expect(result.edition).toBe("Omnibus");
+    });
+
+    it("detects Deluxe Edition", () => {
+      const result = parseQuery("Berserk Deluxe Edition v01.cbz");
+      expect(result.seriesTitle).toBe("Berserk");
+      expect(result.edition).toBe("Deluxe Edition");
+    });
+
+    it("detects Fullmetal Edition", () => {
+      const result = parseQuery(
+        "Fullmetal Alchemist Fullmetal Edition v01.cbz",
+      );
+      expect(result.seriesTitle).toBe("Fullmetal Alchemist");
+      expect(result.edition).toBe("Fullmetal Edition");
+    });
+
+    it("detects 3-in-1 Edition", () => {
+      const result = parseQuery("Naruto 3-in-1 Edition v01.cbz");
+      expect(result.seriesTitle).toBe("Naruto");
+      expect(result.edition).toBe("3-in-1 Edition");
+    });
+
+    it("detects Digital Colored Comics", () => {
+      const result = parseQuery(
+        "Bleach - Digital Colored Comics v01 (2021).cbz",
+      );
+      expect(result.seriesTitle).toBe("Bleach");
+      expect(result.edition).toBe("Digital Colored Comics");
+    });
+
+    it("leaves edition undefined when none is present", () => {
+      const result = parseQuery("One Piece v01.cbz");
+      expect(result.edition).toBeUndefined();
+    });
+
+    it("is case-insensitive", () => {
+      const result = parseQuery("some series OMNIBUS EDITION v01.cbz");
+      expect(result.edition).toBe("Omnibus Edition");
+      expect(result.seriesTitle).toBe("some series");
+    });
+  });
 });
