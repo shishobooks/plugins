@@ -498,7 +498,69 @@
       "author": "Shisho Team",
       "homepage": "https://github.com/shishobooks/plugins",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/audible-enricher/logo.svg",
-      "versions": []
+      "versions": [
+        {
+          "version": "0.1.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-12",
+          "changelog": "## [0.1.0] - 2026-04-12\n\n### Features\n- Audible metadata enricher plugin (#16)\n\n### Other\n- Register audible-enricher in plugin repository (#17)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/audible-enricher@0.1.0/audible-enricher-0.1.0.zip",
+          "sha256": "f1edd7468b0f483aa61e98aaea148b61a7d8fd74f8558ac5229b5a5c908d324c",
+          "minShishoVersion": "0.0.28",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches audiobook metadata from Audible catalog API and Audnexus",
+              "fileTypes": [
+                "m4b"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "narrators",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url",
+                "language",
+                "abridged"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Audible catalog API, Audnexus API, and fetches cover images from Amazon CDN",
+              "domains": [
+                "api.audible.com",
+                "api.audible.co.uk",
+                "api.audible.de",
+                "api.audible.fr",
+                "api.audible.it",
+                "api.audible.es",
+                "api.audible.ca",
+                "api.audible.com.au",
+                "api.audible.in",
+                "api.audible.co.jp",
+                "api.audible.com.br",
+                "api.audnex.us",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "asin",
+                "name": "ASIN",
+                "urlTemplate": "https://www.audible.com/pd/{value}",
+                "pattern": "^(B[\\dA-Z]{9}|\\d{9}[\\dX])$"
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

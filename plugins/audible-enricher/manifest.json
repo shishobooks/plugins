@@ -11,7 +11,9 @@
   "capabilities": {
     "metadataEnricher": {
       "description": "Fetches audiobook metadata from Audible catalog API and Audnexus",
-      "fileTypes": ["m4b"],
+      "fileTypes": [
+        "m4b"
+      ],
       "fields": [
         "title",
         "subtitle",
