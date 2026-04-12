@@ -200,7 +200,7 @@ describe("searchForBooks", () => {
       expect(results[0].confidence).toBe(1.0);
     });
 
-    it("tries Audnexus for genre enrichment on search results", () => {
+    it("enriches with Audnexus genres, tags, and cover on search results", () => {
       setupDefaultMocks();
       mockedSearchProducts.mockReturnValue([sampleProduct]);
       mockedFetchAudnexusBook.mockReturnValue(sampleAudnexusBook);
@@ -211,6 +211,28 @@ describe("searchForBooks", () => {
       expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B08G9PRS1K", "us");
       expect(results[0].genres).toEqual(["Science Fiction"]);
       expect(results[0].tags).toEqual(["Space Opera"]);
+    });
+
+    it("prefers Audnexus cover URL over Audible API cover", () => {
+      setupDefaultMocks();
+      const productWith1024Cover: AudibleProduct = {
+        ...sampleProduct,
+        product_images: {
+          "1024": "https://m.media-amazon.com/images/I/1024.jpg",
+        },
+      };
+      mockedSearchProducts.mockReturnValue([productWith1024Cover]);
+      mockedFetchAudnexusBook.mockReturnValue({
+        ...sampleAudnexusBook,
+        image: "https://m.media-amazon.com/images/I/full-res.jpg",
+      });
+
+      const context = makeContext({ query: "Project Hail Mary" });
+      const results = searchForBooks(context);
+
+      expect(results[0].coverUrl).toBe(
+        "https://m.media-amazon.com/images/I/full-res.jpg",
+      );
     });
 
     it("still returns results when Audnexus genre enrichment fails", () => {

@@ -122,12 +122,13 @@ function tryTitleAuthorSearch(
     const metadata = audibleToMetadata(product, marketplace);
     metadata.confidence = confidence;
 
-    // Try Audnexus for genre/tag enrichment
+    // Enrich with Audnexus data (genres, tags, higher-res cover)
     const audnexusBook = fetchAudnexusBook(product.asin, marketplace);
     if (audnexusBook) {
       const enriched = audnexusToMetadata(audnexusBook, marketplace);
       if (enriched.genres) metadata.genres = enriched.genres;
       if (enriched.tags) metadata.tags = enriched.tags;
+      if (enriched.coverUrl) metadata.coverUrl = enriched.coverUrl;
     }
 
     results.push(metadata);
