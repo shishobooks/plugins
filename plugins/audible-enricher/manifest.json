@@ -26,7 +26,9 @@
         "tags",
         "cover",
         "identifiers",
-        "url"
+        "url",
+        "language",
+        "abridged"
       ]
     },
     "httpAccess": {

@@ -76,6 +76,72 @@ function parseSequence(seq: string | undefined): number | undefined {
 }
 
 /**
+ * Map Audible/Audnexus language names to BCP 47 tags.
+ * Audible returns lowercase English language names (e.g., "english", "german").
+ */
+const LANGUAGE_MAP: Record<string, string> = {
+  english: "en",
+  german: "de",
+  french: "fr",
+  spanish: "es",
+  italian: "it",
+  portuguese: "pt",
+  dutch: "nl",
+  japanese: "ja",
+  chinese: "zh",
+  korean: "ko",
+  russian: "ru",
+  arabic: "ar",
+  hindi: "hi",
+  swedish: "sv",
+  norwegian: "no",
+  danish: "da",
+  finnish: "fi",
+  polish: "pl",
+  turkish: "tr",
+  catalan: "ca",
+  czech: "cs",
+  greek: "el",
+  hebrew: "he",
+  hungarian: "hu",
+  romanian: "ro",
+  thai: "th",
+  ukrainian: "uk",
+  vietnamese: "vi",
+};
+
+/**
+ * Parse a language value to a BCP 47 tag.
+ * Accepts either a language name ("english") or an existing BCP 47 tag ("en", "en-US").
+ */
+export function parseLanguage(lang: string | undefined): string | undefined {
+  if (!lang) return undefined;
+  const trimmed = lang.trim();
+  if (!trimmed) return undefined;
+
+  // Already a BCP 47 tag: 2-3 letter primary tag, optional subtags
+  if (/^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  return LANGUAGE_MAP[trimmed.toLowerCase()];
+}
+
+/**
+ * Parse Audible/Audnexus format_type to an abridged boolean.
+ * "unabridged" -> false, "abridged" -> true, otherwise undefined.
+ */
+export function parseAbridged(
+  formatType: string | undefined,
+): boolean | undefined {
+  if (!formatType) return undefined;
+  const normalized = formatType.trim().toLowerCase();
+  if (normalized === "abridged") return true;
+  if (normalized === "unabridged") return false;
+  return undefined;
+}
+
+/**
  * Transform an Audible catalog API product to ParsedMetadata.
  */
 export function audibleToMetadata(
@@ -130,6 +196,16 @@ export function audibleToMetadata(
   }
 
   metadata.genres = extractGenres(product.category_ladders);
+
+  const language = parseLanguage(product.language);
+  if (language) {
+    metadata.language = language;
+  }
+
+  const abridged = parseAbridged(product.format_type);
+  if (abridged !== undefined) {
+    metadata.abridged = abridged;
+  }
 
   metadata.url = productUrl(product.asin, marketplace);
   metadata.identifiers = [{ type: "asin", value: product.asin }];
@@ -195,6 +271,16 @@ export function audnexusToMetadata(
 
     if (genres.length > 0) metadata.genres = genres;
     if (tags.length > 0) metadata.tags = tags;
+  }
+
+  const language = parseLanguage(book.language);
+  if (language) {
+    metadata.language = language;
+  }
+
+  const abridged = parseAbridged(book.formatType);
+  if (abridged !== undefined) {
+    metadata.abridged = abridged;
   }
 
   metadata.url = productUrl(book.asin, marketplace);

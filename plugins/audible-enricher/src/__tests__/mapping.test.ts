@@ -1,4 +1,10 @@
-import { audibleToMetadata, audnexusToMetadata, stripHTML } from "../mapping";
+import {
+  audibleToMetadata,
+  audnexusToMetadata,
+  parseAbridged,
+  parseLanguage,
+  stripHTML,
+} from "../mapping";
 import type { AudibleProduct, AudnexusBook } from "../types";
 import { describe, expect, it } from "vitest";
 
@@ -263,5 +269,131 @@ describe("stripHTML", () => {
 
   it("handles plain text", () => {
     expect(stripHTML("no tags here")).toBe("no tags here");
+  });
+});
+
+describe("parseLanguage", () => {
+  it("maps english to en", () => {
+    expect(parseLanguage("english")).toBe("en");
+  });
+
+  it("maps german to de", () => {
+    expect(parseLanguage("german")).toBe("de");
+  });
+
+  it("is case-insensitive", () => {
+    expect(parseLanguage("English")).toBe("en");
+    expect(parseLanguage("FRENCH")).toBe("fr");
+  });
+
+  it("passes through BCP 47 tags", () => {
+    expect(parseLanguage("en")).toBe("en");
+    expect(parseLanguage("en-US")).toBe("en-US");
+    expect(parseLanguage("zh-Hans")).toBe("zh-Hans");
+  });
+
+  it("returns undefined for unknown language", () => {
+    expect(parseLanguage("klingon")).toBeUndefined();
+  });
+
+  it("returns undefined for empty or missing", () => {
+    expect(parseLanguage(undefined)).toBeUndefined();
+    expect(parseLanguage("")).toBeUndefined();
+    expect(parseLanguage("   ")).toBeUndefined();
+  });
+});
+
+describe("parseAbridged", () => {
+  it("maps unabridged to false", () => {
+    expect(parseAbridged("unabridged")).toBe(false);
+  });
+
+  it("maps abridged to true", () => {
+    expect(parseAbridged("abridged")).toBe(true);
+  });
+
+  it("is case-insensitive", () => {
+    expect(parseAbridged("Unabridged")).toBe(false);
+    expect(parseAbridged("ABRIDGED")).toBe(true);
+  });
+
+  it("returns undefined for unknown value", () => {
+    expect(parseAbridged("something")).toBeUndefined();
+  });
+
+  it("returns undefined for missing value", () => {
+    expect(parseAbridged(undefined)).toBeUndefined();
+    expect(parseAbridged("")).toBeUndefined();
+  });
+});
+
+describe("language and abridged in audibleToMetadata", () => {
+  it("maps language and format_type", () => {
+    const product: AudibleProduct = {
+      asin: "B08G9PRS1K",
+      title: "Project Hail Mary",
+      language: "english",
+      format_type: "unabridged",
+    };
+    const metadata = audibleToMetadata(product, "us");
+    expect(metadata.language).toBe("en");
+    expect(metadata.abridged).toBe(false);
+  });
+
+  it("omits language when unknown", () => {
+    const product: AudibleProduct = {
+      asin: "B08G9PRS1K",
+      title: "Test",
+      language: "klingon",
+    };
+    const metadata = audibleToMetadata(product, "us");
+    expect(metadata.language).toBeUndefined();
+  });
+
+  it("omits abridged when format_type is missing", () => {
+    const product: AudibleProduct = {
+      asin: "B08G9PRS1K",
+      title: "Test",
+    };
+    const metadata = audibleToMetadata(product, "us");
+    expect(metadata.abridged).toBeUndefined();
+  });
+
+  it("maps abridged=true when format_type is 'abridged'", () => {
+    const product: AudibleProduct = {
+      asin: "B08G9PRS1K",
+      title: "Test",
+      format_type: "abridged",
+    };
+    const metadata = audibleToMetadata(product, "us");
+    expect(metadata.abridged).toBe(true);
+  });
+});
+
+describe("language and abridged in audnexusToMetadata", () => {
+  it("maps language and formatType", () => {
+    const book: AudnexusBook = {
+      asin: "B08G9PRS1K",
+      title: "Project Hail Mary",
+      authors: [{ name: "Andy Weir" }],
+      narrators: [{ name: "Ray Porter" }],
+      language: "english",
+      formatType: "unabridged",
+    };
+    const metadata = audnexusToMetadata(book, "us");
+    expect(metadata.language).toBe("en");
+    expect(metadata.abridged).toBe(false);
+  });
+
+  it("omits language and abridged when missing", () => {
+    const book: AudnexusBook = {
+      asin: "B08G9PRS1K",
+      title: "Test",
+      authors: [{ name: "Author" }],
+      narrators: [{ name: "Narrator" }],
+    };
+    const metadata = audnexusToMetadata(book, "us");
+    expect(metadata.language).toBeUndefined();
+    expect(metadata.abridged).toBeUndefined();
   });
 });
