@@ -75,7 +75,8 @@ describe("searchForManga", () => {
       expect(mockedSearchSeries).not.toHaveBeenCalled();
       expect(results).toHaveLength(1);
       expect(results[0].confidence).toBe(1.0);
-      expect(results[0].title).toBe("One Piece");
+      expect(results[0].title).toBe("One Piece v001");
+      expect(results[0].series).toBe("One Piece");
       expect(results[0].seriesNumber).toBe(1);
     });
 
@@ -142,6 +143,20 @@ describe("searchForManga", () => {
       const context = makeContext({ query: "One Piece v07.cbz" });
       const results = searchForManga(context);
       expect(results[0].seriesNumber).toBe(7);
+      // Title uses the standardized v{NNN} format.
+      expect(results[0].title).toBe("One Piece v007");
+    });
+
+    it("zero-pads volume numbers to three digits in the title", () => {
+      setupDefaultMocks();
+      mockedSearchSeries.mockReturnValue([onePieceSeries]);
+      mockedFetchSeries.mockReturnValue(onePieceSeries);
+
+      const contextTwoDigit = makeContext({ query: "One Piece v42.cbz" });
+      expect(searchForManga(contextTwoDigit)[0].title).toBe("One Piece v042");
+
+      const contextThreeDigit = makeContext({ query: "One Piece v103.cbz" });
+      expect(searchForManga(contextThreeDigit)[0].title).toBe("One Piece v103");
     });
 
     it("retries with the prefix when the full title yields nothing", () => {
@@ -167,9 +182,8 @@ describe("searchForManga", () => {
       );
       expect(mockedSearchSeries).toHaveBeenNthCalledWith(2, "Demon Slayer");
       expect(results.length).toBeGreaterThan(0);
-      // The display title is the user's parsed query title (full string,
-      // including the prefix that was stripped for search).
-      expect(results[0].title).toBe("Demon Slayer - Kimetsu no Yaiba");
+      expect(results[0].title).toBe("Demon Slayer - Kimetsu no Yaiba v001");
+      expect(results[0].series).toBe("Demon Slayer - Kimetsu no Yaiba");
     });
 
     it("falls back to fetching full series when no primary title matches", () => {
@@ -221,9 +235,9 @@ describe("searchForManga", () => {
       const results = searchForManga(context);
 
       expect(results).toHaveLength(1);
-      // Display title is the user's English query title, not MU's
-      // Japanese romaji primary.
-      expect(results[0].title).toBe("365 Days to the Wedding");
+      // Display title uses the user's English query and the standardized
+      // v{NNN} format, not MU's Japanese romaji primary.
+      expect(results[0].title).toBe("365 Days to the Wedding v001");
       expect(results[0].series).toBe("365 Days to the Wedding");
       expect(results[0].seriesNumber).toBe(1);
       expect(results[0].confidence).toBeGreaterThanOrEqual(0.6);
@@ -389,7 +403,8 @@ describe("searchForManga", () => {
       expect(mockedVizSearch).not.toHaveBeenCalled();
       expect(mockedKodanshaSearch).not.toHaveBeenCalled();
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe("One Piece");
+      expect(results[0].title).toBe("One Piece v001");
+      expect(results[0].series).toBe("One Piece");
       // No per-volume scrape happened, but series-level fields are still
       // returned (including the English publisher picked from MU).
       expect(results[0].publisher).toBe("Yen Press");
@@ -449,7 +464,7 @@ describe("searchForManga", () => {
       expect(mockedVizSearch).not.toHaveBeenCalled();
       expect(mockedKodanshaSearch).not.toHaveBeenCalled();
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe("One Piece");
+      expect(results[0].title).toBe("One Piece v001");
     });
 
     it("uses the parsed query title for the scraper, not MU's primary", () => {
@@ -481,8 +496,9 @@ describe("searchForManga", () => {
         1,
         undefined,
       );
-      // Display fields should show the English title, not the romaji.
-      expect(results[0].title).toBe("Sweat and Soap");
+      // Display fields should show the English title, not the romaji,
+      // and use the standardized v{NNN} volume format.
+      expect(results[0].title).toBe("Sweat and Soap v001");
       expect(results[0].series).toBe("Sweat and Soap");
     });
 
@@ -528,7 +544,7 @@ describe("searchForManga", () => {
 
       // Only the main series survives.
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe("Fruits Basket");
+      expect(results[0].title).toBe("Fruits Basket v001");
       // fetchSeries is only called for the non-doujinshi candidate.
       expect(mockedFetchSeries).toHaveBeenCalledWith(100);
       expect(mockedFetchSeries).not.toHaveBeenCalledWith(200);
@@ -586,7 +602,7 @@ describe("searchForManga", () => {
       const results = searchForManga(context);
 
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe("One Piece");
+      expect(results[0].title).toBe("One Piece v001");
       expect(results[0].seriesNumber).toBe(1);
       expect(results[0].description).toContain("Monkey D. Luffy");
     });
@@ -601,6 +617,7 @@ describe("searchForManga", () => {
 
       expect(mockedVizSearch).not.toHaveBeenCalled();
       expect(mockedKodanshaSearch).not.toHaveBeenCalled();
+      // No volume number parsed → title falls back to the series name alone.
       expect(results[0].title).toBe("One Piece");
     });
 

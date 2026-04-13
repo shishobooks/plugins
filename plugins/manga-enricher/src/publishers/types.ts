@@ -3,8 +3,6 @@
  * All fields are optional — the scraper returns whatever it could extract.
  */
 export interface VolumeMetadata {
-  /** Full volume title (e.g., "One Piece, Vol. 1"). */
-  title?: string;
   /** Volume subtitle (e.g., "Romance Dawn"). */
   subtitle?: string;
   /** Per-volume synopsis. */

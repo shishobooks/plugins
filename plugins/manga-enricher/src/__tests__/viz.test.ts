@@ -63,9 +63,6 @@ describe("vizScraper.searchVolume", () => {
     expect(calls[1][0]).toContain("viz.com/manga-books/manga/");
 
     expect(result).not.toBeNull();
-    // Title should contain "One Piece" and "Vol. 1"
-    expect(result?.title).toMatch(/one piece/i);
-    expect(result?.title).toMatch(/vol\.\s*1/i);
     // Description should be the synopsis
     expect(result?.description).toBeDefined();
     expect(result?.description?.length).toBeGreaterThan(20);

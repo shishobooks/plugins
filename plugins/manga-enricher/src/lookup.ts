@@ -288,7 +288,6 @@ function buildMetadata(
   // know ("Sweat and Soap"). We've already verified the match via
   // confidence scoring, so the query title is trustworthy.
   if (searchTitle) {
-    metadata.title = searchTitle;
     metadata.series = searchTitle;
   }
 
@@ -311,7 +310,31 @@ function buildMetadata(
     }
   }
 
+  // Standardize the title format to `{Series} v{NNN}` — Shisho's own
+  // filename parser produces this shape, and publishers vary wildly
+  // ("One Piece, Vol. 1", "Wotakoi Volume 1", "Attack on Titan 1"),
+  // so we generate it ourselves rather than pass through whatever the
+  // scraper returned.
+  if (metadata.series) {
+    metadata.title =
+      metadata.seriesNumber !== undefined
+        ? `${metadata.series} v${padVolumeNumber(metadata.seriesNumber)}`
+        : metadata.series;
+  }
+
   return metadata;
+}
+
+/**
+ * Format a volume number as a 3-digit zero-padded string, preserving
+ * any fractional part. 1 -> "001", 12 -> "012", 123 -> "123", 2.5 -> "002.5".
+ */
+function padVolumeNumber(n: number): string {
+  if (Number.isInteger(n)) {
+    return String(n).padStart(3, "0");
+  }
+  const [intPart, decPart] = String(n).split(".");
+  return `${intPart.padStart(3, "0")}.${decPart}`;
 }
 
 /**
@@ -379,15 +402,16 @@ function findVolumeData(
 }
 
 /**
- * Merge per-volume data into the (already series-level) metadata. The
- * volume data overrides series fields where it is more specific (title,
- * description, url) and adds new fields (releaseDate, imprint, isbn, subtitle).
+ * Merge per-volume data into the (already series-level) metadata. Adds
+ * or overrides fields with the scraper's per-volume values. Notably does
+ * NOT touch `title` — buildMetadata standardizes the title format after
+ * this runs, and publisher titles are too inconsistent ("Vol. 1" vs
+ * "Volume 1" vs ", Vol. 1") to pass through verbatim.
  */
 function mergeVolumeData(
   metadata: ParsedMetadata,
   volumeData: VolumeMetadata,
 ): void {
-  if (volumeData.title) metadata.title = volumeData.title;
   if (volumeData.subtitle) metadata.subtitle = volumeData.subtitle;
   if (volumeData.description) metadata.description = volumeData.description;
   if (volumeData.releaseDate) metadata.releaseDate = volumeData.releaseDate;

@@ -47,7 +47,6 @@ describe("kodanshaScraper.searchVolume", () => {
     const result = kodanshaScraper.searchVolume("Attack on Titan", 1);
 
     expect(result).not.toBeNull();
-    expect(result?.title).toMatch(/attack on titan/i);
     expect(result?.description).toBeDefined();
     expect(result?.description?.length).toBeGreaterThan(20);
     expect(result?.url).toBe(

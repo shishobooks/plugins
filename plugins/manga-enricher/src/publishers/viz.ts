@@ -89,14 +89,6 @@ export function parseProduct(html: string, url: string): VolumeMetadata {
   const metadata: VolumeMetadata = { url };
   const doc = shisho.html.parse(html);
 
-  // Title: og:title, stripping the "VIZ: Read a Free Preview of " prefix.
-  const ogTitle = metaContent(doc, "og:title");
-  if (ogTitle) {
-    metadata.title = ogTitle
-      .replace(/^VIZ:\s*Read\s+a\s+Free\s+Preview\s+of\s+/i, "")
-      .trim();
-  }
-
   // Description: og:description (may contain HTML entities like &quot;).
   const ogDesc = metaContent(doc, "og:description");
   if (ogDesc) metadata.description = stripHTML(ogDesc);

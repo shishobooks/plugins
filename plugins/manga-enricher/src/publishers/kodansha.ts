@@ -197,8 +197,6 @@ export function parseProduct(html: string, url: string): VolumeMetadata | null {
 
   const metadata: VolumeMetadata = { url };
 
-  if (book.name) metadata.title = book.name;
-
   // Description: prefer the JSON-LD field (rarely populated), fall back
   // to the per-volume hero description block, then og:description.
   const descriptionRaw = book.description ?? extractDescription(doc);
