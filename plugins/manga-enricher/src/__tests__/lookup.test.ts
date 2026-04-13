@@ -167,7 +167,9 @@ describe("searchForManga", () => {
       );
       expect(mockedSearchSeries).toHaveBeenNthCalledWith(2, "Demon Slayer");
       expect(results.length).toBeGreaterThan(0);
-      expect(results[0].title).toBe("Demon Slayer");
+      // The display title is the user's parsed query title (full string,
+      // including the prefix that was stripped for search).
+      expect(results[0].title).toBe("Demon Slayer - Kimetsu no Yaiba");
     });
 
     it("falls back to fetching full series when no primary title matches", () => {
@@ -219,9 +221,10 @@ describe("searchForManga", () => {
       const results = searchForManga(context);
 
       expect(results).toHaveLength(1);
-      expect(results[0].title).toBe(
-        "Kekkon Suru tte, Hontou desu ka: 365 Days To The Wedding",
-      );
+      // Display title is the user's English query title, not MU's
+      // Japanese romaji primary.
+      expect(results[0].title).toBe("365 Days to the Wedding");
+      expect(results[0].series).toBe("365 Days to the Wedding");
       expect(results[0].seriesNumber).toBe(1);
       expect(results[0].confidence).toBeGreaterThanOrEqual(0.6);
     });
@@ -438,7 +441,7 @@ describe("searchForManga", () => {
       });
 
       const context = makeContext({ query: "Sweat and Soap v01.cbz" });
-      searchForManga(context);
+      const results = searchForManga(context);
 
       // The scraper must receive "Sweat and Soap" (the user's title),
       // NOT "Ase to Sekken" (MU's primary).
@@ -447,6 +450,9 @@ describe("searchForManga", () => {
         1,
         undefined,
       );
+      // Display fields should show the English title, not the romaji.
+      expect(results[0].title).toBe("Sweat and Soap");
+      expect(results[0].series).toBe("Sweat and Soap");
     });
 
     it("filters out Doujinshi candidates from search results", () => {

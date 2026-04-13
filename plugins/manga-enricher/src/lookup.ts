@@ -282,6 +282,16 @@ function buildMetadata(
 ): ParsedMetadata {
   const metadata = seriesToMetadata(series);
 
+  // Prefer the user's query title over MU's primary for display fields.
+  // MU stores Japanese romaji for most manga (e.g., "Ase to Sekken"),
+  // whereas the user's filename is almost always the English title they
+  // know ("Sweat and Soap"). We've already verified the match via
+  // confidence scoring, so the query title is trustworthy.
+  if (searchTitle) {
+    metadata.title = searchTitle;
+    metadata.series = searchTitle;
+  }
+
   if (volumeNumber !== undefined) {
     metadata.seriesNumber = volumeNumber;
   }
