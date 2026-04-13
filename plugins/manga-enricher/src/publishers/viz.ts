@@ -77,11 +77,13 @@ function metaContent(
 /**
  * Parse a product HTML page into VolumeMetadata.
  *
- * Meta tags (og:title, og:description, og:image) are read via shisho.html's
- * CSS selector support. The product details block (ISBN-13, Release,
- * Imprint) uses `<strong>Label</strong>Value` pairs where the value is a
- * sibling text node — CSS selectors alone can't hop from a label element
- * to its following text, so those fields are still extracted by regex.
+ * Everything is extracted via shisho.html's CSS selector support. Viz
+ * assigns stable per-field class names to each detail row
+ * (`.o_isbn13`, `.o_release-date`, etc.), so ISBN-13 and release date
+ * use direct class selectors. Imprint has no unique class, so we
+ * iterate the generic `.mar-b-md` detail rows and find the one whose
+ * first `<strong>` child is labelled "Imprint".
+ *
  * Page count ("Length") is intentionally not extracted — it is a
  * file-parser-owned field.
  */
@@ -99,45 +101,66 @@ export function parseProduct(html: string, url: string): VolumeMetadata {
   const ogImage = metaContent(doc, "og:image");
   if (ogImage) metadata.coverUrl = ogImage;
 
-  // The remaining fields live as `<strong>Label</strong>\s*Value` pairs
-  // where Value is a text or anchor sibling. Stick with regex for these.
-  const isbn13 = matchLabelValue(html, "ISBN-13", /([\d-]{13,17})/);
+  // ISBN-13: text inside <div class="o_isbn13"><strong>ISBN-13</strong> ...</div>
+  const isbn13 = extractLabelledRowText(doc, "div.o_isbn13", "ISBN-13");
   if (isbn13) metadata.isbn13 = isbn13.replace(/-/g, "");
 
-  const releaseDate = matchLabelValue(
-    html,
+  // Release date: text inside <div class="o_release-date"><strong>Release</strong> ...</div>
+  const releaseDate = extractLabelledRowText(
+    doc,
+    "div.o_release-date",
     "Release",
-    /([A-Za-z]+\s+\d{1,2},\s*\d{4})/,
   );
   if (releaseDate) {
     const parsed = parseVizDate(releaseDate);
     if (parsed) metadata.releaseDate = parsed;
   }
 
-  // Imprint: anchor text after <strong>Imprint</strong>.
-  const imprintMatch = html.match(
-    /<strong>Imprint<\/strong>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i,
-  );
-  if (imprintMatch) metadata.imprint = imprintMatch[1].trim();
+  // Imprint: the value is an anchor sibling rather than a text node, so
+  // locate the labelled row and return its first child anchor's text.
+  const imprint = extractImprint(doc);
+  if (imprint) metadata.imprint = imprint;
 
   return metadata;
 }
 
 /**
- * Match a `<strong>Label</strong>\s*<valueRegex>` pair in raw HTML and
- * return the value. The valueRegex should have exactly one capture group.
+ * Extract the value from a "label row" where the row element has a
+ * known class and contains `<strong>Label</strong> value-text`. The
+ * element's recursive `.text` gives us "Label value-text"; we strip the
+ * label prefix to get the value alone.
  */
-function matchLabelValue(
-  html: string,
+function extractLabelledRowText(
+  doc: ReturnType<typeof shisho.html.parse>,
+  selector: string,
   label: string,
-  valueRegex: RegExp,
 ): string | undefined {
-  const pattern = new RegExp(
-    `<strong>${label}<\\/strong>\\s*${valueRegex.source}`,
-    "i",
-  );
-  const m = html.match(pattern);
-  return m ? m[1].trim() : undefined;
+  const el = shisho.html.querySelector(doc, selector);
+  if (!el) return undefined;
+  const text = el.text.replace(/\s+/g, " ").trim();
+  // Remove the label prefix if present. Some Viz rows also start with a
+  // whitespace character before the <strong>, which gets collapsed.
+  const stripped = text.replace(new RegExp(`^${label}\\s*`, "i"), "").trim();
+  return stripped || undefined;
+}
+
+/**
+ * Extract the imprint from the product details block by finding the
+ * generic detail row whose first <strong> child is labelled "Imprint"
+ * and returning its anchor child's text.
+ */
+function extractImprint(
+  doc: ReturnType<typeof shisho.html.parse>,
+): string | undefined {
+  const rows = shisho.html.querySelectorAll(doc, "div.mar-b-md");
+  for (const row of rows) {
+    const strong = row.children.find((c) => c.tag === "strong");
+    if (!strong || strong.text.trim().toLowerCase() !== "imprint") continue;
+    const anchor = row.children.find((c) => c.tag === "a");
+    const value = anchor?.text.trim();
+    if (value) return value;
+  }
+  return undefined;
 }
 
 /**

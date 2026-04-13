@@ -52,8 +52,8 @@ export function parseQuery(query: string): ParsedQuery {
 
   let working = query;
 
-  // 1. Strip a .cbz/.cbr extension if present.
-  working = working.replace(/\.(cbz|cbr)$/i, "");
+  // 1. Strip a .cbz/.cbr extension if present (tolerating trailing whitespace).
+  working = working.replace(/\.(cbz|cbr)\s*$/i, "");
 
   // 2. Strip trailing parenthesized groups, repeatedly, from right to left.
   while (true) {

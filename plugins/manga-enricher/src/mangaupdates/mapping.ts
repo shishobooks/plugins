@@ -62,7 +62,7 @@ export function getLiveEnglishPublishers(series: MUSeries): EnglishPublisher[] {
  * Used for the top-level `publisher` metadata field when no publisher
  * scraper runs.
  */
-export function pickEnglishPublisher(series: MUSeries): string | undefined {
+function pickEnglishPublisher(series: MUSeries): string | undefined {
   return getLiveEnglishPublishers(series)[0]?.name;
 }
 

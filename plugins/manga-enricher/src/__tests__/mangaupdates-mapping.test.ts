@@ -1,5 +1,5 @@
 import {
-  pickEnglishPublisher,
+  getLiveEnglishPublishers,
   seriesToMetadata,
   titleCaseAuthorName,
 } from "../mangaupdates/mapping";
@@ -109,14 +109,16 @@ describe("seriesToMetadata", () => {
   });
 });
 
-describe("pickEnglishPublisher", () => {
-  it("returns the single English publisher when there's only one", () => {
-    expect(pickEnglishPublisher(sampleSeries)).toBe("VIZ Media");
+describe("getLiveEnglishPublishers", () => {
+  it("returns the only English publisher when there's just one", () => {
+    expect(getLiveEnglishPublishers(sampleSeries).map((p) => p.name)).toEqual([
+      "VIZ Media",
+    ]);
   });
 
-  it("returns the most recent (last-listed) live publisher", () => {
+  it("orders the most recent (last-listed) publisher first", () => {
     // MU lists publishers oldest-first. For Wotakoi the order is
-    // [INKR, Kodansha Comics]; we want the most recent, Kodansha Comics.
+    // [INKR, Kodansha Comics]; we want Kodansha Comics at index 0.
     const series: MUSeries = {
       ...sampleSeries,
       publishers: [
@@ -128,12 +130,15 @@ describe("pickEnglishPublisher", () => {
         },
       ],
     };
-    expect(pickEnglishPublisher(series)).toBe("Kodansha Comics");
+    expect(getLiveEnglishPublishers(series).map((p) => p.name)).toEqual([
+      "Kodansha Comics",
+      "INKR",
+    ]);
   });
 
   it("skips defunct and expired entries regardless of position", () => {
     // For Fruits Basket the chronological order is Chuang Yi (defunct),
-    // TokyoPop (expired), Yen Press (live). Only Yen Press should win.
+    // TokyoPop (expired), Yen Press (live). Only Yen Press survives.
     const series: MUSeries = {
       ...sampleSeries,
       publishers: [
@@ -154,20 +159,22 @@ describe("pickEnglishPublisher", () => {
         },
       ],
     };
-    expect(pickEnglishPublisher(series)).toBe("Yen Press");
+    expect(getLiveEnglishPublishers(series).map((p) => p.name)).toEqual([
+      "Yen Press",
+    ]);
   });
 
-  it("returns undefined when no English publisher is present", () => {
+  it("returns an empty array when no English publisher is present", () => {
     const series: MUSeries = {
       ...sampleSeries,
       publishers: [{ publisher_name: "Shueisha", type: "Original" }],
     };
-    expect(pickEnglishPublisher(series)).toBeUndefined();
+    expect(getLiveEnglishPublishers(series)).toEqual([]);
   });
 
-  it("returns undefined when publishers is missing", () => {
+  it("returns an empty array when publishers is missing", () => {
     const series: MUSeries = { series_id: 1, title: "X" };
-    expect(pickEnglishPublisher(series)).toBeUndefined();
+    expect(getLiveEnglishPublishers(series)).toEqual([]);
   });
 });
 

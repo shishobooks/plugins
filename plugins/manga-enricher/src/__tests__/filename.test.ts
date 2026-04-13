@@ -31,6 +31,11 @@ describe("parseQuery", () => {
       ).toBe("One Piece");
     });
 
+    it("tolerates trailing whitespace after the extension", () => {
+      expect(parseQuery("One Piece.cbz ").seriesTitle).toBe("One Piece");
+      expect(parseQuery("One Piece.cbz\t").seriesTitle).toBe("One Piece");
+    });
+
     it("trims trailing whitespace and dashes", () => {
       expect(parseQuery("One Piece - ").seriesTitle).toBe("One Piece");
     });

@@ -3,6 +3,7 @@ import { fetchSeries, searchSeries } from "./mangaupdates/api";
 import {
   getLiveEnglishPublishers,
   seriesToMetadata,
+  type EnglishPublisher,
 } from "./mangaupdates/mapping";
 import type { MUSeries } from "./mangaupdates/types";
 import { kodanshaScraper } from "./publishers/kodansha";
@@ -48,7 +49,10 @@ function tryIdLookup(context: SearchContext): ParsedMetadata[] {
   const id = context.identifiers?.find(
     (i) => i.type === "mangaupdates_series",
   )?.value;
-  if (!id) return [];
+  // Manifest pattern is `^\d+$`, but don't rely on the host to enforce it —
+  // reject anything that isn't a pure decimal string so "123abc" doesn't
+  // silently become 123 via parseInt.
+  if (!id || !/^\d+$/.test(id)) return [];
 
   const seriesId = parseInt(id, 10);
   if (!Number.isFinite(seriesId)) return [];
@@ -145,11 +149,11 @@ function tryTitleSearch(context: SearchContext): ParsedMetadata[] {
 /**
  * Common matching loop for both fast and slow paths.
  *
- * In the fast path (`fetchedMatchOnly=true`), confidence is computed from
- * the search-result record (primary title only). For matches we then fetch
+ * In the fast path (`fastPath=true`), confidence is computed from the
+ * search-result record (primary title only). For matches we then fetch
  * the full series so the returned metadata has authors/publishers/etc.
  *
- * In the slow path (`fetchedMatchOnly=false`), every candidate is fetched
+ * In the slow path (`fastPath=false`), every candidate is fetched
  * up-front so confidence sees associated titles too. A single fetch per
  * candidate is shared between the confidence check and metadata building.
  */
@@ -200,6 +204,23 @@ function matchCandidates(
 const MIN_SUBSTRING_LENGTH = 4;
 
 /**
+ * Collect all searchable title strings for a series: primary title plus
+ * any non-empty associated titles, in that order. Used by both the
+ * confidence check and canonical-title picker to avoid duplicating the
+ * collection logic.
+ */
+function collectSeriesTitles(series: MUSeries): string[] {
+  const titles: string[] = [];
+  if (series.title) titles.push(series.title);
+  if (series.associated) {
+    for (const a of series.associated) {
+      if (a.title) titles.push(a.title);
+    }
+  }
+  return titles;
+}
+
+/**
  * Compute a confidence score for a search result against the target query.
  * Returns null if no title passes any threshold.
  *
@@ -215,12 +236,7 @@ function computeConfidence(
   normalizedTarget: string,
   candidate: MUSeries,
 ): number | null {
-  const candidateTitles = [candidate.title];
-  if (candidate.associated) {
-    for (const a of candidate.associated) {
-      if (a.title) candidateTitles.push(a.title);
-    }
-  }
+  const candidateTitles = collectSeriesTitles(candidate);
 
   let bestConfidence: number | null = null;
 
@@ -350,13 +366,7 @@ export function pickCanonicalTitle(
 ): string | undefined {
   if (!query) return undefined;
 
-  const candidates: string[] = [];
-  if (series.title) candidates.push(series.title);
-  if (series.associated) {
-    for (const a of series.associated) {
-      if (a.title) candidates.push(a.title);
-    }
-  }
+  const candidates = collectSeriesTitles(series);
   if (candidates.length === 0) return undefined;
 
   const normalizedQuery = normalizeForComparison(query);
@@ -430,16 +440,20 @@ function findVolumeData(
   // When an edition is specified, bubble publishers whose notes mention
   // that edition to the front of the list. This picks "Yen Press" over
   // "Chuang Yi" / "TokyoPop" for a Fruits Basket Collector's Edition query.
-  const orderedPublishers = edition
-    ? [
-        ...livePublishers.filter((p) =>
-          (p.notes ?? "").toLowerCase().includes(edition.toLowerCase()),
-        ),
-        ...livePublishers.filter(
-          (p) => !(p.notes ?? "").toLowerCase().includes(edition.toLowerCase()),
-        ),
-      ]
-    : livePublishers;
+  let orderedPublishers = livePublishers;
+  if (edition) {
+    const editionLower = edition.toLowerCase();
+    const matching: EnglishPublisher[] = [];
+    const other: EnglishPublisher[] = [];
+    for (const publisher of livePublishers) {
+      if ((publisher.notes ?? "").toLowerCase().includes(editionLower)) {
+        matching.push(publisher);
+      } else {
+        other.push(publisher);
+      }
+    }
+    orderedPublishers = [...matching, ...other];
+  }
 
   // Walk the publishers in order, attempting each one's matching scraper.
   // The first successful scrape wins. If a publisher has no matching

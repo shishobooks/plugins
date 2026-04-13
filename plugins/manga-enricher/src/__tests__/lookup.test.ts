@@ -88,6 +88,19 @@ describe("searchForManga", () => {
       });
       expect(searchForManga(context)).toEqual([]);
     });
+
+    it("rejects identifier values that aren't pure decimal digits", () => {
+      // parseInt("123abc") silently returns 123; we must not route that
+      // to a real series lookup even if the host's manifest pattern fails
+      // to reject it upstream.
+      setupDefaultMocks();
+      const context = makeContext({
+        query: "One Piece",
+        identifiers: [{ type: "mangaupdates_series", value: "123abc" }],
+      });
+      expect(searchForManga(context)).toEqual([]);
+      expect(mockedFetchSeries).not.toHaveBeenCalled();
+    });
   });
 
   describe("Tier 2: title search", () => {
