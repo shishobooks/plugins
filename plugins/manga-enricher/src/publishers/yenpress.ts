@@ -53,6 +53,14 @@ export function buildSlug(seriesTitle: string, edition?: string): string {
  * because the ISBN segment is unknown up front, so we grep the series
  * page for matching links.
  *
+ * Yen Press series pages embed cross-promotional cards for unrelated
+ * titles (carousels, "you might also like" blocks). The naive "first
+ * `vol-N` link wins" approach picks one of those promos instead of the
+ * actual series volume, so we require the matched path to contain the
+ * series slug (`-<slug>-vol-<N>`). The slug is the same string passed to
+ * `BASE_URL/series/<slug>`, so any link whose slug segment matches it
+ * belongs to the page's own series.
+ *
  * We capture the trailing digit group and compare numerically, so
  * `vol-1` and `vol-10` are distinct regardless of document order. The
  * non-greedy `[^"]*?` before `-vol-` keeps the capture scoped to a
@@ -60,15 +68,17 @@ export function buildSlug(seriesTitle: string, edition?: string): string {
  */
 export function pickProductPath(
   seriesHtml: string,
+  slug: string,
   volumeNumber: number,
 ): string | null {
   const linkRegex = /href="(\/titles\/[^"]*?-vol-(\d+))"/gi;
+  const slugMarker = `-${slug}-vol-`;
   let match: RegExpExecArray | null;
   while ((match = linkRegex.exec(seriesHtml)) !== null) {
     const [, path, num] = match;
-    if (parseInt(num, 10) === volumeNumber) {
-      return path;
-    }
+    if (parseInt(num, 10) !== volumeNumber) continue;
+    if (!path.includes(slugMarker)) continue;
+    return path;
   }
   return null;
 }
@@ -268,7 +278,7 @@ export const yenpressScraper: PublisherScraper = {
     const seriesHtml = fetchHtml(seriesUrl);
     if (!seriesHtml) return null;
 
-    const productPath = pickProductPath(seriesHtml, volumeNumber);
+    const productPath = pickProductPath(seriesHtml, slug, volumeNumber);
     if (!productPath) {
       shisho.log.debug(
         `YenPress: no volume-${volumeNumber} product link found for "${seriesTitle}"`,

@@ -73,18 +73,20 @@ describe("buildSlug", () => {
 });
 
 describe("pickProductPath", () => {
+  const takagiSlug = "teasing-master-takagi-san";
+
   it("finds the product path for volume 6 from the real series page", () => {
-    const path = pickProductPath(takagiSeriesHtml, 6);
+    const path = pickProductPath(takagiSeriesHtml, takagiSlug, 6);
     expect(path).toBe("/titles/9781975331702-teasing-master-takagi-san-vol-6");
   });
 
   it("finds higher-numbered volumes (vol 20)", () => {
-    const path = pickProductPath(takagiSeriesHtml, 20);
+    const path = pickProductPath(takagiSeriesHtml, takagiSlug, 20);
     expect(path).toBe("/titles/9798855410716-teasing-master-takagi-san-vol-20");
   });
 
   it("returns null when the volume is absent", () => {
-    expect(pickProductPath(takagiSeriesHtml, 999)).toBeNull();
+    expect(pickProductPath(takagiSeriesHtml, takagiSlug, 999)).toBeNull();
   });
 
   it("does not confuse vol-1 with vol-10/11/12", () => {
@@ -94,12 +96,36 @@ describe("pickProductPath", () => {
       <a href="/titles/9999999999990-some-series-vol-10"></a>
       <a href="/titles/9999999999991-some-series-vol-1"></a>
     `;
-    expect(pickProductPath(html, 1)).toBe(
+    expect(pickProductPath(html, "some-series", 1)).toBe(
       "/titles/9999999999991-some-series-vol-1",
     );
-    expect(pickProductPath(html, 10)).toBe(
+    expect(pickProductPath(html, "some-series", 10)).toBe(
       "/titles/9999999999990-some-series-vol-10",
     );
+  });
+
+  it("ignores cross-promotional links from other series", () => {
+    // Yen Press series pages embed carousels of unrelated titles. The
+    // first vol-1 link on the page is often a cross-promo, NOT the
+    // requested series. The picker must filter by slug to avoid
+    // returning the wrong title.
+    const html = `
+      <a href="/titles/9798855419429-how-to-love-a-loser-vol-1"></a>
+      <a href="/titles/9798855435481-banished-from-the-hero-s-party-vol-1"></a>
+      <a href="/titles/9780316360166-fruits-basket-collector-s-edition-vol-1"></a>
+    `;
+    expect(pickProductPath(html, "fruits-basket-collector-s-edition", 1)).toBe(
+      "/titles/9780316360166-fruits-basket-collector-s-edition-vol-1",
+    );
+  });
+
+  it("returns null when only cross-promo vol-N links exist for the wrong slug", () => {
+    const html = `
+      <a href="/titles/9798855419429-how-to-love-a-loser-vol-1"></a>
+    `;
+    expect(
+      pickProductPath(html, "fruits-basket-collector-s-edition", 1),
+    ).toBeNull();
   });
 });
 
