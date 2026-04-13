@@ -9,6 +9,7 @@ import type { MUSeries } from "./mangaupdates/types";
 import { kodanshaScraper } from "./publishers/kodansha";
 import type { PublisherScraper, VolumeMetadata } from "./publishers/types";
 import { vizScraper } from "./publishers/viz";
+import { yenpressScraper } from "./publishers/yenpress";
 import {
   levenshteinDistance,
   normalizeForComparison,
@@ -23,7 +24,11 @@ const MAX_LEVENSHTEIN_DISTANCE = 5;
 const MAX_LEVENSHTEIN_RATIO = 0.4;
 
 /** Registry of publisher scrapers. Order matters for the fallback path. */
-const SCRAPERS: readonly PublisherScraper[] = [vizScraper, kodanshaScraper];
+const SCRAPERS: readonly PublisherScraper[] = [
+  vizScraper,
+  kodanshaScraper,
+  yenpressScraper,
+];
 
 /**
  * MangaUpdates series types to exclude from candidate matching.
