@@ -43,6 +43,12 @@ describe("parseQuery", () => {
     it("returns an empty seriesTitle for an empty input", () => {
       expect(parseQuery("").seriesTitle).toBe("");
     });
+
+    it("returns an empty seriesTitle for undefined input", () => {
+      // The SDK types context.query as a plain string, but guard anyway
+      // so runtime mishandling by the host can't propagate as a throw.
+      expect(parseQuery(undefined).seriesTitle).toBe("");
+    });
   });
 
   describe("volume number extraction", () => {

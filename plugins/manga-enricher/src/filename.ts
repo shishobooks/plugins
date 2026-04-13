@@ -45,9 +45,10 @@ function escapeRegExp(s: string): string {
  * The query is typically derived from a filename by Shisho's scan pipeline.
  * We don't know exactly how clean or messy it will be, so the parser is
  * defensive: it handles already-clean titles and raw filename-like strings
- * uniformly.
+ * uniformly. Accepts `undefined` and returns an empty `ParsedQuery` so
+ * callers don't need their own null guard.
  */
-export function parseQuery(query: string): ParsedQuery {
+export function parseQuery(query: string | undefined): ParsedQuery {
   if (!query) return { seriesTitle: "" };
 
   let working = query;
