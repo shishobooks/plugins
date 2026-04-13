@@ -1,6 +1,9 @@
 import { parseQuery } from "./filename";
 import { fetchSeries, searchSeries } from "./mangaupdates/api";
-import { pickEnglishPublisher, seriesToMetadata } from "./mangaupdates/mapping";
+import {
+  getLiveEnglishPublishers,
+  seriesToMetadata,
+} from "./mangaupdates/mapping";
 import type { MUSeries } from "./mangaupdates/types";
 import { kodanshaScraper } from "./publishers/kodansha";
 import type { PublisherScraper, VolumeMetadata } from "./publishers/types";
@@ -251,31 +254,57 @@ function buildMetadata(
 }
 
 /**
- * Find per-volume data by trying the routed publisher scraper first, then
- * falling back to all other scrapers in order.
+ * Find per-volume data by mapping MangaUpdates' English publisher list to
+ * our scraper registry. Only live (non-defunct, non-expired) publishers
+ * are considered, and each one is matched against the scrapers in turn.
+ *
+ * If the parsed query has an edition, publishers whose notes mention that
+ * edition are tried first (e.g., "Yen Press (12 Collector's Edition Vols)"
+ * wins for a query that parsed as "Collector's Edition").
+ *
+ * When MangaUpdates lists publishers we don't have scrapers for, we skip
+ * the scrape entirely — there's no point asking Viz about a Yen Press
+ * series. Only if there is NO English publisher at all do we fall back to
+ * trying every registered scraper blindly.
  */
 function findVolumeData(
   series: MUSeries,
   volumeNumber: number,
   edition: string | undefined,
 ): VolumeMetadata | null {
-  const publisherName = pickEnglishPublisher(series);
   const seriesTitle = series.title;
+  const livePublishers = getLiveEnglishPublishers(series);
 
-  // Primary route: the scraper whose matchPublisher() agrees.
-  let primary: PublisherScraper | undefined;
-  if (publisherName) {
-    primary = SCRAPERS.find((s) => s.matchPublisher(publisherName));
+  // No English publisher info at all — we have nothing to route on, so
+  // blind-try every scraper in registry order.
+  if (livePublishers.length === 0) {
+    for (const scraper of SCRAPERS) {
+      const data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
+      if (data) return data;
+    }
+    return null;
   }
 
-  if (primary) {
-    const data = primary.searchVolume(seriesTitle, volumeNumber, edition);
-    if (data) return data;
-  }
+  // When an edition is specified, bubble publishers whose notes mention
+  // that edition to the front of the list. This picks "Yen Press" over
+  // "Chuang Yi" / "TokyoPop" for a Fruits Basket Collector's Edition query.
+  const orderedPublishers = edition
+    ? [
+        ...livePublishers.filter((p) =>
+          (p.notes ?? "").toLowerCase().includes(edition.toLowerCase()),
+        ),
+        ...livePublishers.filter(
+          (p) => !(p.notes ?? "").toLowerCase().includes(edition.toLowerCase()),
+        ),
+      ]
+    : livePublishers;
 
-  // Fallback: try all other scrapers.
-  for (const scraper of SCRAPERS) {
-    if (scraper === primary) continue;
+  // Walk the publishers in order, attempting each one's matching scraper.
+  // The first successful scrape wins. If a publisher has no matching
+  // scraper, we skip it rather than falling back to unrelated scrapers.
+  for (const publisher of orderedPublishers) {
+    const scraper = SCRAPERS.find((s) => s.matchPublisher(publisher.name));
+    if (!scraper) continue;
     const data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
     if (data) return data;
   }

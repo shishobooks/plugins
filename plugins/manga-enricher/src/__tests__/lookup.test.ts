@@ -288,16 +288,76 @@ describe("searchForManga", () => {
       expect(results[0].description).toBe("Kodansha synopsis.");
     });
 
-    it("falls back through all scrapers when publisher is unmatched", () => {
+    it("skips scraping entirely when the publisher has no matching scraper", () => {
+      // "Yen Press" is a real publisher but we don't have a scraper for it.
+      // Rather than wastefully pinging Viz and Kodansha, we should return
+      // series-level metadata only.
       setupDefaultMocks();
-      const mysterySeries: MUSeries = {
+      const yenPressSeries: MUSeries = {
+        ...onePieceSeries,
+        publishers: [{ publisher_name: "Yen Press", type: "English" }],
+      };
+      mockedSearchSeries.mockReturnValue([yenPressSeries]);
+      mockedFetchSeries.mockReturnValue(yenPressSeries);
+
+      const context = makeContext({ query: "One Piece v01.cbz" });
+      const results = searchForManga(context);
+
+      expect(mockedVizSearch).not.toHaveBeenCalled();
+      expect(mockedKodanshaSearch).not.toHaveBeenCalled();
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe("One Piece");
+      // No per-volume scrape happened, but series-level fields are still
+      // returned (including the English publisher picked from MU).
+      expect(results[0].publisher).toBe("Yen Press");
+    });
+
+    it("skips defunct and expired publishers", () => {
+      // MangaUpdates lists Fruits Basket with three English publishers.
+      // Chuang Yi and TokyoPop are marked Defunct/Expired and should be
+      // skipped entirely — only Yen Press is considered. Since we have no
+      // Yen Press scraper, no scrape should happen.
+      setupDefaultMocks();
+      const fruitsBasket: MUSeries = {
         ...onePieceSeries,
         publishers: [
-          { publisher_name: "Some Other Publisher", type: "English" },
+          {
+            publisher_name: "Chuang Yi",
+            type: "English",
+            notes: "Defunct / 23 Vols - Complete",
+          },
+          {
+            publisher_name: "TokyoPop",
+            type: "English",
+            notes: "Expired / 23 Vols - Complete",
+          },
+          {
+            publisher_name: "Yen Press",
+            type: "English",
+            notes: "12 Collector's Edition Vols - Complete",
+          },
         ],
       };
-      mockedSearchSeries.mockReturnValue([mysterySeries]);
-      mockedFetchSeries.mockReturnValue(mysterySeries);
+      mockedSearchSeries.mockReturnValue([fruitsBasket]);
+      mockedFetchSeries.mockReturnValue(fruitsBasket);
+
+      const context = makeContext({ query: "Fruits Basket v01.cbz" });
+      searchForManga(context);
+
+      expect(mockedVizSearch).not.toHaveBeenCalled();
+      expect(mockedKodanshaSearch).not.toHaveBeenCalled();
+    });
+
+    it("tries all scrapers blindly when there is no English publisher", () => {
+      // With no publisher info we have nothing to route on, so we fall
+      // back to trying every registered scraper in order.
+      setupDefaultMocks();
+      const orphanSeries: MUSeries = {
+        ...onePieceSeries,
+        publishers: [{ publisher_name: "Shueisha", type: "Original" }],
+      };
+      mockedSearchSeries.mockReturnValue([orphanSeries]);
+      mockedFetchSeries.mockReturnValue(orphanSeries);
       mockedVizSearch.mockReturnValue(null);
       mockedKodanshaSearch.mockReturnValue(vizVolumeData);
 
@@ -307,6 +367,44 @@ describe("searchForManga", () => {
       expect(mockedVizSearch).toHaveBeenCalled();
       expect(mockedKodanshaSearch).toHaveBeenCalled();
       expect(results[0].description).toBe("Full per-volume synopsis.");
+    });
+
+    it("prefers a publisher whose notes mention the parsed edition", () => {
+      // Fruits Basket Collector's Edition — Yen Press notes mention
+      // "Collector's Edition" and should be tried first. We give it a
+      // synthetic Yen Press scraper via the Viz mock for test simplicity.
+      setupDefaultMocks();
+      mockedVizMatch.mockImplementation((p: string) => /yen press/i.test(p));
+      const fruitsBasket: MUSeries = {
+        ...onePieceSeries,
+        title: "Fruits Basket",
+        publishers: [
+          {
+            publisher_name: "TokyoPop",
+            type: "English",
+            notes: "23 Vols - Complete",
+          },
+          {
+            publisher_name: "Yen Press",
+            type: "English",
+            notes: "12 Collector's Edition Vols - Complete",
+          },
+        ],
+      };
+      mockedSearchSeries.mockReturnValue([fruitsBasket]);
+      mockedFetchSeries.mockReturnValue(fruitsBasket);
+      mockedVizSearch.mockReturnValue(vizVolumeData);
+
+      const context = makeContext({
+        query: "Fruits Basket Collector's Edition v01.cbz",
+      });
+      searchForManga(context);
+
+      expect(mockedVizSearch).toHaveBeenCalledWith(
+        "Fruits Basket",
+        1,
+        "Collector's Edition",
+      );
     });
 
     it("returns series-level metadata when no scraper finds the volume", () => {
