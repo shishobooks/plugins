@@ -1,4 +1,4 @@
-import { searchForManga } from "../lookup";
+import { pickCanonicalTitle, searchForManga } from "../lookup";
 import { fetchSeries, searchSeries } from "../mangaupdates/api";
 import type { MUSeries } from "../mangaupdates/types";
 import { kodanshaScraper } from "../publishers/kodansha";
@@ -660,5 +660,76 @@ describe("searchForManga", () => {
         "Collector's Edition",
       );
     });
+  });
+});
+
+describe("pickCanonicalTitle", () => {
+  function seriesWith(overrides: Partial<MUSeries>): MUSeries {
+    return { series_id: 1, title: "", ...overrides };
+  }
+
+  it("returns the primary title when it matches the query exactly", () => {
+    const series = seriesWith({ title: "One Piece" });
+    expect(pickCanonicalTitle(series, "One Piece")).toBe("One Piece");
+  });
+
+  it("normalizes casing to MU's canonical form", () => {
+    const series = seriesWith({ title: "One Piece" });
+    expect(pickCanonicalTitle(series, "one piece")).toBe("One Piece");
+    expect(pickCanonicalTitle(series, "ONE PIECE")).toBe("One Piece");
+  });
+
+  it("prefers an associated title over a distant primary", () => {
+    // Sweat and Soap: MU primary is Japanese romaji, English is an
+    // associated title. The associated should win.
+    const series = seriesWith({
+      title: "Ase to Sekken",
+      associated: [{ title: "Sweat and Soap" }, { title: "汗と石鹸" }],
+    });
+    expect(pickCanonicalTitle(series, "sweat and soap")).toBe("Sweat and Soap");
+  });
+
+  it("returns undefined when no MU title is close enough to the query", () => {
+    // When MU only has a long "Japanese Romaji: English" primary and no
+    // separate English associated, the Levenshtein distance is too large
+    // and the caller should fall back to the query itself.
+    const series = seriesWith({
+      title: "Kekkon Suru tte, Hontou desu ka: 365 Days To The Wedding",
+    });
+    expect(
+      pickCanonicalTitle(series, "365 Days to the Wedding"),
+    ).toBeUndefined();
+  });
+
+  it("prefers the shorter title when distances tie", () => {
+    // Both match "Attack on Titan" exactly under normalization; the
+    // shorter one wins.
+    const series = seriesWith({
+      title: "Attack on Titan",
+      associated: [{ title: "Attack on Titan: Junior High" }],
+    });
+    expect(pickCanonicalTitle(series, "attack on titan")).toBe(
+      "Attack on Titan",
+    );
+  });
+
+  it("normalizes punctuation differences within the distance threshold", () => {
+    // Query drops the ampersand; MU has "Sweat & Soap". Distance under
+    // normalization is small, so MU's canonical form wins.
+    const series = seriesWith({
+      title: "Ase to Sekken",
+      associated: [{ title: "Sweat & Soap" }],
+    });
+    expect(pickCanonicalTitle(series, "Sweat and Soap")).toBe("Sweat & Soap");
+  });
+
+  it("returns undefined for an empty query", () => {
+    const series = seriesWith({ title: "One Piece" });
+    expect(pickCanonicalTitle(series, "")).toBeUndefined();
+  });
+
+  it("returns undefined when the series has no titles", () => {
+    const series = seriesWith({ title: "" });
+    expect(pickCanonicalTitle(series, "anything")).toBeUndefined();
   });
 });

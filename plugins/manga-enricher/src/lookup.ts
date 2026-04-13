@@ -282,13 +282,16 @@ function buildMetadata(
 ): ParsedMetadata {
   const metadata = seriesToMetadata(series);
 
-  // Prefer the user's query title over MU's primary for display fields.
-  // MU stores Japanese romaji for most manga (e.g., "Ase to Sekken"),
-  // whereas the user's filename is almost always the English title they
-  // know ("Sweat and Soap"). We've already verified the match via
-  // confidence scoring, so the query title is trustworthy.
+  // Pick a canonical display title. We use the MangaUpdates title (from
+  // the primary or associated-titles list) that's closest to the user's
+  // query. This normalizes casing and punctuation to MU's canonical form
+  // — so "sweat and soap" becomes "Sweat and Soap", "swordartonline"
+  // becomes "Sword Art Online" — while still respecting whichever
+  // language variant the user typed. Falls back to the raw query title,
+  // then to MU's primary, if neither is available.
   if (searchTitle) {
-    metadata.series = searchTitle;
+    const canonical = pickCanonicalTitle(series, searchTitle);
+    metadata.series = canonical ?? searchTitle;
   }
 
   if (volumeNumber !== undefined) {
@@ -323,6 +326,68 @@ function buildMetadata(
   }
 
   return metadata;
+}
+
+/**
+ * Pick the canonical display title for a series by finding the MU
+ * title (primary or associated) closest to the user's query under
+ * normalized Levenshtein comparison. Returns the original (non-
+ * normalized) form so casing and punctuation are preserved from MU's
+ * canonical entry.
+ *
+ * Only candidates that pass the same distance/ratio thresholds used
+ * by confidence scoring are considered. If the user's query is very
+ * different from every MU title (e.g., they typed only the English
+ * portion of a "Japanese Romaji: English Title" primary and MU has
+ * no separate English associated), this returns undefined and the
+ * caller falls back to the query string itself.
+ *
+ * Ties on distance break to the shorter title — avoids variants like
+ * "Attack on Titan: Junior High" winning over plain "Attack on Titan"
+ * when both match equally.
+ */
+export function pickCanonicalTitle(
+  series: MUSeries,
+  query: string,
+): string | undefined {
+  if (!query) return undefined;
+
+  const candidates: string[] = [];
+  if (series.title) candidates.push(series.title);
+  if (series.associated) {
+    for (const a of series.associated) {
+      if (a.title) candidates.push(a.title);
+    }
+  }
+  if (candidates.length === 0) return undefined;
+
+  const normalizedQuery = normalizeForComparison(query);
+
+  let best: { title: string; distance: number } | null = null;
+  for (const candidate of candidates) {
+    const normalized = normalizeForComparison(candidate);
+    const distance = levenshteinDistance(normalizedQuery, normalized);
+    const maxLen = Math.max(normalizedQuery.length, normalized.length);
+
+    // Skip candidates that are too far from the query to be considered
+    // the "same title" — same thresholds as computeConfidence.
+    if (
+      distance > MAX_LEVENSHTEIN_DISTANCE ||
+      (maxLen > 0 && distance / maxLen > MAX_LEVENSHTEIN_RATIO)
+    ) {
+      continue;
+    }
+
+    if (
+      best === null ||
+      distance < best.distance ||
+      (distance === best.distance && candidate.length < best.title.length)
+    ) {
+      best = { title: candidate, distance };
+    }
+  }
+
+  return best?.title;
 }
 
 /**
