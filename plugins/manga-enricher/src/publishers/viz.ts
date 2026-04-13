@@ -134,6 +134,15 @@ export function parseProduct(html: string, url: string): VolumeMetadata {
   );
   if (imprint) metadata.imprint = imprint;
 
+  // Cover image: og:image meta tag. Viz hosts product covers on a
+  // CloudFront CDN whose filename is the ISBN-10 (e.g.,
+  // https://dw9to29mmj727.cloudfront.net/products/1569319014.jpg).
+  const ogImage = matchOne(
+    html,
+    /<meta property="og:image"\s+content="([^"]+)"/i,
+  );
+  if (ogImage) metadata.coverUrl = ogImage;
+
   return metadata;
 }
 

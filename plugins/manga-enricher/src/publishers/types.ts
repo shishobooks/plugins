@@ -19,6 +19,8 @@ export interface VolumeMetadata {
   imprint?: string;
   /** Publisher product page URL. */
   url?: string;
+  /** Per-volume cover image URL (publisher CDN). */
+  coverUrl?: string;
 }
 
 /**

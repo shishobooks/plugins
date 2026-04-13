@@ -80,6 +80,10 @@ describe("vizScraper.searchVolume", () => {
     if (result?.releaseDate) {
       expect(result.releaseDate).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     }
+    // Cover URL should point to the Viz CloudFront CDN
+    expect(result?.coverUrl).toMatch(
+      /^https:\/\/dw9to29mmj727\.cloudfront\.net\/products\/\d{10}\.jpg$/,
+    );
   });
 
   it("returns null when the search page returns an error", () => {

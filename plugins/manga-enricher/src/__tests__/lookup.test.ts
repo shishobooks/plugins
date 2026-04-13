@@ -261,6 +261,55 @@ describe("searchForManga", () => {
       );
     });
 
+    it("overrides the MU series cover with the publisher's per-volume cover", () => {
+      // The series-level MU cover is set by seriesToMetadata; the per-
+      // volume publisher cover should win in the merged result.
+      setupDefaultMocks();
+      const withMuCover: MUSeries = {
+        ...onePieceSeries,
+        image: {
+          url: {
+            original: "https://cdn.mangaupdates.com/image/i517997.jpg",
+          },
+        },
+      };
+      mockedSearchSeries.mockReturnValue([withMuCover]);
+      mockedFetchSeries.mockReturnValue(withMuCover);
+      mockedVizSearch.mockReturnValue({
+        ...vizVolumeData,
+        coverUrl:
+          "https://dw9to29mmj727.cloudfront.net/products/1569319014.jpg",
+      });
+
+      const context = makeContext({ query: "One Piece v01.cbz" });
+      const results = searchForManga(context);
+
+      expect(results[0].coverUrl).toBe(
+        "https://dw9to29mmj727.cloudfront.net/products/1569319014.jpg",
+      );
+    });
+
+    it("keeps the MU series cover when the publisher scraper has no cover", () => {
+      setupDefaultMocks();
+      const withMuCover: MUSeries = {
+        ...onePieceSeries,
+        image: {
+          url: { original: "https://cdn.mangaupdates.com/image/i517997.jpg" },
+        },
+      };
+      mockedSearchSeries.mockReturnValue([withMuCover]);
+      mockedFetchSeries.mockReturnValue(withMuCover);
+      // vizVolumeData has no coverUrl
+      mockedVizSearch.mockReturnValue(vizVolumeData);
+
+      const context = makeContext({ query: "One Piece v01.cbz" });
+      const results = searchForManga(context);
+
+      expect(results[0].coverUrl).toBe(
+        "https://cdn.mangaupdates.com/image/i517997.jpg",
+      );
+    });
+
     it("routes to Kodansha when the English publisher is Kodansha USA", () => {
       setupDefaultMocks();
       const aotSeries: MUSeries = {

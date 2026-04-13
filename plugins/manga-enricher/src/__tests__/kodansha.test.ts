@@ -58,6 +58,10 @@ describe("kodanshaScraper.searchVolume", () => {
     if (result?.isbn13) {
       expect(result.isbn13).toMatch(/^\d{13}$/);
     }
+    // Cover URL should come from the Azuki CDN via JSON-LD.
+    expect(result?.coverUrl).toMatch(
+      /^https:\/\/production\.image\.azuki\.co\//,
+    );
   });
 
   it("returns null on HTTP error", () => {

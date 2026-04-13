@@ -327,6 +327,8 @@ function mergeVolumeData(
   if (volumeData.releaseDate) metadata.releaseDate = volumeData.releaseDate;
   if (volumeData.imprint) metadata.imprint = volumeData.imprint;
   if (volumeData.url) metadata.url = volumeData.url;
+  // Publisher cover (per-volume) overrides the series-level MU cover.
+  if (volumeData.coverUrl) metadata.coverUrl = volumeData.coverUrl;
 
   const extraIdentifiers: ParsedIdentifier[] = [];
   if (volumeData.isbn13) {

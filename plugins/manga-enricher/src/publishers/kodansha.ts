@@ -66,6 +66,7 @@ interface JsonLdBook {
   description?: string;
   datePublished?: string;
   isbn?: string;
+  image?: string;
   workExample?: Array<{
     "@type"?: string | string[];
     bookFormat?: string;
@@ -202,6 +203,10 @@ export function parseProduct(html: string, url: string): VolumeMetadata | null {
 
   const releaseDate = pickReleaseDate(book);
   if (releaseDate) metadata.releaseDate = releaseDate;
+
+  // Cover image: the Book JSON-LD's top-level image field, which points
+  // to the Azuki image CDN (production.image.azuki.co).
+  if (book.image) metadata.coverUrl = book.image;
 
   return metadata;
 }

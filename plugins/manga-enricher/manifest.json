@@ -39,7 +39,9 @@
         "api.mangaupdates.com",
         "cdn.mangaupdates.com",
         "www.viz.com",
-        "kodansha.us"
+        "dw9to29mmj727.cloudfront.net",
+        "kodansha.us",
+        "production.image.azuki.co"
       ]
     },
     "identifierTypes": [
