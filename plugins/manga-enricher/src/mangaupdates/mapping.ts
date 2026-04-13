@@ -33,26 +33,34 @@ export interface EnglishPublisher {
 
 /**
  * Return all English-type publishers that are not marked defunct or expired
- * in MangaUpdates' notes. Order is preserved from the source.
+ * in MangaUpdates' notes, ordered most-recent-first.
+ *
+ * MangaUpdates lists publishers in chronological order (oldest first), so
+ * the current active licensor is typically the last entry. For example,
+ * Fruits Basket is listed as Chuang Yi → TokyoPop → Yen Press, and Wotakoi
+ * as INKR → Kodansha Comics. We reverse the array so callers can treat
+ * the head as "the most likely current licensor".
  *
  * The notes field uses human-readable strings like:
  *   "Defunct / 23 Vols - Complete"
  *   "Expired / 23 Vols - Complete | 6 Ultimate Edition Vols - Incomplete"
  *   "12 Collector's Edition Vols - Complete"
- * We drop anything containing "Defunct" or "Expired" — these licenses are
- * dead and any product page will 404.
+ * Anything containing "Defunct" or "Expired" is dropped — these licenses
+ * are dead and any product page will 404.
  */
 export function getLiveEnglishPublishers(series: MUSeries): EnglishPublisher[] {
   if (!series.publishers) return [];
   return series.publishers
     .filter((p) => p.type === "English")
     .filter((p) => !/\b(defunct|expired)\b/i.test(p.notes ?? ""))
-    .map((p) => ({ name: p.publisher_name, notes: p.notes }));
+    .map((p) => ({ name: p.publisher_name, notes: p.notes }))
+    .reverse();
 }
 
 /**
- * Return the name of the first live English publisher, or undefined.
- * Used for the top-level `publisher` metadata field.
+ * Return the name of the most recent live English publisher, or undefined.
+ * Used for the top-level `publisher` metadata field when no publisher
+ * scraper runs.
  */
 export function pickEnglishPublisher(series: MUSeries): string | undefined {
   return getLiveEnglishPublishers(series)[0]?.name;

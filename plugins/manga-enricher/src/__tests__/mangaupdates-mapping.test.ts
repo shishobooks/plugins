@@ -110,8 +110,51 @@ describe("seriesToMetadata", () => {
 });
 
 describe("pickEnglishPublisher", () => {
-  it("returns the first publisher with type 'English'", () => {
+  it("returns the single English publisher when there's only one", () => {
     expect(pickEnglishPublisher(sampleSeries)).toBe("VIZ Media");
+  });
+
+  it("returns the most recent (last-listed) live publisher", () => {
+    // MU lists publishers oldest-first. For Wotakoi the order is
+    // [INKR, Kodansha Comics]; we want the most recent, Kodansha Comics.
+    const series: MUSeries = {
+      ...sampleSeries,
+      publishers: [
+        { publisher_name: "INKR", type: "English" },
+        {
+          publisher_name: "Kodansha Comics",
+          type: "English",
+          notes: "6 2-in-1 Omnibuses - Complete",
+        },
+      ],
+    };
+    expect(pickEnglishPublisher(series)).toBe("Kodansha Comics");
+  });
+
+  it("skips defunct and expired entries regardless of position", () => {
+    // For Fruits Basket the chronological order is Chuang Yi (defunct),
+    // TokyoPop (expired), Yen Press (live). Only Yen Press should win.
+    const series: MUSeries = {
+      ...sampleSeries,
+      publishers: [
+        {
+          publisher_name: "Chuang Yi",
+          type: "English",
+          notes: "Defunct / 23 Vols - Complete",
+        },
+        {
+          publisher_name: "TokyoPop",
+          type: "English",
+          notes: "Expired / 23 Vols - Complete",
+        },
+        {
+          publisher_name: "Yen Press",
+          type: "English",
+          notes: "12 Collector's Edition Vols - Complete",
+        },
+      ],
+    };
+    expect(pickEnglishPublisher(series)).toBe("Yen Press");
   });
 
   it("returns undefined when no English publisher is present", () => {
