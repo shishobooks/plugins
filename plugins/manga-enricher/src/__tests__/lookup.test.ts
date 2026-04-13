@@ -181,7 +181,11 @@ describe("searchForManga", () => {
       const demonSlayerSeries: MUSeries = {
         ...onePieceSeries,
         series_id: 456,
-        title: "Demon Slayer",
+        title: "Kimetsu no Yaiba",
+        associated: [
+          { title: "Demon Slayer" },
+          { title: "Demon Slayer: Kimetsu no Yaiba" },
+        ],
       };
       mockedSearchSeries
         .mockReturnValueOnce([]) // full title: no results
@@ -199,8 +203,10 @@ describe("searchForManga", () => {
       );
       expect(mockedSearchSeries).toHaveBeenNthCalledWith(2, "Demon Slayer");
       expect(results.length).toBeGreaterThan(0);
-      expect(results[0].title).toBe("Demon Slayer - Kimetsu no Yaiba v001");
-      expect(results[0].series).toBe("Demon Slayer - Kimetsu no Yaiba");
+      // The canonical associated title "Demon Slayer: Kimetsu no Yaiba"
+      // is closest to the query and wins for display.
+      expect(results[0].series).toBe("Demon Slayer: Kimetsu no Yaiba");
+      expect(results[0].title).toBe("Demon Slayer: Kimetsu no Yaiba v001");
     });
 
     it("falls back to fetching full series when no primary title matches", () => {
@@ -234,16 +240,23 @@ describe("searchForManga", () => {
     });
 
     it("matches via substring when the query is contained in the candidate title", () => {
-      // MangaUpdates' search returns the Japanese romaji primary title
-      // (e.g., "Kekkon Suru tte, Hontou desu ka: 365 Days To The Wedding")
-      // without associated titles. The query "365 Days to the Wedding" is
-      // a substring of the primary title, so the substring strategy must
-      // accept it even though Levenshtein distance would reject it.
+      // MangaUpdates' search response includes only the primary title
+      // (typically Japanese romaji), so the fast path's substring check
+      // must accept "365 Days to the Wedding" as matching "Kekkon Suru
+      // tte, Hontou desu ka: 365 Days To The Wedding" even though the
+      // Levenshtein distance is huge. Once the series is fetched, the
+      // associated titles include the English form, which pickCanonical-
+      // Title then surfaces as the display name.
       setupDefaultMocks();
       const jp365Series: MUSeries = {
         ...onePieceSeries,
         series_id: 31582516596,
         title: "Kekkon Suru tte, Hontou desu ka: 365 Days To The Wedding",
+        associated: [
+          { title: "365 Days to the Wedding" },
+          { title: "Are You Really Getting Married?: 365 Days to the Wedding" },
+          { title: "結婚するって、本当ですか" },
+        ],
       };
       mockedSearchSeries.mockReturnValue([jp365Series]);
       mockedFetchSeries.mockReturnValue(jp365Series);
@@ -252,8 +265,7 @@ describe("searchForManga", () => {
       const results = searchForManga(context);
 
       expect(results).toHaveLength(1);
-      // Display title uses the user's English query and the standardized
-      // v{NNN} format, not MU's Japanese romaji primary.
+      // Display title snaps to the canonical MU associated title.
       expect(results[0].title).toBe("365 Days to the Wedding v001");
       expect(results[0].series).toBe("365 Days to the Wedding");
       expect(results[0].seriesNumber).toBe(1);
@@ -687,18 +699,6 @@ describe("pickCanonicalTitle", () => {
       associated: [{ title: "Sweat and Soap" }, { title: "汗と石鹸" }],
     });
     expect(pickCanonicalTitle(series, "sweat and soap")).toBe("Sweat and Soap");
-  });
-
-  it("returns undefined when no MU title is close enough to the query", () => {
-    // When MU only has a long "Japanese Romaji: English" primary and no
-    // separate English associated, the Levenshtein distance is too large
-    // and the caller should fall back to the query itself.
-    const series = seriesWith({
-      title: "Kekkon Suru tte, Hontou desu ka: 365 Days To The Wedding",
-    });
-    expect(
-      pickCanonicalTitle(series, "365 Days to the Wedding"),
-    ).toBeUndefined();
   });
 
   it("prefers the shorter title when distances tie", () => {

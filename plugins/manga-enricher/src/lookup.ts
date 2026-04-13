@@ -285,13 +285,12 @@ function buildMetadata(
   // Pick a canonical display title. We use the MangaUpdates title (from
   // the primary or associated-titles list) that's closest to the user's
   // query. This normalizes casing and punctuation to MU's canonical form
-  // — so "sweat and soap" becomes "Sweat and Soap", "swordartonline"
-  // becomes "Sword Art Online" — while still respecting whichever
-  // language variant the user typed. Falls back to the raw query title,
-  // then to MU's primary, if neither is available.
+  // — "sweat and soap" becomes "Sweat and Soap", "attack on titan"
+  // becomes "Attack on Titan" — while still respecting whichever language
+  // variant the user typed (MU's associated-titles list usually contains
+  // a near-exact match).
   if (searchTitle) {
-    const canonical = pickCanonicalTitle(series, searchTitle);
-    metadata.series = canonical ?? searchTitle;
+    metadata.series = pickCanonicalTitle(series, searchTitle) ?? searchTitle;
   }
 
   if (volumeNumber !== undefined) {
@@ -335,12 +334,11 @@ function buildMetadata(
  * normalized) form so casing and punctuation are preserved from MU's
  * canonical entry.
  *
- * Only candidates that pass the same distance/ratio thresholds used
- * by confidence scoring are considered. If the user's query is very
- * different from every MU title (e.g., they typed only the English
- * portion of a "Japanese Romaji: English Title" primary and MU has
- * no separate English associated), this returns undefined and the
- * caller falls back to the query string itself.
+ * We trust that confidence scoring has already confirmed this series
+ * matches the query, so any MU title is a reasonable candidate — no
+ * distance threshold is applied. In practice the associated-titles
+ * list almost always contains a near-exact match for whichever
+ * language variant the user typed, so the "best" choice is obvious.
  *
  * Ties on distance break to the shorter title — avoids variants like
  * "Attack on Titan: Junior High" winning over plain "Attack on Titan"
@@ -367,16 +365,6 @@ export function pickCanonicalTitle(
   for (const candidate of candidates) {
     const normalized = normalizeForComparison(candidate);
     const distance = levenshteinDistance(normalizedQuery, normalized);
-    const maxLen = Math.max(normalizedQuery.length, normalized.length);
-
-    // Skip candidates that are too far from the query to be considered
-    // the "same title" — same thresholds as computeConfidence.
-    if (
-      distance > MAX_LEVENSHTEIN_DISTANCE ||
-      (maxLen > 0 && distance / maxLen > MAX_LEVENSHTEIN_RATIO)
-    ) {
-      continue;
-    }
 
     if (
       best === null ||
