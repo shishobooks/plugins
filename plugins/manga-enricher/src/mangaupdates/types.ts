@@ -11,6 +11,14 @@ export interface MUSeries {
   year?: string;
   status?: string;
   associated?: Array<{ title: string }>;
+  image?: {
+    url?: {
+      original?: string;
+      thumb?: string;
+    };
+    height?: number;
+    width?: number;
+  };
   genres?: Array<{ genre: string }>;
   categories?: Array<{ category: string; votes?: number }>;
   authors?: Array<{ name: string; author_id?: number; type?: string }>;

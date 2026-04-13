@@ -27,6 +27,7 @@
         "seriesNumber",
         "genres",
         "tags",
+        "cover",
         "identifiers",
         "url",
         "language"
@@ -36,6 +37,7 @@
       "description": "Calls the MangaUpdates API and scrapes Viz Media and Kodansha USA product pages",
       "domains": [
         "api.mangaupdates.com",
+        "cdn.mangaupdates.com",
         "www.viz.com",
         "kodansha.us"
       ]

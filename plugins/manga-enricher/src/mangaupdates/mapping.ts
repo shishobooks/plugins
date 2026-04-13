@@ -78,6 +78,15 @@ export function seriesToMetadata(series: MUSeries): ParsedMetadata {
     metadata.publisher = englishPublisher;
   }
 
+  // MangaUpdates hosts series cover images on its CDN. Use the original
+  // (full-size) variant when present. The CBZ parser will usually pull a
+  // page-embedded cover at apply time, but the enricher preview UI needs
+  // something to show before the user picks a match.
+  const coverUrl = series.image?.url?.original;
+  if (coverUrl) {
+    metadata.coverUrl = coverUrl;
+  }
+
   if (series.url) {
     metadata.url = series.url;
   }

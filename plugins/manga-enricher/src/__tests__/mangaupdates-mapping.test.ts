@@ -66,6 +66,27 @@ describe("seriesToMetadata", () => {
     expect(md.publisher).toBe("VIZ Media");
   });
 
+  it("maps the MU cover image to coverUrl", () => {
+    const series: MUSeries = {
+      ...sampleSeries,
+      image: {
+        url: {
+          original: "https://cdn.mangaupdates.com/image/i517997.jpg",
+          thumb: "https://cdn.mangaupdates.com/image/thumb/i517997.jpg",
+        },
+        width: 254,
+        height: 400,
+      },
+    };
+    const md = seriesToMetadata(series);
+    expect(md.coverUrl).toBe("https://cdn.mangaupdates.com/image/i517997.jpg");
+  });
+
+  it("leaves coverUrl undefined when MU has no image", () => {
+    const md = seriesToMetadata(sampleSeries);
+    expect(md.coverUrl).toBeUndefined();
+  });
+
   it("strips HTML from the description", () => {
     const series: MUSeries = {
       ...sampleSeries,
