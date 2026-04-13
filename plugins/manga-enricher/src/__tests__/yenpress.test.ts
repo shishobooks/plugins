@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import {
   buildSlug,
+  parseYenPressDate,
   pickProductPath,
   yenpressScraper,
 } from "../publishers/yenpress";
@@ -93,5 +94,31 @@ describe("pickProductPath", () => {
     expect(pickProductPath(html, 10)).toBe(
       "/titles/9999999999990-some-series-vol-10",
     );
+  });
+});
+
+describe("parseYenPressDate", () => {
+  it("parses short month names", () => {
+    expect(parseYenPressDate("Jul 24, 2018")).toBe("2018-07-24T00:00:00Z");
+  });
+
+  it("parses long month names", () => {
+    expect(parseYenPressDate("September 5, 2023")).toBe("2023-09-05T00:00:00Z");
+  });
+
+  it("zero-pads single-digit days", () => {
+    expect(parseYenPressDate("Jan 3, 2020")).toBe("2020-01-03T00:00:00Z");
+  });
+
+  it("tolerates extra whitespace", () => {
+    expect(parseYenPressDate("  Jul   24 , 2018  ")).toBe(
+      "2018-07-24T00:00:00Z",
+    );
+  });
+
+  it("returns undefined for unparseable input", () => {
+    expect(parseYenPressDate("")).toBeUndefined();
+    expect(parseYenPressDate("TBD")).toBeUndefined();
+    expect(parseYenPressDate("2018-07-24")).toBeUndefined();
   });
 });
