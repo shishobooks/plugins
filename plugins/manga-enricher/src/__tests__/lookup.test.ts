@@ -169,6 +169,32 @@ describe("searchForManga", () => {
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].title).toBe("Demon Slayer");
     });
+
+    it("matches via substring when the query is contained in the candidate title", () => {
+      // MangaUpdates' search returns the Japanese romaji primary title
+      // (e.g., "Kekkon Suru tte, Hontou desu ka: 365 Days To The Wedding")
+      // without associated titles. The query "365 Days to the Wedding" is
+      // a substring of the primary title, so the substring strategy must
+      // accept it even though Levenshtein distance would reject it.
+      setupDefaultMocks();
+      const jp365Series: MUSeries = {
+        ...onePieceSeries,
+        series_id: 31582516596,
+        title: "Kekkon Suru tte, Hontou desu ka: 365 Days To The Wedding",
+      };
+      mockedSearchSeries.mockReturnValue([jp365Series]);
+      mockedFetchSeries.mockReturnValue(jp365Series);
+
+      const context = makeContext({ query: "365 Days to the Wedding v01.cbz" });
+      const results = searchForManga(context);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe(
+        "Kekkon Suru tte, Hontou desu ka: 365 Days To The Wedding",
+      );
+      expect(results[0].seriesNumber).toBe(1);
+      expect(results[0].confidence).toBeGreaterThanOrEqual(0.6);
+    });
   });
 
   describe("publisher scraping", () => {

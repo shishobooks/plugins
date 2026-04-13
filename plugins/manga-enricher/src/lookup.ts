@@ -108,10 +108,20 @@ function tryTitleSearch(context: SearchContext): ParsedMetadata[] {
   return [];
 }
 
+/** Minimum target length to accept a substring match (avoid matching "the"). */
+const MIN_SUBSTRING_LENGTH = 4;
+
 /**
- * Compute a Levenshtein-based confidence score for a search result.
- * Returns null if the result fails the distance/ratio thresholds.
- * Checks both the primary title and associated titles and takes the best.
+ * Compute a confidence score for a search result against the target query.
+ * Returns null if no title passes any threshold.
+ *
+ * Two strategies are tried for each candidate title (primary + associated):
+ * 1. Substring containment — if the target is contained in the candidate
+ *    (or vice versa), that's a strong signal even when edit distance is
+ *    large. This handles titles like "Japanese Romaji: English Title"
+ *    where the query matches only the English portion.
+ * 2. Levenshtein distance — fallback for near-misses that aren't strict
+ *    substrings (typos, punctuation differences).
  */
 function computeConfidence(
   normalizedTarget: string,
@@ -128,18 +138,37 @@ function computeConfidence(
 
   for (const title of candidateTitles) {
     const normalized = normalizeForComparison(title);
-    const distance = levenshteinDistance(normalizedTarget, normalized);
     const maxLen = Math.max(normalizedTarget.length, normalized.length);
+    const minLen = Math.min(normalizedTarget.length, normalized.length);
 
+    let confidence: number | null = null;
+
+    // Strategy 1: substring containment.
     if (
-      distance > MAX_LEVENSHTEIN_DISTANCE ||
-      (maxLen > 0 && distance / maxLen > MAX_LEVENSHTEIN_RATIO)
+      normalizedTarget.length >= MIN_SUBSTRING_LENGTH &&
+      minLen > 0 &&
+      (normalized.includes(normalizedTarget) ||
+        normalizedTarget.includes(normalized))
     ) {
-      continue;
+      // Scale confidence by how much of the longer title the shorter one
+      // covers, with a floor of 0.6 so substring hits always beat the
+      // Levenshtein cutoff.
+      confidence = 0.6 + 0.4 * (minLen / maxLen);
+    } else {
+      // Strategy 2: Levenshtein fallback.
+      const distance = levenshteinDistance(normalizedTarget, normalized);
+      if (
+        distance <= MAX_LEVENSHTEIN_DISTANCE &&
+        (maxLen === 0 || distance / maxLen <= MAX_LEVENSHTEIN_RATIO)
+      ) {
+        confidence = maxLen > 0 ? 1 - distance / maxLen : 1;
+      }
     }
 
-    const confidence = maxLen > 0 ? 1 - distance / maxLen : 1;
-    if (bestConfidence === null || confidence > bestConfidence) {
+    if (
+      confidence !== null &&
+      (bestConfidence === null || confidence > bestConfidence)
+    ) {
       bestConfidence = confidence;
     }
   }
