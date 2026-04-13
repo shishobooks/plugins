@@ -153,3 +153,77 @@ describe("parseProduct — description and cover", () => {
     );
   });
 });
+
+describe("parseProduct — detail-box fields", () => {
+  const productUrl =
+    "https://yenpress.com/titles/9781975353308-teasing-master-takagi-san-vol-1";
+
+  it("extracts imprint", () => {
+    const result = parseProduct(takagiProductHtml, productUrl);
+    expect(result?.imprint).toBe("Yen Press");
+  });
+
+  it("prefers the digital ISBN over the print ISBN when both exist", () => {
+    // Print ISBN is 9781975353308 (in the URL), digital is 9781975386122
+    // (in the second detail-info block). Preference rule: digital wins.
+    const result = parseProduct(takagiProductHtml, productUrl);
+    expect(result?.isbn13).toBe("9781975386122");
+  });
+
+  it("extracts the release date as ISO 8601", () => {
+    // First (print) block says Jul 24, 2018; digital block says Jul 23,
+    // 2019. Release date follows the same digital-preferred rule as ISBN
+    // — it's read from whichever detail-info block we picked.
+    const result = parseProduct(takagiProductHtml, productUrl);
+    expect(result?.releaseDate).toBe("2019-07-23T00:00:00Z");
+  });
+
+  it("falls back to the only block when there is just one", () => {
+    const singleBlockHtml = `
+      <html><body>
+        <div class="detail-info">
+          <div class="detail-box">
+            <span class="type">ISBN</span>
+            <p class="info">9780000000001</p>
+          </div>
+          <div class="detail-box">
+            <span class="type">Release Date</span>
+            <p class="info">Jan 1, 2020</p>
+          </div>
+          <div class="detail-box">
+            <span class="type">Imprint</span>
+            <p class="info">Yen Press</p>
+          </div>
+        </div>
+      </body></html>
+    `;
+    const result = parseProduct(singleBlockHtml, "https://yenpress.com/x");
+    expect(result?.isbn13).toBe("9780000000001");
+    expect(result?.releaseDate).toBe("2020-01-01T00:00:00Z");
+    expect(result?.imprint).toBe("Yen Press");
+  });
+
+  it("omits missing fields rather than throwing", () => {
+    const emptyHtml = "<html><body></body></html>";
+    const result = parseProduct(emptyHtml, "https://yenpress.com/x");
+    expect(result).not.toBeNull();
+    expect(result?.isbn13).toBeUndefined();
+    expect(result?.releaseDate).toBeUndefined();
+    expect(result?.imprint).toBeUndefined();
+  });
+
+  it("normalizes ISBN by stripping hyphens", () => {
+    const html = `
+      <html><body>
+        <div class="detail-info">
+          <div class="detail-box">
+            <span class="type">ISBN</span>
+            <p class="info">978-1-9753-5330-8</p>
+          </div>
+        </div>
+      </body></html>
+    `;
+    const result = parseProduct(html, "https://yenpress.com/x");
+    expect(result?.isbn13).toBe("9781975353308");
+  });
+});

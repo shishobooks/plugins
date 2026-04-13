@@ -127,6 +127,65 @@ function extractCover(
 }
 
 /**
+ * Find the value of a labelled detail-box within a scope element.
+ *
+ * Yen Press renders each field as:
+ *
+ *     <div class="detail-box">
+ *       <span class="type paragraph fs-15">ISBN</span>
+ *       <p class="info">9781975353308</p>
+ *     </div>
+ *
+ * We iterate every `.detail-box` inside the scope, check its first `span`
+ * child's text against `label` (case-insensitive), and return the first
+ * `p.info` child. Irregular blocks (e.g. the print-side Imprint is not
+ * wrapped in `.detail-box` on the fixture) are handled at a higher level
+ * — the digital-preference logic picks a block whose Imprint is wrapped
+ * correctly, so this helper's scope always matches.
+ *
+ * Trims whitespace and collapses runs — Yen Press uses HTML indentation
+ * that otherwise leaks into `.text`.
+ */
+function extractDetailValue(
+  scope: ReturnType<typeof shisho.html.parse>,
+  label: string,
+): string | undefined {
+  const boxes = shisho.html.querySelectorAll(scope, "div.detail-box");
+  for (const box of boxes) {
+    const span = box.children.find((c) => c.tag === "span");
+    if (!span) continue;
+    if (span.text.trim().toLowerCase() !== label.toLowerCase()) continue;
+    const info = box.children.find(
+      (c) => c.tag === "p" && (c.attributes.class ?? "").includes("info"),
+    );
+    const value = info?.text.replace(/\s+/g, " ").trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
+/**
+ * Pick the preferred detail-info block from a parsed product page.
+ *
+ * Yen Press product pages render a "print" `.detail-info` block followed
+ * by a "digital" block. The only textual separator between them is an
+ * HTML comment (`<!-- Main -->` / `<!-- Digital -->`) which `shisho.html`
+ * doesn't expose, so we use position: if there are two or more blocks,
+ * prefer the second (digital); otherwise use whatever's there.
+ *
+ * Returns null when no `.detail-info` block exists — the caller then
+ * omits the detail-box-derived fields rather than throwing.
+ */
+function pickPreferredDetailBlock(
+  doc: ReturnType<typeof shisho.html.parse>,
+): ReturnType<typeof shisho.html.parse> | null {
+  const blocks = shisho.html.querySelectorAll(doc, "div.detail-info");
+  if (blocks.length === 0) return null;
+  if (blocks.length >= 2) return blocks[1];
+  return blocks[0];
+}
+
+/**
  * Parse a Yen Press product page into VolumeMetadata. Returns null if the
  * page has no recognizable structure (e.g. an error page). Individual
  * fields are simply omitted when they can't be extracted.
@@ -140,6 +199,25 @@ export function parseProduct(html: string, url: string): VolumeMetadata | null {
 
   const coverUrl = extractCover(doc);
   if (coverUrl) metadata.coverUrl = coverUrl;
+
+  const block = pickPreferredDetailBlock(doc);
+  if (block) {
+    const rawIsbn = extractDetailValue(block, "ISBN");
+    if (rawIsbn) {
+      const cleaned = rawIsbn.replace(/-/g, "");
+      if (cleaned.length === 13) metadata.isbn13 = cleaned;
+      else if (cleaned.length === 10) metadata.isbn10 = cleaned;
+    }
+
+    const rawDate = extractDetailValue(block, "Release Date");
+    if (rawDate) {
+      const parsed = parseYenPressDate(rawDate);
+      if (parsed) metadata.releaseDate = parsed;
+    }
+
+    const imprint = extractDetailValue(block, "Imprint");
+    if (imprint) metadata.imprint = imprint;
+  }
 
   return metadata;
 }
