@@ -14,7 +14,7 @@ export function pickEnglishPublisher(series: MUSeries): string | undefined {
 
 /**
  * Map an MUSeries to ParsedMetadata covering series-level fields only.
- * Per-volume fields (releaseDate, pageCount, isbn, synopsis per volume)
+ * Per-volume fields (releaseDate, isbn, synopsis per volume)
  * are layered on top by publisher scrapers.
  */
 export function seriesToMetadata(series: MUSeries): ParsedMetadata {

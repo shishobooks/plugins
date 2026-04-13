@@ -64,7 +64,6 @@ interface JsonLdBook {
   "@type"?: string | string[];
   name?: string;
   description?: string;
-  numberOfPages?: number;
   datePublished?: string;
   isbn?: string;
   workExample?: Array<{
@@ -72,7 +71,6 @@ interface JsonLdBook {
     bookFormat?: string;
     isbn?: string;
     datePublished?: string;
-    numberOfPages?: number;
   }>;
 }
 
@@ -204,11 +202,6 @@ export function parseProduct(html: string, url: string): VolumeMetadata | null {
 
   const releaseDate = pickReleaseDate(book);
   if (releaseDate) metadata.releaseDate = releaseDate;
-
-  const pages =
-    book.numberOfPages ??
-    book.workExample?.find((w) => !!w.numberOfPages)?.numberOfPages;
-  if (typeof pages === "number") metadata.pageCount = pages;
 
   return metadata;
 }

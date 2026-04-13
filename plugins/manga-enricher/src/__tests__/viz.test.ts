@@ -80,10 +80,6 @@ describe("vizScraper.searchVolume", () => {
     if (result?.releaseDate) {
       expect(result.releaseDate).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     }
-    // Page count should be a positive integer
-    if (result?.pageCount) {
-      expect(result.pageCount).toBeGreaterThan(0);
-    }
   });
 
   it("returns null when the search page returns an error", () => {

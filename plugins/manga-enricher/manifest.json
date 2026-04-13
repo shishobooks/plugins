@@ -29,8 +29,7 @@
         "tags",
         "identifiers",
         "url",
-        "language",
-        "pageCount"
+        "language"
       ]
     },
     "httpAccess": {

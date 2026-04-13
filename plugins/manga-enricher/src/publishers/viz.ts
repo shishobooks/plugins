@@ -83,6 +83,9 @@ function matchOne(html: string, pattern: RegExp): string | undefined {
  *   - Length:      <strong>Length</strong> 216 pages
  *   - Imprint:     <strong>Imprint</strong>\n...<a ...>SHONEN JUMP</a>
  *   - Age Rating:  <strong>Age Rating</strong>\n...<a ...></a>&nbsp;\n            Teen
+ *
+ * Note: The "Length" field (page count) is intentionally not extracted —
+ * it is a file-parser-owned field and cannot be declared by enrichers.
  */
 export function parseProduct(html: string, url: string): VolumeMetadata {
   const metadata: VolumeMetadata = { url };
@@ -122,11 +125,6 @@ export function parseProduct(html: string, url: string): VolumeMetadata {
     const parsed = parseVizDate(releaseDate);
     if (parsed) metadata.releaseDate = parsed;
   }
-
-  // Page count: text after <strong>Length</strong>.
-  // Actual HTML: <strong>Length</strong> 216 pages
-  const pages = matchOne(html, /<strong>Length<\/strong>\s+(\d+)\s+pages/i);
-  if (pages) metadata.pageCount = parseInt(pages, 10);
 
   // Imprint: anchor text after <strong>Imprint</strong>.
   // Actual HTML: <strong>Imprint</strong>\n  <a href="...">SHONEN JUMP</a>

@@ -206,8 +206,7 @@ function findVolumeData(
 /**
  * Merge per-volume data into the (already series-level) metadata. The
  * volume data overrides series fields where it is more specific (title,
- * description, url) and adds new fields (releaseDate, pageCount, imprint,
- * isbn, subtitle).
+ * description, url) and adds new fields (releaseDate, imprint, isbn, subtitle).
  */
 function mergeVolumeData(
   metadata: ParsedMetadata,
@@ -217,8 +216,6 @@ function mergeVolumeData(
   if (volumeData.subtitle) metadata.subtitle = volumeData.subtitle;
   if (volumeData.description) metadata.description = volumeData.description;
   if (volumeData.releaseDate) metadata.releaseDate = volumeData.releaseDate;
-  if (volumeData.pageCount !== undefined)
-    metadata.pageCount = volumeData.pageCount;
   if (volumeData.imprint) metadata.imprint = volumeData.imprint;
   if (volumeData.url) metadata.url = volumeData.url;
 

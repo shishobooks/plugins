@@ -15,8 +15,6 @@ export interface VolumeMetadata {
   isbn13?: string;
   /** ISBN-10. When multiple ISBNs exist, prefer the ebook variant. */
   isbn10?: string;
-  /** Number of pages. */
-  pageCount?: number;
   /** Publisher imprint (e.g., "Shonen Jump" on Viz). */
   imprint?: string;
   /** Publisher product page URL. */

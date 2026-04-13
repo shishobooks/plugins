@@ -177,7 +177,6 @@ describe("searchForManga", () => {
       description: "Full per-volume synopsis.",
       isbn13: "9781569319017",
       releaseDate: "2003-06-01T00:00:00Z",
-      pageCount: 216,
       imprint: "Shonen Jump",
       url: "https://www.viz.com/manga-books/manga/one-piece-volume-1-0/product/139",
     };
@@ -194,7 +193,6 @@ describe("searchForManga", () => {
       expect(mockedVizSearch).toHaveBeenCalledWith("One Piece", 1, undefined);
       expect(mockedKodanshaSearch).not.toHaveBeenCalled();
       expect(results[0].description).toBe("Full per-volume synopsis.");
-      expect(results[0].pageCount).toBe(216);
       expect(results[0].imprint).toBe("Shonen Jump");
       expect(results[0].releaseDate).toBe("2003-06-01T00:00:00Z");
       expect(results[0].url).toBe(vizVolumeData.url);
@@ -268,8 +266,6 @@ describe("searchForManga", () => {
       expect(results[0].title).toBe("One Piece");
       expect(results[0].seriesNumber).toBe(1);
       expect(results[0].description).toContain("Monkey D. Luffy");
-      // No per-volume fields from scraper.
-      expect(results[0].pageCount).toBeUndefined();
     });
 
     it("skips scraping when no volume number could be parsed", () => {
