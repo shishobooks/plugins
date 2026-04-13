@@ -157,15 +157,30 @@ function pickReleaseDate(book: JsonLdBook): string | undefined {
 }
 
 /**
- * Extract the og:description meta tag content from a parsed document.
- * Kodansha does not include a description field in the Book JSON-LD, but
- * the page always has an og:description meta tag with the synopsis.
+ * Extract the per-volume description from a Kodansha product page.
+ *
+ * Kodansha renders each volume's synopsis in a `<div class="volume__
+ * hero__description">...</div>` block. This is the correct volume-
+ * specific text. Falls back to the og:description meta tag (usually a
+ * series-level blurb) only if the volume block is missing.
  */
-function extractOgDescription(
+function extractDescription(
   doc: ReturnType<typeof shisho.html.parse>,
 ): string | undefined {
-  const el = shisho.html.querySelector(doc, 'meta[property="og:description"]');
-  const content = el?.attributes.content;
+  const heroDesc = shisho.html.querySelector(
+    doc,
+    "div.volume__hero__description",
+  );
+  if (heroDesc?.text) {
+    const cleaned = heroDesc.text.trim().replace(/\s+/g, " ");
+    if (cleaned) return cleaned;
+  }
+
+  const ogDesc = shisho.html.querySelector(
+    doc,
+    'meta[property="og:description"]',
+  );
+  const content = ogDesc?.attributes.content;
   return content ? content.trim() : undefined;
 }
 
@@ -184,8 +199,9 @@ export function parseProduct(html: string, url: string): VolumeMetadata | null {
 
   if (book.name) metadata.title = book.name;
 
-  // Description: prefer the JSON-LD field, fall back to og:description.
-  const descriptionRaw = book.description ?? extractOgDescription(doc);
+  // Description: prefer the JSON-LD field (rarely populated), fall back
+  // to the per-volume hero description block, then og:description.
+  const descriptionRaw = book.description ?? extractDescription(doc);
   if (descriptionRaw) metadata.description = stripHTML(descriptionRaw);
 
   const { isbn13, isbn10 } = pickIsbn(book);
