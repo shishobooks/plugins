@@ -1,6 +1,33 @@
 import type { PublisherScraper, VolumeMetadata } from "./types";
 import { stripHTML } from "@shisho-plugins/shared";
 
+const USER_AGENT =
+  "ShishoPlugin/0.1.0 (manga-enricher; github.com/shishobooks/plugins)";
+
+const BASE_URL = "https://yenpress.com";
+
+function fetchHtml(url: string): string | null {
+  shisho.log.debug(`YenPress: fetching ${url}`);
+  const response = shisho.http.fetch(url, {
+    headers: {
+      "User-Agent": USER_AGENT,
+      Accept: "text/html,application/xhtml+xml",
+    },
+  });
+  if (!response || !response.ok) {
+    shisho.log.warn(
+      `YenPress: HTTP ${response?.status ?? "no response"} ${url}`,
+    );
+    return null;
+  }
+  try {
+    return response.text();
+  } catch {
+    shisho.log.warn(`YenPress: failed to read response body for ${url}`);
+    return null;
+  }
+}
+
 /**
  * Build the URL slug for a Yen Press series page. Lowercases, replaces runs
  * of non-alphanumeric characters with a single hyphen, and trims hyphens
@@ -230,10 +257,29 @@ export const yenpressScraper: PublisherScraper = {
   },
 
   searchVolume(
-    _seriesTitle: string,
-    _volumeNumber: number,
-    _edition?: string,
+    seriesTitle: string,
+    volumeNumber: number,
+    edition?: string,
   ): VolumeMetadata | null {
-    return null;
+    const slug = buildSlug(seriesTitle, edition);
+    if (!slug) return null;
+
+    const seriesUrl = `${BASE_URL}/series/${slug}`;
+    const seriesHtml = fetchHtml(seriesUrl);
+    if (!seriesHtml) return null;
+
+    const productPath = pickProductPath(seriesHtml, volumeNumber);
+    if (!productPath) {
+      shisho.log.debug(
+        `YenPress: no volume-${volumeNumber} product link found for "${seriesTitle}"`,
+      );
+      return null;
+    }
+
+    const productUrl = `${BASE_URL}${productPath}`;
+    const productHtml = fetchHtml(productUrl);
+    if (!productHtml) return null;
+
+    return parseProduct(productHtml, productUrl);
   },
 };

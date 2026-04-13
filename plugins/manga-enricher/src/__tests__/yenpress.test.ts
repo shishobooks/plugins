@@ -8,7 +8,7 @@ import {
   pickProductPath,
   yenpressScraper,
 } from "../publishers/yenpress";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const takagiSeriesHtml = readFileSync(
   resolve(__dirname, "fixtures/yenpress-takagi-series.html"),
@@ -225,5 +225,100 @@ describe("parseProduct — detail-box fields", () => {
     `;
     const result = parseProduct(html, "https://yenpress.com/x");
     expect(result?.isbn13).toBe("9781975353308");
+  });
+});
+
+function mockFetchSequence(
+  responses: Array<{ status: number; ok: boolean; body: string }>,
+) {
+  const mock = vi.mocked(shisho.http.fetch);
+  mock.mockReset();
+  for (const r of responses) {
+    mock.mockReturnValueOnce({
+      status: r.status,
+      statusText: r.ok ? "OK" : "Error",
+      ok: r.ok,
+      text: () => r.body,
+      json: () => JSON.parse(r.body || "null"),
+    } as unknown as ReturnType<typeof shisho.http.fetch>);
+  }
+}
+
+describe("yenpressScraper.searchVolume", () => {
+  it("fetches the series page then the product page and returns merged metadata", () => {
+    // The Takagi series fixture contains vols 6-20; we search for vol 6.
+    // The product page fixture is for vol 1 (its body fields come through
+    // unchanged); we only verify the plumbing: that two fetches happen
+    // with the right URLs and the result carries the product-page ISBN.
+    mockFetchSequence([
+      { status: 200, ok: true, body: takagiSeriesHtml },
+      { status: 200, ok: true, body: takagiProductHtml },
+    ]);
+
+    const result = yenpressScraper.searchVolume("Teasing Master Takagi-san", 6);
+
+    expect(result).not.toBeNull();
+    expect(result?.url).toBe(
+      "https://yenpress.com/titles/9781975331702-teasing-master-takagi-san-vol-6",
+    );
+    // The body fields come from whatever product HTML we returned — in
+    // this test, that's the vol-1 page, whose digital ISBN is
+    // 9781975386122. We're testing that parseProduct's output reaches
+    // the caller intact, not that the product page actually describes
+    // vol-6.
+    expect(result?.isbn13).toBe("9781975386122");
+    expect(result?.imprint).toBe("Yen Press");
+    expect(result?.description).toMatch(/^Middle schooler Nishikata/);
+
+    const calls = vi.mocked(shisho.http.fetch).mock.calls;
+    expect(calls[0][0]).toBe(
+      "https://yenpress.com/series/teasing-master-takagi-san",
+    );
+    expect(calls[1][0]).toBe(
+      "https://yenpress.com/titles/9781975331702-teasing-master-takagi-san-vol-6",
+    );
+  });
+
+  it("appends edition to the slug before fetching the series page", () => {
+    mockFetchSequence([
+      { status: 404, ok: false, body: "" }, // series fetch fails
+    ]);
+
+    yenpressScraper.searchVolume("Fruits Basket", 1, "Collector's Edition");
+
+    const calls = vi.mocked(shisho.http.fetch).mock.calls;
+    expect(calls[0][0]).toBe(
+      "https://yenpress.com/series/fruits-basket-collector-s-edition",
+    );
+  });
+
+  it("returns null when the series page 404s", () => {
+    mockFetchSequence([{ status: 404, ok: false, body: "" }]);
+    expect(yenpressScraper.searchVolume("No Such Series", 1)).toBeNull();
+  });
+
+  it("returns null when the series page has no matching volume", () => {
+    mockFetchSequence([{ status: 200, ok: true, body: takagiSeriesHtml }]);
+    expect(
+      yenpressScraper.searchVolume("Teasing Master Takagi-san", 999),
+    ).toBeNull();
+  });
+
+  it("returns null when the product page 404s", () => {
+    mockFetchSequence([
+      { status: 200, ok: true, body: takagiSeriesHtml },
+      { status: 404, ok: false, body: "" },
+    ]);
+    expect(
+      yenpressScraper.searchVolume("Teasing Master Takagi-san", 6),
+    ).toBeNull();
+  });
+
+  it("returns null when the series title is empty or punctuation-only", () => {
+    mockFetchSequence([]);
+    expect(yenpressScraper.searchVolume("", 1)).toBeNull();
+    expect(yenpressScraper.searchVolume("!!!", 1)).toBeNull();
+    // No HTTP call should have been made.
+    expect(vi.mocked(shisho.http.fetch)).not.toHaveBeenCalled();
   });
 });
