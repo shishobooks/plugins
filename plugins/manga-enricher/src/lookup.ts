@@ -25,6 +25,14 @@ const MAX_LEVENSHTEIN_RATIO = 0.4;
 const SCRAPERS: readonly PublisherScraper[] = [vizScraper, kodanshaScraper];
 
 /**
+ * MangaUpdates series types to exclude from candidate matching.
+ * These are fan works and ancillary materials that won't be on any
+ * licensed English publisher's site and clutter results with false
+ * substring matches.
+ */
+const EXCLUDED_SERIES_TYPES: ReadonlySet<string> = new Set(["doujinshi"]);
+
+/**
  * Main entry point. Returns candidate manga metadata for the given context.
  */
 export function searchForManga(context: SearchContext): ParsedMetadata[] {
@@ -81,8 +89,16 @@ function tryTitleSearch(context: SearchContext): ParsedMetadata[] {
   }
 
   for (const attempt of attempts) {
-    const candidates = searchSeries(attempt);
-    if (!candidates || candidates.length === 0) continue;
+    const rawCandidates = searchSeries(attempt);
+    if (!rawCandidates || rawCandidates.length === 0) continue;
+
+    // Drop fan-work types (Doujinshi) — they clutter results with
+    // substring-match false positives ("Fruits Basket" matching "Fruits
+    // Basket dj - Gift") and are never licensed in English.
+    const candidates = rawCandidates.filter(
+      (c) => !EXCLUDED_SERIES_TYPES.has((c.type ?? "").toLowerCase()),
+    );
+    if (candidates.length === 0) continue;
 
     const normalizedTarget = normalizeForComparison(attempt);
 
@@ -256,16 +272,16 @@ function buildMetadata(
 /**
  * Find per-volume data by mapping MangaUpdates' English publisher list to
  * our scraper registry. Only live (non-defunct, non-expired) publishers
- * are considered, and each one is matched against the scrapers in turn.
+ * with a matching scraper are tried.
  *
  * If the parsed query has an edition, publishers whose notes mention that
  * edition are tried first (e.g., "Yen Press (12 Collector's Edition Vols)"
  * wins for a query that parsed as "Collector's Edition").
  *
- * When MangaUpdates lists publishers we don't have scrapers for, we skip
- * the scrape entirely — there's no point asking Viz about a Yen Press
- * series. Only if there is NO English publisher at all do we fall back to
- * trying every registered scraper blindly.
+ * When MangaUpdates lists no live supported publisher, we return null
+ * rather than blindly pinging every scraper. A series MU doesn't know is
+ * licensed by Viz or Kodansha will not show up on those sites; speculative
+ * requests just produce 404 noise.
  */
 function findVolumeData(
   series: MUSeries,
@@ -274,16 +290,7 @@ function findVolumeData(
 ): VolumeMetadata | null {
   const seriesTitle = series.title;
   const livePublishers = getLiveEnglishPublishers(series);
-
-  // No English publisher info at all — we have nothing to route on, so
-  // blind-try every scraper in registry order.
-  if (livePublishers.length === 0) {
-    for (const scraper of SCRAPERS) {
-      const data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
-      if (data) return data;
-    }
-    return null;
-  }
+  if (livePublishers.length === 0) return null;
 
   // When an edition is specified, bubble publishers whose notes mention
   // that edition to the front of the list. This picks "Yen Press" over

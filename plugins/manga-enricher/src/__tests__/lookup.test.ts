@@ -397,9 +397,10 @@ describe("searchForManga", () => {
       expect(mockedKodanshaSearch).not.toHaveBeenCalled();
     });
 
-    it("tries all scrapers blindly when there is no English publisher", () => {
-      // With no publisher info we have nothing to route on, so we fall
-      // back to trying every registered scraper in order.
+    it("does not speculatively scrape when there is no English publisher", () => {
+      // Without any English publisher info, scraping would just produce
+      // 404 noise — we have no routing data and the series isn't
+      // licensed in English. Return series-level metadata only.
       setupDefaultMocks();
       const orphanSeries: MUSeries = {
         ...onePieceSeries,
@@ -407,15 +408,66 @@ describe("searchForManga", () => {
       };
       mockedSearchSeries.mockReturnValue([orphanSeries]);
       mockedFetchSeries.mockReturnValue(orphanSeries);
-      mockedVizSearch.mockReturnValue(null);
-      mockedKodanshaSearch.mockReturnValue(vizVolumeData);
 
       const context = makeContext({ query: "One Piece v01.cbz" });
       const results = searchForManga(context);
 
-      expect(mockedVizSearch).toHaveBeenCalled();
-      expect(mockedKodanshaSearch).toHaveBeenCalled();
-      expect(results[0].description).toBe("Full per-volume synopsis.");
+      expect(mockedVizSearch).not.toHaveBeenCalled();
+      expect(mockedKodanshaSearch).not.toHaveBeenCalled();
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe("One Piece");
+    });
+
+    it("filters out Doujinshi candidates from search results", () => {
+      // Doujinshi clutter substring matches ("Fruits Basket" matches
+      // "Fruits Basket dj - Gift") and have no licensed English publisher.
+      setupDefaultMocks();
+      const mainSeries: MUSeries = {
+        ...onePieceSeries,
+        series_id: 100,
+        title: "Fruits Basket",
+        type: "Manga",
+        publishers: [
+          {
+            publisher_name: "Yen Press",
+            type: "English",
+            notes: "12 Vols",
+          },
+        ],
+      };
+      const djGift: MUSeries = {
+        ...onePieceSeries,
+        series_id: 200,
+        title: "Fruits Basket dj - Gift",
+        type: "Doujinshi",
+      };
+      const djApple: MUSeries = {
+        ...onePieceSeries,
+        series_id: 201,
+        title: "Fruits Basket dj - Apple",
+        type: "Doujinshi",
+      };
+      mockedSearchSeries.mockReturnValue([djGift, mainSeries, djApple]);
+      mockedFetchSeries.mockImplementation((id: number) => {
+        if (id === 100) return mainSeries;
+        if (id === 200) return djGift;
+        if (id === 201) return djApple;
+        return null;
+      });
+
+      const context = makeContext({ query: "Fruits Basket v01.cbz" });
+      const results = searchForManga(context);
+
+      // Only the main series survives.
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe("Fruits Basket");
+      // fetchSeries is only called for the non-doujinshi candidate.
+      expect(mockedFetchSeries).toHaveBeenCalledWith(100);
+      expect(mockedFetchSeries).not.toHaveBeenCalledWith(200);
+      expect(mockedFetchSeries).not.toHaveBeenCalledWith(201);
+      // No speculative scraping at all.
+      expect(mockedVizSearch).not.toHaveBeenCalled();
+      expect(mockedKodanshaSearch).not.toHaveBeenCalled();
     });
 
     it("prefers a publisher whose notes mention the parsed edition", () => {
