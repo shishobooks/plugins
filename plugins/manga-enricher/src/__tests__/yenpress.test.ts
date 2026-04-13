@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import {
   buildSlug,
+  parseProduct,
   parseYenPressDate,
   pickProductPath,
   yenpressScraper,
@@ -11,6 +12,11 @@ import { describe, expect, it } from "vitest";
 
 const takagiSeriesHtml = readFileSync(
   resolve(__dirname, "fixtures/yenpress-takagi-series.html"),
+  "utf-8",
+);
+
+const takagiProductHtml = readFileSync(
+  resolve(__dirname, "fixtures/yenpress-takagi-vol1-product.html"),
   "utf-8",
 );
 
@@ -120,5 +126,30 @@ describe("parseYenPressDate", () => {
     expect(parseYenPressDate("")).toBeUndefined();
     expect(parseYenPressDate("TBD")).toBeUndefined();
     expect(parseYenPressDate("2018-07-24")).toBeUndefined();
+  });
+});
+
+describe("parseProduct — description and cover", () => {
+  const productUrl =
+    "https://yenpress.com/titles/9781975353308-teasing-master-takagi-san-vol-1";
+
+  it("extracts the volume description", () => {
+    const result = parseProduct(takagiProductHtml, productUrl);
+    expect(result).not.toBeNull();
+    expect(result?.description).toMatch(/^Middle schooler Nishikata/);
+    // Description must not contain HTML tags.
+    expect(result?.description).not.toMatch(/</);
+  });
+
+  it("sets the url field to the passed-in value", () => {
+    const result = parseProduct(takagiProductHtml, productUrl);
+    expect(result?.url).toBe(productUrl);
+  });
+
+  it("extracts the cover image URL", () => {
+    const result = parseProduct(takagiProductHtml, productUrl);
+    expect(result?.coverUrl).toMatch(
+      /^https:\/\/images\.yenpress\.com\/imgs\//,
+    );
   });
 });

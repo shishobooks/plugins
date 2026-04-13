@@ -1,4 +1,5 @@
 import type { PublisherScraper, VolumeMetadata } from "./types";
+import { stripHTML } from "@shisho-plugins/shared";
 
 /**
  * Build the URL slug for a Yen Press series page. Lowercases, replaces runs
@@ -85,6 +86,62 @@ export function parseYenPressDate(dateStr: string): string | undefined {
   if (!month) return undefined;
   const day = match[2].padStart(2, "0");
   return `${match[3]}-${month}-${day}T00:00:00Z`;
+}
+
+/**
+ * Extract the per-volume description from a Yen Press product page.
+ *
+ * The description lives in `<div class="content-heading-txt"> <p
+ * class="paragraph fs-16">...</p></div>`. Yen Press also has a `<meta
+ * name="description">` tag but it truncates at ~200 chars; the paragraph
+ * block is the authoritative full text.
+ */
+function extractDescription(
+  doc: ReturnType<typeof shisho.html.parse>,
+): string | undefined {
+  const container = shisho.html.querySelector(doc, "div.content-heading-txt");
+  if (!container) return undefined;
+  const paragraph = shisho.html.querySelector(container, "p.paragraph");
+  const raw = paragraph?.text.trim();
+  return raw ? stripHTML(raw) : undefined;
+}
+
+/**
+ * Extract the per-volume cover URL from a Yen Press product page.
+ *
+ * Yen Press renders covers with a lazy-load pattern: `<img class="b-lazy"
+ * data-src="https://images.yenpress.com/imgs/<ISBN>.jpg?...">`. The URL
+ * lives in `data-src`, not `src` (which is usually empty or a placeholder).
+ * We prefer the first `.book-cover-img img` on the page, which is the
+ * main product cover; failing that, accept the element's `src` if it's
+ * an absolute http URL.
+ */
+function extractCover(
+  doc: ReturnType<typeof shisho.html.parse>,
+): string | undefined {
+  const img = shisho.html.querySelector(doc, "div.book-cover-img img");
+  const dataSrc = img?.attributes["data-src"];
+  if (dataSrc) return dataSrc;
+  const src = img?.attributes.src;
+  return src && src.startsWith("http") ? src : undefined;
+}
+
+/**
+ * Parse a Yen Press product page into VolumeMetadata. Returns null if the
+ * page has no recognizable structure (e.g. an error page). Individual
+ * fields are simply omitted when they can't be extracted.
+ */
+export function parseProduct(html: string, url: string): VolumeMetadata | null {
+  const doc = shisho.html.parse(html);
+  const metadata: VolumeMetadata = { url };
+
+  const description = extractDescription(doc);
+  if (description) metadata.description = description;
+
+  const coverUrl = extractCover(doc);
+  if (coverUrl) metadata.coverUrl = coverUrl;
+
+  return metadata;
 }
 
 export const yenpressScraper: PublisherScraper = {
