@@ -1,0 +1,57 @@
+{
+  "manifestVersion": 1,
+  "id": "manga-enricher",
+  "name": "Manga Enricher",
+  "version": "0.1.0",
+  "description": "Enriches manga metadata from MangaUpdates and publisher websites (Viz, Kodansha USA)",
+  "minShishoVersion": "0.0.28",
+  "author": "Shisho Team",
+  "homepage": "https://github.com/shishobooks/plugins",
+  "license": "MIT",
+  "capabilities": {
+    "metadataEnricher": {
+      "description": "Fetches manga metadata from MangaUpdates and scrapes per-volume details from Viz and Kodansha USA",
+      "fileTypes": [
+        "cbz",
+        "cbr"
+      ],
+      "fields": [
+        "title",
+        "subtitle",
+        "authors",
+        "description",
+        "publisher",
+        "imprint",
+        "releaseDate",
+        "series",
+        "seriesNumber",
+        "genres",
+        "tags",
+        "cover",
+        "identifiers",
+        "url",
+        "language"
+      ]
+    },
+    "httpAccess": {
+      "description": "Calls the MangaUpdates API and scrapes Viz Media and Kodansha USA product pages",
+      "domains": [
+        "api.mangaupdates.com",
+        "cdn.mangaupdates.com",
+        "www.viz.com",
+        "dw9to29mmj727.cloudfront.net",
+        "kodansha.us",
+        "production.image.azuki.co"
+      ]
+    },
+    "identifierTypes": [
+      {
+        "id": "mangaupdates_series",
+        "name": "MangaUpdates Series",
+        "urlTemplate": "https://www.mangaupdates.com/series.html?id={value}",
+        "pattern": "^\\d+$"
+      }
+    ]
+  },
+  "configSchema": {}
+}
