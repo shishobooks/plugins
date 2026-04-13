@@ -159,6 +159,23 @@ describe("searchForManga", () => {
       expect(searchForManga(contextThreeDigit)[0].title).toBe("One Piece v103");
     });
 
+    it("does not truncate four-digit-or-longer volume numbers", () => {
+      // The zero-padding is a minimum width, not a maximum. A theoretical
+      // v1000 manga should render as "v1000", not "v000".
+      setupDefaultMocks();
+      mockedSearchSeries.mockReturnValue([onePieceSeries]);
+      mockedFetchSeries.mockReturnValue(onePieceSeries);
+
+      const context = makeContext({
+        query: "One Piece v1000.cbz",
+      });
+      // Volume parser only matches 2-3 digit bare numbers, but v<digits>
+      // has no such limit.
+      const results = searchForManga(context);
+      expect(results[0].seriesNumber).toBe(1000);
+      expect(results[0].title).toBe("One Piece v1000");
+    });
+
     it("retries with the prefix when the full title yields nothing", () => {
       setupDefaultMocks();
       const demonSlayerSeries: MUSeries = {
