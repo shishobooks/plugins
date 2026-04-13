@@ -18,6 +18,33 @@ export function buildSlug(seriesTitle: string, edition?: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Scan the series-page HTML and pick the product path that corresponds to
+ * the requested volume number. Yen Press product paths look like
+ * `/titles/<ISBN>-<slug>-vol-<N>`. We can't build this path directly
+ * because the ISBN segment is unknown up front, so we grep the series
+ * page for matching links.
+ *
+ * We capture the trailing digit group and compare numerically, so
+ * `vol-1` and `vol-10` are distinct regardless of document order. The
+ * non-greedy `[^"]*?` before `-vol-` keeps the capture scoped to a
+ * single href attribute.
+ */
+export function pickProductPath(
+  seriesHtml: string,
+  volumeNumber: number,
+): string | null {
+  const linkRegex = /href="(\/titles\/[^"]*?-vol-(\d+))"/gi;
+  let match: RegExpExecArray | null;
+  while ((match = linkRegex.exec(seriesHtml)) !== null) {
+    const [, path, num] = match;
+    if (parseInt(num, 10) === volumeNumber) {
+      return path;
+    }
+  }
+  return null;
+}
+
 export const yenpressScraper: PublisherScraper = {
   name: "Yen Press",
 
