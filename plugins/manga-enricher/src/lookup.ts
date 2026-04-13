@@ -297,13 +297,18 @@ function buildMetadata(
   }
 
   if (volumeNumber !== undefined) {
-    const volumeData = findVolumeData(
+    const scrapeResult = findVolumeData(
       series,
       volumeNumber,
       edition,
       searchTitle,
     );
-    if (volumeData) mergeVolumeData(metadata, volumeData);
+    if (scrapeResult) {
+      mergeVolumeData(metadata, scrapeResult.data);
+      // The scraper that succeeded is the authoritative English publisher
+      // for this volume — override whatever pickEnglishPublisher chose.
+      metadata.publisher = scrapeResult.scraperName;
+    }
   }
 
   return metadata;
@@ -329,12 +334,19 @@ function buildMetadata(
  * licensed by Viz or Kodansha will not show up on those sites; speculative
  * requests just produce 404 noise.
  */
+/** Result of a successful publisher scrape. */
+interface ScrapeResult {
+  data: VolumeMetadata;
+  /** Canonical name of the scraper that succeeded (e.g., "Kodansha USA"). */
+  scraperName: string;
+}
+
 function findVolumeData(
   series: MUSeries,
   volumeNumber: number,
   edition: string | undefined,
   searchTitle: string | undefined,
-): VolumeMetadata | null {
+): ScrapeResult | null {
   const seriesTitle = searchTitle ?? series.title;
   const livePublishers = getLiveEnglishPublishers(series);
   if (livePublishers.length === 0) return null;
@@ -360,7 +372,7 @@ function findVolumeData(
     const scraper = SCRAPERS.find((s) => s.matchPublisher(publisher.name));
     if (!scraper) continue;
     const data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
-    if (data) return data;
+    if (data) return { data, scraperName: scraper.name };
   }
 
   return null;

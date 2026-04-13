@@ -255,6 +255,9 @@ describe("searchForManga", () => {
       expect(results[0].imprint).toBe("Shonen Jump");
       expect(results[0].releaseDate).toBe("2003-06-01T00:00:00Z");
       expect(results[0].url).toBe(vizVolumeData.url);
+      // The successful scraper's canonical name is the authoritative
+      // publisher, not whichever English publisher MU happened to list first.
+      expect(results[0].publisher).toBe("Viz Media");
       // ISBN identifier is merged in addition to mangaupdates_series.
       expect(results[0].identifiers).toEqual(
         expect.arrayContaining([
@@ -262,6 +265,34 @@ describe("searchForManga", () => {
           { type: "isbn_13", value: "9781569319017" },
         ]),
       );
+    });
+
+    it("sets publisher to the successful scraper, not MU's first English entry", () => {
+      // MU lists INKR first and Kodansha Comics second for some series.
+      // INKR has no scraper; Kodansha does. The final publisher must be
+      // the scraper we actually used, not INKR.
+      setupDefaultMocks();
+      const series: MUSeries = {
+        ...onePieceSeries,
+        title: "Wotakoi",
+        publishers: [
+          { publisher_name: "INKR", type: "English" },
+          {
+            publisher_name: "Kodansha Comics",
+            type: "English",
+            notes: "6 2-in-1 Omnibuses - Complete",
+          },
+        ],
+      };
+      mockedSearchSeries.mockReturnValue([series]);
+      mockedFetchSeries.mockReturnValue(series);
+      mockedKodanshaSearch.mockReturnValue({ description: "synopsis" });
+
+      const context = makeContext({ query: "Wotakoi v01.cbz" });
+      const results = searchForManga(context);
+
+      expect(mockedKodanshaSearch).toHaveBeenCalled();
+      expect(results[0].publisher).toBe("Kodansha USA");
     });
 
     it("overrides the MU series cover with the publisher's per-volume cover", () => {
