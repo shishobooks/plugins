@@ -170,6 +170,36 @@ describe("searchForManga", () => {
       expect(results[0].title).toBe("Demon Slayer");
     });
 
+    it("falls back to fetching full series when no primary title matches", () => {
+      // MangaUpdates search results don't include associated titles, so
+      // when the primary title alone doesn't match the query, the lookup
+      // must fetch the full series record (which DOES have associated
+      // titles) and re-run the confidence check.
+      setupDefaultMocks();
+      const searchResult: MUSeries = {
+        series_id: 999,
+        title: "Shingeki no Kyojin", // primary title doesn't match "Attack on Titan"
+      };
+      const fullSeries: MUSeries = {
+        ...searchResult,
+        title: "Shingeki no Kyojin",
+        associated: [{ title: "Attack on Titan" }, { title: "進撃の巨人" }],
+        publishers: [{ publisher_name: "Kodansha USA", type: "English" }],
+      };
+      mockedSearchSeries.mockReturnValue([searchResult]);
+      mockedFetchSeries.mockReturnValue(fullSeries);
+
+      const context = makeContext({ query: "Attack on Titan v01.cbz" });
+      const results = searchForManga(context);
+
+      // Fetch is called once (slow path): primary-title check fails, so
+      // we fetch full series to access associated titles.
+      expect(mockedFetchSeries).toHaveBeenCalledWith(999);
+      expect(results).toHaveLength(1);
+      expect(results[0].seriesNumber).toBe(1);
+      expect(results[0].confidence).toBeGreaterThanOrEqual(0.6);
+    });
+
     it("matches via substring when the query is contained in the candidate title", () => {
       // MangaUpdates' search returns the Japanese romaji primary title
       // (e.g., "Kekkon Suru tte, Hontou desu ka: 365 Days To The Wedding")

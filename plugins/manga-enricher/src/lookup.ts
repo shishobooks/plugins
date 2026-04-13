@@ -82,30 +82,81 @@ function tryTitleSearch(context: SearchContext): ParsedMetadata[] {
     if (!candidates || candidates.length === 0) continue;
 
     const normalizedTarget = normalizeForComparison(attempt);
-    const results: ParsedMetadata[] = [];
 
-    for (const candidate of candidates) {
-      const confidence = computeConfidence(normalizedTarget, candidate);
-      if (confidence === null) continue;
+    // Fast path: compare against search-result primary titles only. Fetch
+    // the full series (for authors/publishers/categories) only when a
+    // candidate matches.
+    const fastResults = matchCandidates(
+      candidates,
+      normalizedTarget,
+      parsed.volumeNumber,
+      parsed.edition,
+      true,
+    );
+    if (fastResults.length > 0) return fastResults;
 
-      // Fetch the full series record to get authors/publishers/categories
-      // which search results don't include.
-      const fullSeries = fetchSeries(candidate.series_id);
-      if (!fullSeries) continue;
-
-      const metadata = buildMetadata(
-        fullSeries,
-        parsed.volumeNumber,
-        parsed.edition,
-      );
-      metadata.confidence = confidence;
-      results.push(metadata);
-    }
-
-    if (results.length > 0) return results;
+    // Slow path: the search API response does NOT include associated
+    // titles, so we missed any candidate that matches only by an alternate
+    // title (e.g., MU's primary is a Japanese romaji with no English
+    // substring). Fetch the full series for every candidate and re-check
+    // — associated titles are included in the detail response.
+    shisho.log.debug(
+      `No fast-path matches for "${attempt}"; falling back to associated-title check`,
+    );
+    const slowResults = matchCandidates(
+      candidates,
+      normalizedTarget,
+      parsed.volumeNumber,
+      parsed.edition,
+      false,
+    );
+    if (slowResults.length > 0) return slowResults;
   }
 
   return [];
+}
+
+/**
+ * Common matching loop for both fast and slow paths.
+ *
+ * In the fast path (`fetchedMatchOnly=true`), confidence is computed from
+ * the search-result record (primary title only). For matches we then fetch
+ * the full series so the returned metadata has authors/publishers/etc.
+ *
+ * In the slow path (`fetchedMatchOnly=false`), every candidate is fetched
+ * up-front so confidence sees associated titles too. A single fetch per
+ * candidate is shared between the confidence check and metadata building.
+ */
+function matchCandidates(
+  candidates: MUSeries[],
+  normalizedTarget: string,
+  volumeNumber: number | undefined,
+  edition: string | undefined,
+  fastPath: boolean,
+): ParsedMetadata[] {
+  const results: ParsedMetadata[] = [];
+
+  for (const candidate of candidates) {
+    if (fastPath) {
+      const confidence = computeConfidence(normalizedTarget, candidate);
+      if (confidence === null) continue;
+      const fullSeries = fetchSeries(candidate.series_id);
+      if (!fullSeries) continue;
+      const metadata = buildMetadata(fullSeries, volumeNumber, edition);
+      metadata.confidence = confidence;
+      results.push(metadata);
+    } else {
+      const fullSeries = fetchSeries(candidate.series_id);
+      if (!fullSeries) continue;
+      const confidence = computeConfidence(normalizedTarget, fullSeries);
+      if (confidence === null) continue;
+      const metadata = buildMetadata(fullSeries, volumeNumber, edition);
+      metadata.confidence = confidence;
+      results.push(metadata);
+    }
+  }
+
+  return results;
 }
 
 /** Minimum target length to accept a substring match (avoid matching "the"). */
