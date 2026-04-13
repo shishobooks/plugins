@@ -418,6 +418,37 @@ describe("searchForManga", () => {
       expect(results[0].title).toBe("One Piece");
     });
 
+    it("uses the parsed query title for the scraper, not MU's primary", () => {
+      // MU often lists Japanese romaji as the primary title with the
+      // English name as an associated title. The publisher site uses the
+      // English slug, so the scraper must receive the English title —
+      // which is what the user's filename has.
+      setupDefaultMocks();
+      const sweatAndSoap: MUSeries = {
+        ...onePieceSeries,
+        series_id: 42,
+        title: "Ase to Sekken",
+        associated: [{ title: "Sweat and Soap" }],
+        publishers: [{ publisher_name: "Kodansha USA", type: "English" }],
+      };
+      mockedSearchSeries.mockReturnValue([sweatAndSoap]);
+      mockedFetchSeries.mockReturnValue(sweatAndSoap);
+      mockedKodanshaSearch.mockReturnValue({
+        description: "English synopsis.",
+      });
+
+      const context = makeContext({ query: "Sweat and Soap v01.cbz" });
+      searchForManga(context);
+
+      // The scraper must receive "Sweat and Soap" (the user's title),
+      // NOT "Ase to Sekken" (MU's primary).
+      expect(mockedKodanshaSearch).toHaveBeenCalledWith(
+        "Sweat and Soap",
+        1,
+        undefined,
+      );
+    });
+
     it("filters out Doujinshi candidates from search results", () => {
       // Doujinshi clutter substring matches ("Fruits Basket" matches
       // "Fruits Basket dj - Gift") and have no licensed English publisher.

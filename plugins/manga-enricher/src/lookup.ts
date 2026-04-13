@@ -58,7 +58,12 @@ function tryIdLookup(context: SearchContext): ParsedMetadata[] {
   if (!series) return [];
 
   const parsed = parseQuery(context.query);
-  const metadata = buildMetadata(series, parsed.volumeNumber, parsed.edition);
+  const metadata = buildMetadata(
+    series,
+    parsed.volumeNumber,
+    parsed.edition,
+    parsed.seriesTitle || undefined,
+  );
   metadata.confidence = 1.0;
   return [metadata];
 }
@@ -110,6 +115,7 @@ function tryTitleSearch(context: SearchContext): ParsedMetadata[] {
       normalizedTarget,
       parsed.volumeNumber,
       parsed.edition,
+      parsed.seriesTitle,
       true,
     );
     if (fastResults.length > 0) return fastResults;
@@ -127,6 +133,7 @@ function tryTitleSearch(context: SearchContext): ParsedMetadata[] {
       normalizedTarget,
       parsed.volumeNumber,
       parsed.edition,
+      parsed.seriesTitle,
       false,
     );
     if (slowResults.length > 0) return slowResults;
@@ -151,6 +158,7 @@ function matchCandidates(
   normalizedTarget: string,
   volumeNumber: number | undefined,
   edition: string | undefined,
+  searchTitle: string,
   fastPath: boolean,
 ): ParsedMetadata[] {
   const results: ParsedMetadata[] = [];
@@ -161,7 +169,12 @@ function matchCandidates(
       if (confidence === null) continue;
       const fullSeries = fetchSeries(candidate.series_id);
       if (!fullSeries) continue;
-      const metadata = buildMetadata(fullSeries, volumeNumber, edition);
+      const metadata = buildMetadata(
+        fullSeries,
+        volumeNumber,
+        edition,
+        searchTitle,
+      );
       metadata.confidence = confidence;
       results.push(metadata);
     } else {
@@ -169,7 +182,12 @@ function matchCandidates(
       if (!fullSeries) continue;
       const confidence = computeConfidence(normalizedTarget, fullSeries);
       if (confidence === null) continue;
-      const metadata = buildMetadata(fullSeries, volumeNumber, edition);
+      const metadata = buildMetadata(
+        fullSeries,
+        volumeNumber,
+        edition,
+        searchTitle,
+      );
       metadata.confidence = confidence;
       results.push(metadata);
     }
@@ -249,11 +267,18 @@ function computeConfidence(
 /**
  * Build the final ParsedMetadata by combining MangaUpdates series data
  * and (if available) per-volume data from a publisher scraper.
+ *
+ * `searchTitle` is the title parsed from the user's query (typically the
+ * filename). It's passed down to the publisher scraper so that series
+ * whose MU primary is a Japanese romaji still slugify correctly — e.g.,
+ * a user's "Sweat and Soap v01.cbz" reaches Kodansha as "sweat-and-soap"
+ * instead of MU's "ase-to-sekken".
  */
 function buildMetadata(
   series: MUSeries,
   volumeNumber: number | undefined,
   edition: string | undefined,
+  searchTitle: string | undefined,
 ): ParsedMetadata {
   const metadata = seriesToMetadata(series);
 
@@ -262,7 +287,12 @@ function buildMetadata(
   }
 
   if (volumeNumber !== undefined) {
-    const volumeData = findVolumeData(series, volumeNumber, edition);
+    const volumeData = findVolumeData(
+      series,
+      volumeNumber,
+      edition,
+      searchTitle,
+    );
     if (volumeData) mergeVolumeData(metadata, volumeData);
   }
 
@@ -273,6 +303,12 @@ function buildMetadata(
  * Find per-volume data by mapping MangaUpdates' English publisher list to
  * our scraper registry. Only live (non-defunct, non-expired) publishers
  * with a matching scraper are tried.
+ *
+ * The scraper is called with `searchTitle` (the user's filename-derived
+ * title) when available, falling back to MU's primary title. MU's primary
+ * is often a Japanese romaji ("Ase to Sekken") while the publisher site
+ * uses the English title ("Sweat and Soap"). Since the user's filename is
+ * almost always in English, trusting it gives us the right slug.
  *
  * If the parsed query has an edition, publishers whose notes mention that
  * edition are tried first (e.g., "Yen Press (12 Collector's Edition Vols)"
@@ -287,8 +323,9 @@ function findVolumeData(
   series: MUSeries,
   volumeNumber: number,
   edition: string | undefined,
+  searchTitle: string | undefined,
 ): VolumeMetadata | null {
-  const seriesTitle = series.title;
+  const seriesTitle = searchTitle ?? series.title;
   const livePublishers = getLiveEnglishPublishers(series);
   if (livePublishers.length === 0) return null;
 
