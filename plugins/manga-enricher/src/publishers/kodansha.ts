@@ -42,17 +42,20 @@ export function slugify(title: string): string {
 }
 
 /**
- * Extract all JSON-LD script blocks from the HTML and return them as
- * parsed objects. Invalid JSON blocks are silently skipped.
+ * Extract all JSON-LD script blocks from a parsed HTML document. Invalid
+ * JSON blocks are silently skipped.
  */
-export function extractJsonLd(html: string): unknown[] {
+export function extractJsonLd(
+  doc: ReturnType<typeof shisho.html.parse>,
+): unknown[] {
   const results: unknown[] = [];
-  const regex =
-    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(html)) !== null) {
+  const scripts = shisho.html.querySelectorAll(
+    doc,
+    'script[type="application/ld+json"]',
+  );
+  for (const script of scripts) {
     try {
-      results.push(JSON.parse(match[1].trim()));
+      results.push(JSON.parse(script.text.trim()));
     } catch {
       // Ignore malformed JSON-LD blocks.
     }
@@ -154,29 +157,16 @@ function pickReleaseDate(book: JsonLdBook): string | undefined {
 }
 
 /**
- * Extract the og:description meta tag content from HTML.
+ * Extract the og:description meta tag content from a parsed document.
  * Kodansha does not include a description field in the Book JSON-LD, but
  * the page always has an og:description meta tag with the synopsis.
  */
-function extractOgDescription(html: string): string | undefined {
-  const match = html.match(
-    /<meta[^>]*property=["']og:description["'][^>]*content=(?:"([^"]*)"|'([^']*)')/i,
-  );
-  if (!match) {
-    // Try the other attribute order: content before property.
-    const match2 = html.match(
-      /<meta[^>]*content=(?:"([^"]*)"|'([^']*)')[\s\S]*?property=["']og:description["']/i,
-    );
-    if (match2) {
-      const content = match2[1] ?? match2[2];
-      if (!content) return undefined;
-      return content.trim();
-    }
-    return undefined;
-  }
-  const content = match[1] ?? match[2];
-  if (!content) return undefined;
-  return content.trim();
+function extractOgDescription(
+  doc: ReturnType<typeof shisho.html.parse>,
+): string | undefined {
+  const el = shisho.html.querySelector(doc, 'meta[property="og:description"]');
+  const content = el?.attributes.content;
+  return content ? content.trim() : undefined;
 }
 
 /**
@@ -185,7 +175,8 @@ function extractOgDescription(html: string): string | undefined {
  * include a description field in their Book JSON-LD.
  */
 export function parseProduct(html: string, url: string): VolumeMetadata | null {
-  const blocks = extractJsonLd(html);
+  const doc = shisho.html.parse(html);
+  const blocks = extractJsonLd(doc);
   const book = findBookEntity(blocks);
   if (!book) return null;
 
@@ -194,7 +185,7 @@ export function parseProduct(html: string, url: string): VolumeMetadata | null {
   if (book.name) metadata.title = book.name;
 
   // Description: prefer the JSON-LD field, fall back to og:description.
-  const descriptionRaw = book.description ?? extractOgDescription(html);
+  const descriptionRaw = book.description ?? extractOgDescription(doc);
   if (descriptionRaw) metadata.description = stripHTML(descriptionRaw);
 
   const { isbn13, isbn10 } = pickIsbn(book);

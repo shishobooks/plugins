@@ -62,64 +62,60 @@ export function pickProductPath(
 }
 
 /**
- * Extract a single field from raw HTML using a regex that captures one
- * group. Returns undefined if the pattern doesn't match.
+ * Extract the `content` attribute of a meta tag identified by its
+ * `property` value (e.g., "og:title"). Returns undefined if the tag is
+ * missing or has no content.
  */
-function matchOne(html: string, pattern: RegExp): string | undefined {
-  const m = html.match(pattern);
-  return m ? m[1].trim() : undefined;
+function metaContent(
+  doc: ReturnType<typeof shisho.html.parse>,
+  property: string,
+): string | undefined {
+  const el = shisho.html.querySelector(doc, `meta[property="${property}"]`);
+  return el?.attributes.content;
 }
 
 /**
- * Parse a product HTML page into VolumeMetadata. The regex patterns here
- * were derived from inspecting real Viz product page fixtures and match the
- * actual HTML structure at time of implementation.
+ * Parse a product HTML page into VolumeMetadata.
  *
- * Actual HTML patterns observed:
- *   - og:title:    <meta property="og:title" content="VIZ: Read a Free Preview of One Piece, Vol. 1">
- *   - og:desc:     <meta property="og:description" content="As a child...">  (HTML entities encoded)
- *   - ISBN-13:     <strong>ISBN-13</strong> 978-1-56931-901-7
- *   - Release:     <strong>Release</strong> September  2, 2003
- *   - Length:      <strong>Length</strong> 216 pages
- *   - Imprint:     <strong>Imprint</strong>\n...<a ...>SHONEN JUMP</a>
- *   - Age Rating:  <strong>Age Rating</strong>\n...<a ...></a>&nbsp;\n            Teen
- *
- * Note: The "Length" field (page count) is intentionally not extracted —
- * it is a file-parser-owned field and cannot be declared by enrichers.
+ * Meta tags (og:title, og:description, og:image) are read via shisho.html's
+ * CSS selector support. The product details block (ISBN-13, Release,
+ * Imprint) uses `<strong>Label</strong>Value` pairs where the value is a
+ * sibling text node — CSS selectors alone can't hop from a label element
+ * to its following text, so those fields are still extracted by regex.
+ * Page count ("Length") is intentionally not extracted — it is a
+ * file-parser-owned field.
  */
 export function parseProduct(html: string, url: string): VolumeMetadata {
   const metadata: VolumeMetadata = { url };
+  const doc = shisho.html.parse(html);
 
-  // Title: og:title meta tag, stripping the "VIZ: Read a Free Preview of "
-  // prefix that Viz prepends to the product title.
-  const ogTitle = matchOne(
-    html,
-    /<meta property="og:title"\s+content="([^"]+)"/i,
-  );
+  // Title: og:title, stripping the "VIZ: Read a Free Preview of " prefix.
+  const ogTitle = metaContent(doc, "og:title");
   if (ogTitle) {
     metadata.title = ogTitle
       .replace(/^VIZ:\s*Read\s+a\s+Free\s+Preview\s+of\s+/i, "")
       .trim();
   }
 
-  // Description: og:description meta tag (may contain HTML entities like &quot;).
-  const ogDesc = matchOne(
-    html,
-    /<meta property="og:description"\s+content="([^"]+)"/i,
-  );
+  // Description: og:description (may contain HTML entities like &quot;).
+  const ogDesc = metaContent(doc, "og:description");
   if (ogDesc) metadata.description = stripHTML(ogDesc);
 
-  // ISBN-13: text immediately after <strong>ISBN-13</strong> on the same line.
-  // Actual HTML: <strong>ISBN-13</strong> 978-1-56931-901-7
-  const isbn13 = matchOne(html, /<strong>ISBN-13<\/strong>\s*([\d-]{13,17})/i);
+  // Cover image: og:image. Viz hosts product covers on a CloudFront CDN
+  // whose filename is the ISBN-10 (e.g.,
+  // https://dw9to29mmj727.cloudfront.net/products/1569319014.jpg).
+  const ogImage = metaContent(doc, "og:image");
+  if (ogImage) metadata.coverUrl = ogImage;
+
+  // The remaining fields live as `<strong>Label</strong>\s*Value` pairs
+  // where Value is a text or anchor sibling. Stick with regex for these.
+  const isbn13 = matchLabelValue(html, "ISBN-13", /([\d-]{13,17})/);
   if (isbn13) metadata.isbn13 = isbn13.replace(/-/g, "");
 
-  // Release date: text immediately after <strong>Release</strong> on the same line.
-  // Actual HTML: <strong>Release</strong> September  2, 2003
-  // Note: Viz sometimes has a double space before single-digit days.
-  const releaseDate = matchOne(
+  const releaseDate = matchLabelValue(
     html,
-    /<strong>Release<\/strong>\s+([A-Za-z]+\s+\d{1,2},\s*\d{4})/i,
+    "Release",
+    /([A-Za-z]+\s+\d{1,2},\s*\d{4})/,
   );
   if (releaseDate) {
     const parsed = parseVizDate(releaseDate);
@@ -127,23 +123,29 @@ export function parseProduct(html: string, url: string): VolumeMetadata {
   }
 
   // Imprint: anchor text after <strong>Imprint</strong>.
-  // Actual HTML: <strong>Imprint</strong>\n  <a href="...">SHONEN JUMP</a>
-  const imprint = matchOne(
-    html,
+  const imprintMatch = html.match(
     /<strong>Imprint<\/strong>[\s\S]*?<a[^>]*>([^<]+)<\/a>/i,
   );
-  if (imprint) metadata.imprint = imprint;
-
-  // Cover image: og:image meta tag. Viz hosts product covers on a
-  // CloudFront CDN whose filename is the ISBN-10 (e.g.,
-  // https://dw9to29mmj727.cloudfront.net/products/1569319014.jpg).
-  const ogImage = matchOne(
-    html,
-    /<meta property="og:image"\s+content="([^"]+)"/i,
-  );
-  if (ogImage) metadata.coverUrl = ogImage;
+  if (imprintMatch) metadata.imprint = imprintMatch[1].trim();
 
   return metadata;
+}
+
+/**
+ * Match a `<strong>Label</strong>\s*<valueRegex>` pair in raw HTML and
+ * return the value. The valueRegex should have exactly one capture group.
+ */
+function matchLabelValue(
+  html: string,
+  label: string,
+  valueRegex: RegExp,
+): string | undefined {
+  const pattern = new RegExp(
+    `<strong>${label}<\\/strong>\\s*${valueRegex.source}`,
+    "i",
+  );
+  const m = html.match(pattern);
+  return m ? m[1].trim() : undefined;
 }
 
 /**
