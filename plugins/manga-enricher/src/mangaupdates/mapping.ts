@@ -5,6 +5,26 @@ import type { ParsedAuthor, ParsedMetadata } from "@shisho/plugin-sdk";
 /** Minimum community votes for a category to be included as a tag. */
 const MIN_CATEGORY_VOTES = 2;
 
+/**
+ * Title-case ALL-CAPS words in an author name while preserving the rest.
+ *
+ * MangaUpdates follows the convention of writing surnames in all caps
+ * (e.g., "ODA Eiichiro", "KUBO Tite") to disambiguate them from given
+ * names, especially for Japanese authors where family name ordering can
+ * be ambiguous. We normalize these to proper title case ("Oda Eiichiro",
+ * "Kubo Tite") for display.
+ *
+ * Words that already mix case (e.g., "McDonald", "deGrasse") or are
+ * entirely lowercase are left alone — we only transform runs of 2+
+ * uppercase letters to avoid damaging intentional casing.
+ */
+export function titleCaseAuthorName(name: string): string {
+  return name.replace(
+    /\b[A-Z]{2,}\b/g,
+    (word) => word[0] + word.slice(1).toLowerCase(),
+  );
+}
+
 /** A live English publisher from a MangaUpdates series record. */
 export interface EnglishPublisher {
   name: string;
@@ -51,9 +71,10 @@ export function seriesToMetadata(series: MUSeries): ParsedMetadata {
 
   if (series.authors && series.authors.length > 0) {
     const authors: ParsedAuthor[] = series.authors.map((a) => {
+      const name = titleCaseAuthorName(a.name);
       const role =
         a.type === "Artist" ? "penciller" : a.type === "Author" ? "writer" : "";
-      return role ? { name: a.name, role } : { name: a.name };
+      return role ? { name, role } : { name };
     });
     metadata.authors = authors;
   }

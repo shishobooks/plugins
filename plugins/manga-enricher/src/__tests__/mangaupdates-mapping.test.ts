@@ -1,6 +1,7 @@
 import {
   pickEnglishPublisher,
   seriesToMetadata,
+  titleCaseAuthorName,
 } from "../mangaupdates/mapping";
 import type { MUSeries } from "../mangaupdates/types";
 import { describe, expect, it } from "vitest";
@@ -42,11 +43,11 @@ describe("seriesToMetadata", () => {
     ]);
   });
 
-  it("maps authors to ParsedAuthor with roles", () => {
+  it("maps authors to ParsedAuthor with roles and title-cases surnames", () => {
     const md = seriesToMetadata(sampleSeries);
     expect(md.authors).toEqual([
-      { name: "ODA Eiichiro", role: "writer" },
-      { name: "ODA Eiichiro", role: "penciller" },
+      { name: "Oda Eiichiro", role: "writer" },
+      { name: "Oda Eiichiro", role: "penciller" },
     ]);
   });
 
@@ -124,5 +125,43 @@ describe("pickEnglishPublisher", () => {
   it("returns undefined when publishers is missing", () => {
     const series: MUSeries = { series_id: 1, title: "X" };
     expect(pickEnglishPublisher(series)).toBeUndefined();
+  });
+});
+
+describe("titleCaseAuthorName", () => {
+  it("title-cases an all-caps surname followed by a given name", () => {
+    expect(titleCaseAuthorName("ODA Eiichiro")).toBe("Oda Eiichiro");
+  });
+
+  it("title-cases a single all-caps word", () => {
+    expect(titleCaseAuthorName("KUBO")).toBe("Kubo");
+  });
+
+  it("leaves already-title-cased names unchanged", () => {
+    expect(titleCaseAuthorName("Naoki Urasawa")).toBe("Naoki Urasawa");
+  });
+
+  it("leaves mixed-case words alone", () => {
+    expect(titleCaseAuthorName("McDonald")).toBe("McDonald");
+    expect(titleCaseAuthorName("deGrasse Tyson")).toBe("deGrasse Tyson");
+  });
+
+  it("handles multiple all-caps words", () => {
+    expect(titleCaseAuthorName("SHIROW Masamune ABE")).toBe(
+      "Shirow Masamune Abe",
+    );
+  });
+
+  it("does not transform single capital letters", () => {
+    // Single-letter capitals (initials) are left alone.
+    expect(titleCaseAuthorName("J K Rowling")).toBe("J K Rowling");
+  });
+
+  it("preserves names with apostrophes", () => {
+    expect(titleCaseAuthorName("O'NEILL John")).toBe("O'Neill John");
+  });
+
+  it("preserves whitespace between words", () => {
+    expect(titleCaseAuthorName("ODA  Eiichiro")).toBe("Oda  Eiichiro");
   });
 });
