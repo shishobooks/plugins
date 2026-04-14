@@ -80,6 +80,16 @@ describe("searchAutocomplete", () => {
     expect(shisho.http.fetch).toHaveBeenCalledTimes(3);
   });
 
+  it("sleeps with exponential backoff between 503 retries", () => {
+    mockFetch({ status: 503, statusText: "Service Unavailable", ok: false });
+
+    searchAutocomplete("test");
+
+    expect(shisho.sleep).toHaveBeenCalledTimes(2);
+    expect(shisho.sleep).toHaveBeenNthCalledWith(1, 1000);
+    expect(shisho.sleep).toHaveBeenNthCalledWith(2, 2000);
+  });
+
   it("passes query to searchParams", () => {
     mockFetch({ status: 200, ok: true, body: [] });
 

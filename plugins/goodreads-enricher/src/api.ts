@@ -5,6 +5,7 @@ const USER_AGENT =
   "ShishoPlugin/0.1.0 (goodreads-enricher; github.com/shishobooks/plugins)";
 const MAX_ATTEMPTS = 3;
 const RETRYABLE_STATUSES = new Set([503]);
+const RETRY_BASE_DELAY_MS = 1000;
 
 function fetchWithRetry(
   url: string,
@@ -23,9 +24,11 @@ function fetchWithRetry(
 
     const status = response?.status;
     if (status && RETRYABLE_STATUSES.has(status) && attempt < MAX_ATTEMPTS) {
+      const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
       shisho.log.warn(
-        `HTTP ${status} for ${url}, retrying (attempt ${attempt + 1}/${MAX_ATTEMPTS})…`,
+        `HTTP ${status} for ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_ATTEMPTS})…`,
       );
+      shisho.sleep(delay);
       continue;
     }
 

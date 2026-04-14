@@ -5,6 +5,7 @@ const sdkMock = createMockShisho();
 
 globalThis.shisho = {
   dataDir: "/tmp/shisho-mock-data",
+  sleep: vi.fn(),
   log: {
     debug: vi.fn(),
     info: vi.fn(),
