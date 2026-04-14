@@ -3,6 +3,7 @@ import { fetchSeries, searchSeries } from "../mangaupdates/api";
 import type { MUSeries } from "../mangaupdates/types";
 import { kodanshaScraper } from "../publishers/kodansha";
 import { vizScraper } from "../publishers/viz";
+import { yenpressScraper } from "../publishers/yenpress";
 import type { SearchContext } from "@shisho/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 
@@ -27,12 +28,22 @@ vi.mock("../publishers/kodansha", () => ({
   },
 }));
 
+vi.mock("../publishers/yenpress", () => ({
+  yenpressScraper: {
+    name: "Yen Press",
+    matchPublisher: vi.fn(),
+    searchVolume: vi.fn(),
+  },
+}));
+
 const mockedSearchSeries = vi.mocked(searchSeries);
 const mockedFetchSeries = vi.mocked(fetchSeries);
 const mockedVizMatch = vi.mocked(vizScraper.matchPublisher);
 const mockedVizSearch = vi.mocked(vizScraper.searchVolume);
 const mockedKodanshaMatch = vi.mocked(kodanshaScraper.matchPublisher);
 const mockedKodanshaSearch = vi.mocked(kodanshaScraper.searchVolume);
+const mockedYenpressMatch = vi.mocked(yenpressScraper.matchPublisher);
+const mockedYenpressSearch = vi.mocked(yenpressScraper.searchVolume);
 
 function makeContext(overrides: Partial<SearchContext> = {}): SearchContext {
   return { query: "", ...overrides };
@@ -56,6 +67,8 @@ function setupDefaultMocks() {
   mockedVizSearch.mockReturnValue(null);
   mockedKodanshaMatch.mockImplementation((p: string) => /kodansha/i.test(p));
   mockedKodanshaSearch.mockReturnValue(null);
+  mockedYenpressMatch.mockImplementation((p: string) => /yen press/i.test(p));
+  mockedYenpressSearch.mockReturnValue(null);
 }
 
 describe("searchForManga", () => {
@@ -428,9 +441,32 @@ describe("searchForManga", () => {
     });
 
     it("skips scraping entirely when the publisher has no matching scraper", () => {
-      // "Yen Press" is a real publisher but we don't have a scraper for it.
-      // Rather than wastefully pinging Viz and Kodansha, we should return
-      // series-level metadata only.
+      // The MU publisher has no scraper registered for it. Rather than
+      // wastefully pinging every scraper, we should return series-level
+      // metadata only.
+      setupDefaultMocks();
+      const orphanSeries: MUSeries = {
+        ...onePieceSeries,
+        publishers: [{ publisher_name: "Square Enix Manga", type: "English" }],
+      };
+      mockedSearchSeries.mockReturnValue([orphanSeries]);
+      mockedFetchSeries.mockReturnValue(orphanSeries);
+
+      const context = makeContext({ query: "One Piece v01.cbz" });
+      const results = searchForManga(context);
+
+      expect(mockedVizSearch).not.toHaveBeenCalled();
+      expect(mockedKodanshaSearch).not.toHaveBeenCalled();
+      expect(mockedYenpressSearch).not.toHaveBeenCalled();
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe("One Piece v001");
+      expect(results[0].series).toBe("One Piece");
+      // No per-volume scrape happened, but series-level fields are still
+      // returned (including the English publisher picked from MU).
+      expect(results[0].publisher).toBe("Square Enix Manga");
+    });
+
+    it("routes Yen Press publishers to the Yen Press scraper", () => {
       setupDefaultMocks();
       const yenPressSeries: MUSeries = {
         ...onePieceSeries,
@@ -438,28 +474,36 @@ describe("searchForManga", () => {
       };
       mockedSearchSeries.mockReturnValue([yenPressSeries]);
       mockedFetchSeries.mockReturnValue(yenPressSeries);
+      mockedYenpressSearch.mockReturnValue({
+        url: "https://yenpress.com/titles/x",
+        description: "Yen Press synopsis.",
+        isbn13: "9781234567890",
+      });
 
       const context = makeContext({ query: "One Piece v01.cbz" });
       const results = searchForManga(context);
 
+      expect(mockedYenpressSearch).toHaveBeenCalledWith(
+        "One Piece",
+        1,
+        undefined,
+      );
       expect(mockedVizSearch).not.toHaveBeenCalled();
       expect(mockedKodanshaSearch).not.toHaveBeenCalled();
-      expect(results).toHaveLength(1);
-      expect(results[0].title).toBe("One Piece v001");
-      expect(results[0].series).toBe("One Piece");
-      // No per-volume scrape happened, but series-level fields are still
-      // returned (including the English publisher picked from MU).
       expect(results[0].publisher).toBe("Yen Press");
+      expect(results[0].description).toBe("Yen Press synopsis.");
     });
 
     it("skips defunct and expired publishers", () => {
       // MangaUpdates lists Fruits Basket with three English publishers.
       // Chuang Yi and TokyoPop are marked Defunct/Expired and should be
-      // skipped entirely — only Yen Press is considered. Since we have no
-      // Yen Press scraper, no scrape should happen.
+      // skipped entirely — only Yen Press is considered live. Yen Press
+      // is the only live publisher, so the Yen Press scraper is the only
+      // one called; Viz and Kodansha are never tried.
       setupDefaultMocks();
       const fruitsBasket: MUSeries = {
         ...onePieceSeries,
+        title: "Fruits Basket",
         publishers: [
           {
             publisher_name: "Chuang Yi",
@@ -486,6 +530,7 @@ describe("searchForManga", () => {
 
       expect(mockedVizSearch).not.toHaveBeenCalled();
       expect(mockedKodanshaSearch).not.toHaveBeenCalled();
+      expect(mockedYenpressSearch).toHaveBeenCalledTimes(1);
     });
 
     it("does not speculatively scrape when there is no English publisher", () => {
@@ -598,10 +643,8 @@ describe("searchForManga", () => {
 
     it("prefers a publisher whose notes mention the parsed edition", () => {
       // Fruits Basket Collector's Edition — Yen Press notes mention
-      // "Collector's Edition" and should be tried first. We give it a
-      // synthetic Yen Press scraper via the Viz mock for test simplicity.
+      // "Collector's Edition" and should be tried first.
       setupDefaultMocks();
-      mockedVizMatch.mockImplementation((p: string) => /yen press/i.test(p));
       const fruitsBasket: MUSeries = {
         ...onePieceSeries,
         title: "Fruits Basket",
@@ -620,14 +663,16 @@ describe("searchForManga", () => {
       };
       mockedSearchSeries.mockReturnValue([fruitsBasket]);
       mockedFetchSeries.mockReturnValue(fruitsBasket);
-      mockedVizSearch.mockReturnValue(vizVolumeData);
+      mockedYenpressSearch.mockReturnValue({
+        url: "https://yenpress.com/titles/x",
+      });
 
       const context = makeContext({
         query: "Fruits Basket Collector's Edition v01.cbz",
       });
       searchForManga(context);
 
-      expect(mockedVizSearch).toHaveBeenCalledWith(
+      expect(mockedYenpressSearch).toHaveBeenCalledWith(
         "Fruits Basket",
         1,
         "Collector's Edition",

@@ -234,9 +234,11 @@ function pickPreferredDetailBlock(
 }
 
 /**
- * Parse a Yen Press product page into VolumeMetadata. Returns null if the
- * page has no recognizable structure (e.g. an error page). Individual
- * fields are simply omitted when they can't be extracted.
+ * Parse a Yen Press product page into VolumeMetadata. Always returns at
+ * least `{ url }` — fields that cannot be extracted are simply omitted.
+ * The `| null` return type is reserved in case a future version detects
+ * an error page and returns null up-front, but the current implementation
+ * never actually returns null.
  */
 export function parseProduct(html: string, url: string): VolumeMetadata | null {
   const doc = shisho.html.parse(html);
