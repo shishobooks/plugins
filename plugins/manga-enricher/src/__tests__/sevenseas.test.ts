@@ -332,3 +332,59 @@ describe("parseProduct — release date", () => {
     expect(result?.releaseDate).toBeUndefined();
   });
 });
+
+describe("parseProduct — description", () => {
+  it("extracts the description from the 365 Days fixture", () => {
+    const result = parseProduct(
+      daysSeries365Html,
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+    expect(result?.description).toMatch(/^A sweet .fake engagement. romance/);
+    // Must contain both the tagline <strong> paragraph and the body.
+    expect(result?.description).toContain("J.T.C. travel agency");
+    // No HTML tags leaked through.
+    expect(result?.description).not.toMatch(/</);
+  });
+
+  it("extracts the description from the Tokyo Revengers omnibus fixture", () => {
+    const result = parseProduct(
+      tokyoRevengersOmnibusHtml,
+      "https://sevenseasentertainment.com/books/tokyo-revengers-omnibus-vol-1-2/",
+    );
+    expect(result?.description).toMatch(/^The critically acclaimed manga/);
+    expect(result?.description).toContain("Hanagaki Takemichi");
+  });
+
+  it("extracts the description from the 2.5 Dim fixture (new template)", () => {
+    const result = parseProduct(
+      dim25Html,
+      "https://sevenseasentertainment.com/books/2-5-dimensional-seduction-vol-1/",
+    );
+    expect(result?.description).toMatch(/^A hot-blooded romantic cosplay comedy/);
+    expect(result?.description).toContain("Okumura");
+  });
+
+  it("drops the bookcrew (translator credits) paragraph", () => {
+    const result = parseProduct(
+      daysSeries365Html,
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+    expect(result?.description).not.toContain("Kristjan Rohde");
+    expect(result?.description).not.toContain("Translation");
+  });
+
+  it("joins multiple paragraphs with a blank line", () => {
+    const result = parseProduct(
+      daysSeries365Html,
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+    // Tagline (<strong>) paragraph followed by body paragraph — verify
+    // they are separated by a blank line, not run together.
+    expect(result?.description).toMatch(/!\n\nThe J\.T\.C/);
+  });
+
+  it("omits description when #volume-meta is absent", () => {
+    const result = parseProduct("<html><body></body></html>", "https://x/");
+    expect(result?.description).toBeUndefined();
+  });
+});

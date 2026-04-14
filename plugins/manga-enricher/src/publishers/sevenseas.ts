@@ -1,4 +1,5 @@
 import type { PublisherScraper, VolumeMetadata } from "./types";
+import { stripHTML } from "@shisho-plugins/shared";
 
 const USER_AGENT =
   "ShishoPlugin/0.1.0 (manga-enricher; github.com/shishobooks/plugins)";
@@ -237,6 +238,56 @@ function extractCover(
 }
 
 /**
+ * Extract the per-volume synopsis from a Seven Seas product page.
+ *
+ * Within `<div id="volume-meta">`, Seven Seas renders fields (Series,
+ * Story & Art, Release Date, ISBN) at the top, then a row-of-dots
+ * separator paragraph (`<p>▪ ▪ ▪ …</p>` — U+25AA), then the synopsis as
+ * a sequence of `<p>` children, ending at the retailers block. A
+ * `<p class="bookcrew">` block with translator credits may appear
+ * between the fields and the separator on some pages; we drop it by
+ * class (and anything else before the separator).
+ *
+ * We walk `#volume-meta`'s direct children, find the separator `<p>`
+ * (text starts with U+25AA), collect every `<p>` child after it that
+ * isn't `class="bookcrew"`, concatenate their `.text`, and run the
+ * result through `stripHTML` to neutralize any residual markup. Multiple
+ * paragraphs are joined with `\n\n`.
+ */
+function extractDescription(
+  doc: ReturnType<typeof shisho.html.parse>,
+): string | undefined {
+  const meta = shisho.html.querySelector(doc, "div#volume-meta");
+  if (!meta) return undefined;
+
+  const children = meta.children ?? [];
+  let separatorIndex = -1;
+  for (let i = 0; i < children.length; i++) {
+    const c = children[i];
+    if (c.tag !== "p") continue;
+    if (c.text.trim().startsWith("\u25AA")) {
+      separatorIndex = i;
+      break;
+    }
+  }
+  if (separatorIndex === -1) return undefined;
+
+  const paragraphs: string[] = [];
+  for (let i = separatorIndex + 1; i < children.length; i++) {
+    const c = children[i];
+    if (c.tag !== "p") continue;
+    const cls = c.attributes.class ?? "";
+    if (cls.includes("bookcrew")) continue;
+    const text = c.text.replace(/\s+/g, " ").trim();
+    if (text) paragraphs.push(text);
+  }
+  if (paragraphs.length === 0) return undefined;
+
+  const cleaned = stripHTML(paragraphs.join("\n\n")).trim();
+  return cleaned || undefined;
+}
+
+/**
  * Parse a Seven Seas product page into VolumeMetadata. Always returns
  * at least `{ url }` — fields that cannot be extracted are simply
  * omitted. The `| null` return type is reserved for a future error-page
@@ -273,6 +324,9 @@ export function parseProduct(
     const parsed = parseSevenSeasDate(rawDate);
     if (parsed) metadata.releaseDate = parsed;
   }
+
+  const description = extractDescription(doc);
+  if (description) metadata.description = description;
 
   return metadata;
 }
