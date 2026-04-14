@@ -8,7 +8,7 @@ import {
   sevenseasScraper,
   slugify,
 } from "../publishers/sevenseas";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const daysSeries365Html = readFileSync(
   resolve(__dirname, "fixtures/sevenseas-365-days-vol1.html"),
@@ -408,5 +408,98 @@ describe("parseProduct — graceful failure", () => {
     );
     expect(result?.url).toBe("https://x/");
     expect(result?.isbn13).toBeUndefined();
+  });
+});
+
+function mockFetchSequence(
+  responses: Array<{ status: number; ok: boolean; body: string }>,
+) {
+  const mock = vi.mocked(shisho.http.fetch);
+  mock.mockReset();
+  for (const r of responses) {
+    mock.mockReturnValueOnce({
+      status: r.status,
+      statusText: r.ok ? "OK" : "Error",
+      ok: r.ok,
+      text: () => r.body,
+      json: () => JSON.parse(r.body || "null"),
+    } as unknown as ReturnType<typeof shisho.http.fetch>);
+  }
+}
+
+describe("sevenseasScraper.searchVolume", () => {
+  it("fetches the product page directly and returns merged metadata", () => {
+    mockFetchSequence([
+      { status: 200, ok: true, body: daysSeries365Html },
+    ]);
+
+    const result = sevenseasScraper.searchVolume(
+      "365 Days to the Wedding",
+      1,
+    );
+
+    expect(result).not.toBeNull();
+    expect(result?.url).toBe(
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+    expect(result?.isbn13).toBe("9798888432631");
+    expect(result?.releaseDate).toBe("2023-11-14T00:00:00Z");
+
+    const calls = vi.mocked(shisho.http.fetch).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toBe(
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+  });
+
+  it("constructs the 2-in-1 omnibus URL when edition is 'Omnibus'", () => {
+    mockFetchSequence([
+      { status: 200, ok: true, body: tokyoRevengersOmnibusHtml },
+    ]);
+
+    const result = sevenseasScraper.searchVolume(
+      "Tokyo Revengers",
+      1,
+      "Omnibus",
+    );
+
+    expect(result?.isbn13).toBe("9781638585718");
+    const calls = vi.mocked(shisho.http.fetch).mock.calls;
+    expect(calls[0][0]).toBe(
+      "https://sevenseasentertainment.com/books/tokyo-revengers-omnibus-vol-1-2/",
+    );
+  });
+
+  it("folds a non-omnibus edition into the slug", () => {
+    mockFetchSequence([{ status: 404, ok: false, body: "" }]);
+
+    sevenseasScraper.searchVolume("Rozen Maiden", 5, "Collector's Edition");
+
+    const calls = vi.mocked(shisho.http.fetch).mock.calls;
+    expect(calls[0][0]).toBe(
+      "https://sevenseasentertainment.com/books/rozen-maiden-collectors-edition-vol-5/",
+    );
+  });
+
+  it("returns null when the product page 404s", () => {
+    mockFetchSequence([{ status: 404, ok: false, body: "" }]);
+    expect(sevenseasScraper.searchVolume("No Such Series", 1)).toBeNull();
+  });
+
+  it("returns null when the fetch helper returns null (network error)", () => {
+    const mock = vi.mocked(shisho.http.fetch);
+    mock.mockReset();
+    mock.mockReturnValueOnce(
+      null as unknown as ReturnType<typeof shisho.http.fetch>,
+    );
+    expect(sevenseasScraper.searchVolume("Some Series", 1)).toBeNull();
+  });
+
+  it("returns null for punctuation-only or empty titles without fetching", () => {
+    const mock = vi.mocked(shisho.http.fetch);
+    mock.mockReset();
+    expect(sevenseasScraper.searchVolume("", 1)).toBeNull();
+    expect(sevenseasScraper.searchVolume("!!!", 1)).toBeNull();
+    expect(mock).not.toHaveBeenCalled();
   });
 });

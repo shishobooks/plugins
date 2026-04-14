@@ -6,7 +6,6 @@ const USER_AGENT =
 
 const BASE_URL = "https://sevenseasentertainment.com";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function fetchHtml(url: string): string | null {
   shisho.log.debug(`SevenSeas: fetching ${url}`);
   const response = shisho.http.fetch(url, {
@@ -339,11 +338,17 @@ export const sevenseasScraper: PublisherScraper = {
   },
 
   searchVolume(
-    _seriesTitle: string,
-    _volumeNumber: number,
-    _edition?: string,
+    seriesTitle: string,
+    volumeNumber: number,
+    edition?: string,
   ): VolumeMetadata | null {
-    // Filled in at Task 11.
-    return null;
+    const path = buildProductPath(seriesTitle, volumeNumber, edition);
+    if (!path) return null;
+
+    const url = `${BASE_URL}${path}`;
+    const html = fetchHtml(url);
+    if (!html) return null;
+
+    return parseProduct(html, url);
   },
 };
