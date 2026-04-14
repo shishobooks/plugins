@@ -614,8 +614,8 @@
     {
       "id": "manga-enricher",
       "name": "Manga Enricher",
-      "overview": "Fetches manga metadata from MangaUpdates and per-volume details from Viz Media and Kodansha USA",
-      "description": "Enriches manga metadata from MangaUpdates and publisher websites (Viz, Kodansha USA)",
+      "overview": "Fetches manga metadata from MangaUpdates and per-volume details from Viz Media, Kodansha USA, Yen Press, and Seven Seas",
+      "description": "Enriches manga metadata from MangaUpdates and publisher websites (Viz, Kodansha USA, Yen Press, Seven Seas)",
       "author": "Shisho Team",
       "homepage": "https://github.com/shishobooks/plugins",
       "versions": [
