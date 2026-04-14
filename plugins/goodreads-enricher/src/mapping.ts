@@ -19,7 +19,7 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
   const rawTitle =
     autocomplete?.bookTitleBare ?? pageData.schemaOrg?.name ?? undefined;
   if (rawTitle) {
-    metadata.title = cleanTitle(rawTitle, pageData.series);
+    metadata.title = cleanTitle(rawTitle);
   }
 
   // Authors - prefer JSON-LD authors (more complete), fall back to autocomplete
@@ -88,10 +88,7 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
  * Clean the title by removing series suffix if present.
  * E.g., "The Name of the Wind (The Kingkiller Chronicle, #1)" -> "The Name of the Wind"
  */
-function cleanTitle(title: string, series: string | null): string {
-  if (!series) return title;
-
-  // Remove "(Series Name, #N)" suffix
+export function cleanTitle(title: string): string {
   const match = title.match(/^(.+?)\s*\([^)]*#[\d.]+\)\s*$/);
   if (match) {
     return match[1].trim();

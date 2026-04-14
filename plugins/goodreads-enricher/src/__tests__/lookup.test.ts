@@ -249,6 +249,23 @@ describe("searchForBooks", () => {
       expect(result.series).toBeUndefined();
       expect(result.publisher).toBeUndefined();
     });
+
+    it("uses bookTitleBare and strips series suffix in autocomplete fallback", () => {
+      const context = makeContext({
+        identifiers: [{ type: "goodreads", value: "186074" }],
+      });
+      const seriesAutocomplete: GRAutocompleteResult = {
+        ...sampleAutocomplete,
+        bookId: "186074",
+        title: "The Name of the Wind (The Kingkiller Chronicle, #1)",
+        bookTitleBare: "The Name of the Wind (The Kingkiller Chronicle, #1)",
+      };
+      mockedSearchAutocomplete.mockReturnValue([seriesAutocomplete]);
+      mockedFetchBookPage.mockReturnValue(null);
+
+      const results = searchForBooks(context);
+      expect(results[0].title).toBe("The Name of the Wind");
+    });
   });
 
   describe("priority ordering", () => {
