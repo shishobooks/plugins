@@ -171,7 +171,7 @@ function autocompleteToMetadata(
   confidence: number,
 ): ParsedMetadata {
   const metadata: ParsedMetadata = {
-    title: result.title,
+    title: result.bookTitleBare ?? result.title,
     authors: [{ name: result.author.name }],
     identifiers: [{ type: "goodreads", value: result.bookId }],
     url: `https://www.goodreads.com/book/show/${result.bookId}`,
