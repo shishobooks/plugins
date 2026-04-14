@@ -28,6 +28,22 @@ function fetchHtml(url: string): string | null {
   }
 }
 
+/**
+ * Slugify a title for Seven Seas' URL scheme: lowercase, drop both ASCII
+ * and Unicode right-single-quotes, replace non-alphanumeric runs with a
+ * single hyphen, trim leading/trailing hyphens. The apostrophe-drop
+ * matches Kodansha and the live Seven Seas slugs (verified by
+ * /books/rozen-maiden-collectors-edition-vol-5/), and differs from Yen
+ * Press, which turns apostrophes into hyphens.
+ */
+export function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/['\u2019]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export const sevenseasScraper: PublisherScraper = {
   name: "Seven Seas Entertainment",
 
