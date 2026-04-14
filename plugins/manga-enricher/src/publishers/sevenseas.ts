@@ -1,15 +1,21 @@
 import type { PublisherScraper, VolumeMetadata } from "./types";
-import { stripHTML } from "@shisho-plugins/shared";
+import { slugify, stripHTML } from "@shisho-plugins/shared";
+
+// Re-export so existing test imports (`from "../publishers/sevenseas"`)
+// don't need to know that the helper now lives in the shared package.
+export { slugify };
 
 // Seven Seas sits behind Cloudflare and returns HTTP 403 to the project's
 // default ShishoPlugin User-Agent. A real browser UA doesn't help either
-// (Cloudflare is fingerprinting more than just UA). Googlebot's UA is
+// (Cloudflare fingerprints more than just UA). Googlebot's UA is
 // allow-listed by the site's Cloudflare rules — presumably because they
 // want search indexing — so we claim to be it. This is a pragmatic
 // workaround, not a permanent solution: if Seven Seas tightens their
-// rules we'll need to revisit (follow-up: the Notion task filed as
-// "Verify Seven Seas scraper works against live site (403 risk)").
-const USER_AGENT =
+// rules we'll need to revisit.
+//
+// The name is deliberately verbose to discourage cargo-culting the UA
+// into other scrapers without reading this rationale.
+const SEVEN_SEAS_UA_WORKAROUND_GOOGLEBOT =
   "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
 
 const BASE_URL = "https://sevenseasentertainment.com";
@@ -24,7 +30,7 @@ function fetchHtml(url: string): string | null {
   try {
     response = shisho.http.fetch(url, {
       headers: {
-        "User-Agent": USER_AGENT,
+        "User-Agent": SEVEN_SEAS_UA_WORKAROUND_GOOGLEBOT,
         Accept: "text/html,application/xhtml+xml",
       },
     });
@@ -38,28 +44,7 @@ function fetchHtml(url: string): string | null {
     );
     return null;
   }
-  try {
-    return response.text();
-  } catch {
-    shisho.log.warn(`SevenSeas: failed to read response body for ${url}`);
-    return null;
-  }
-}
-
-/**
- * Slugify a title for Seven Seas' URL scheme: lowercase, drop both ASCII
- * and Unicode right-single-quotes, replace non-alphanumeric runs with a
- * single hyphen, trim leading/trailing hyphens. The apostrophe-drop
- * matches Kodansha and the live Seven Seas slugs (verified by
- * /books/rozen-maiden-collectors-edition-vol-5/), and differs from Yen
- * Press, which turns apostrophes into hyphens.
- */
-export function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/['\u2019]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return response.text();
 }
 
 /**
@@ -328,13 +313,24 @@ function extractDescription(
  * detection path; the current implementation never returns null.
  */
 export function parseProduct(html: string, url: string): VolumeMetadata | null {
-  // Some Seven Seas responses (and the web.archive.org snapshots used for
-  // test fixtures) omit the `<html>` root element entirely, which trips
-  // up strict parsers. Wrap defensively so the downstream selectors always
-  // see a well-formed tree.
+  const metadata: VolumeMetadata = { url };
+
+  // Empty or whitespace-only input short-circuits. In normal operation
+  // fetchHtml returns null for bad responses so parseProduct is never
+  // called with an empty string, but keeping the guard here makes the
+  // function self-consistent.
+  if (!html || !html.trim()) return metadata;
+
+  // Seven Seas serves HTML5 with an implicit `<html>` root element —
+  // the raw body starts `<!DOCTYPE html><head>…` with no surrounding
+  // `<html>` tag. Tolerant parsers (golang.org/x/net/html, browsers)
+  // synthesize the root automatically, but stricter ones (including
+  // the linkedom parser the SDK mock uses in tests) silently lose
+  // most children when the root is missing, which breaks DOM-based
+  // extraction. Wrap defensively so extractCover / extractImprint /
+  // extractDescription always see a well-formed tree.
   const wrapped = /<html[\s>]/i.test(html) ? html : `<html>${html}</html>`;
   const doc = shisho.html.parse(wrapped);
-  const metadata: VolumeMetadata = { url };
 
   const coverUrl = extractCover(doc);
   if (coverUrl) metadata.coverUrl = coverUrl;

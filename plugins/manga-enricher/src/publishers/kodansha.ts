@@ -1,5 +1,9 @@
 import type { PublisherScraper, VolumeMetadata } from "./types";
-import { stripHTML } from "@shisho-plugins/shared";
+import { slugify, stripHTML } from "@shisho-plugins/shared";
+
+// Re-export so existing test imports (`from "../publishers/kodansha"`)
+// don't need to know that the helper now lives in the shared package.
+export { slugify };
 
 const USER_AGENT =
   "ShishoPlugin/0.1.0 (manga-enricher; github.com/shishobooks/plugins)";
@@ -26,19 +30,6 @@ function fetchHtml(url: string): string | null {
     shisho.log.warn(`Kodansha: failed to read response body for ${url}`);
     return null;
   }
-}
-
-/**
- * Slugify a series title for Kodansha's URL scheme: lowercase, replace
- * non-alphanumeric runs with single hyphens, trim leading/trailing hyphens.
- * Apostrophes are dropped rather than converted.
- */
-export function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/['']/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 /**

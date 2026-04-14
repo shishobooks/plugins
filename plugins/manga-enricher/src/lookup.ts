@@ -492,6 +492,11 @@ function findVolumeData(
   // contract is "return null on any failure" but we enforce it here too
   // so a buggy or unlucky scraper can't take down enrichment for every
   // file that hits its publisher.
+  //
+  // Throws are logged at error level (not warn) with the stack preserved
+  // when available, so a genuine bug in a scraper — which looks identical
+  // to an anti-bot failure at the call site — still stays visible to
+  // anyone scanning logs for errors.
   for (const publisher of orderedPublishers) {
     const scraper = SCRAPERS.find((s) => s.matchPublisher(publisher.name));
     if (!scraper) continue;
@@ -499,8 +504,10 @@ function findVolumeData(
     try {
       data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
     } catch (err) {
-      shisho.log.warn(
-        `${scraper.name} scraper threw for "${seriesTitle}" vol ${volumeNumber}: ${String(err)}`,
+      const detail =
+        err instanceof Error ? (err.stack ?? err.message) : String(err);
+      shisho.log.error(
+        `${scraper.name} scraper threw for "${seriesTitle}" vol ${volumeNumber}: ${detail}`,
       );
       continue;
     }

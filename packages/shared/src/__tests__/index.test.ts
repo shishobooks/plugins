@@ -2,6 +2,7 @@ import {
   levenshteinDistance,
   normalizeForComparison,
   parseMonth,
+  slugify,
   stripHTML,
 } from "../index";
 import { describe, expect, it } from "vitest";
@@ -116,6 +117,38 @@ describe("parseMonth", () => {
   it("returns undefined for invalid input", () => {
     expect(parseMonth("notamonth")).toBeUndefined();
     expect(parseMonth("")).toBeUndefined();
+  });
+});
+
+describe("slugify", () => {
+  it("lowercases and hyphenates a plain title", () => {
+    expect(slugify("Monster Musume")).toBe("monster-musume");
+  });
+
+  it("collapses numeric separators to hyphens", () => {
+    expect(slugify("2.5 Dimensional Seduction")).toBe(
+      "2-5-dimensional-seduction",
+    );
+  });
+
+  it("drops ASCII apostrophes", () => {
+    expect(slugify("Rozen Maiden Collector's Edition")).toBe(
+      "rozen-maiden-collectors-edition",
+    );
+  });
+
+  it("drops Unicode right-single-quote (U+2019)", () => {
+    expect(slugify("Rozen Maiden Collector\u2019s Edition")).toBe(
+      "rozen-maiden-collectors-edition",
+    );
+  });
+
+  it("trims leading and trailing hyphens", () => {
+    expect(slugify("  !Hello World!  ")).toBe("hello-world");
+  });
+
+  it("returns empty string for punctuation-only input", () => {
+    expect(slugify("!!!")).toBe("");
   });
 });
 

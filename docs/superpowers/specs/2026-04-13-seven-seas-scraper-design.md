@@ -242,7 +242,7 @@ Every failure path returns `null` from `searchVolume` (contract from `PublisherS
 
 ## Out of scope / follow-ups
 
-The following are deliberately excluded from this MVP and will be filed as Notion follow-up tasks after implementation:
+The following are deliberately excluded from this MVP and will be filed as follow-up tasks after implementation:
 
 1. **Omnibus range formats other than 2-in-1.** Three-volume omnibuses (`-omnibus-vol-1-3/`) and other patterns exist but were not sampled; the current code only tries 2-in-1.
 2. **Imprint-only publisher names.** MangaUpdates may list Seven Seas sub-imprints (Airship, Ghost Ship, Steamship, Danmei, Waves of Color, Siren) as separate publishers. `matchPublisher` only accepts strings containing "Seven Seas" — titles listed exclusively under an imprint name won't reach this scraper.

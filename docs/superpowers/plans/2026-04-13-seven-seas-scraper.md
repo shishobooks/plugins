@@ -1524,11 +1524,11 @@ Skip this commit if nothing was modified.
 
 ---
 
-## Task 14: File Notion follow-up tasks
+## Task 14: Record follow-up items
 
-**Files:** none (external system)
+**Files:** none
 
-Per `CLAUDE.md`, out-of-scope issues discovered during implementation should be filed on the Notion board at `https://www.notion.so/31df24d3107d80ac8669dcf7281c8537?v=31df24d3107d80ecadca000c731ad204` so they can be picked up without rediscovery.
+Out-of-scope issues discovered during implementation — the four listed below — should be captured in the team's task tracker so they can be picked up without rediscovery. Don't leave them as code comments.
 
 The follow-ups the spec already lists:
 
@@ -1540,17 +1540,9 @@ The follow-ups the spec already lists:
 
 4. **Series-page fallback for mismatched slugs**. When the user's filename slugifies differently from Seven Seas' URL slug (e.g. "2.5 Dimensional Seduction" is fine but an exotic title may not match exactly), the scraper fails cleanly. Where to look: `plugins/manga-enricher/src/publishers/sevenseas.ts::searchVolume`. Possible approach: on 404, fetch `/series/<slug>/` and scan for `/books/.../vol-<N>/` links, similar to `yenpress.ts::pickProductPath`.
 
-- [ ] **Step 1: Create one Notion task per follow-up**
+- [ ] **Step 1: Capture each follow-up in the team's task tracker**
 
-For each of the four follow-ups above, create a Notion task on the Shisho board containing:
-- **Title**: short description (e.g., "manga-enricher: Seven Seas 3-in-1 omnibus support")
-- **Body**: the full context from the spec and plan (what/where/why/how), including the file path and function name. Paste the relevant paragraph from above verbatim.
-
-Use `mcp__claude_ai_Notion__notion-create-pages` targeting the Shisho board database.
-
-- [ ] **Step 2: Verify creation**
-
-Run `mcp__claude_ai_Notion__notion-search` with a title keyword to confirm each task is visible on the board.
+Create one task per follow-up with enough context (file path, function name, proposed approach) that another agent can pick it up without re-discovering the problem.
 
 ---
 
@@ -1563,4 +1555,4 @@ After all tasks complete, the following must be true:
 - `git log --oneline | head -14` shows one commit per task (14 commits max, or fewer if lint/format fixups weren't needed).
 - `plugins/manga-enricher/src/publishers/sevenseas.ts` exists and exports `sevenseasScraper`.
 - `plugins/manga-enricher/src/lookup.ts` imports and registers it.
-- All four follow-ups from Task 14 exist on the Notion board.
+- All four follow-ups from Task 14 are captured in the team's task tracker.
