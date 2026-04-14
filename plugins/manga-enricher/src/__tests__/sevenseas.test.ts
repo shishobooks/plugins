@@ -388,3 +388,25 @@ describe("parseProduct — description", () => {
     expect(result?.description).toBeUndefined();
   });
 });
+
+describe("parseProduct — graceful failure", () => {
+  it("returns { url } for completely empty HTML", () => {
+    const result = parseProduct("", "https://x/");
+    expect(result).not.toBeNull();
+    expect(result?.url).toBe("https://x/");
+    expect(result?.coverUrl).toBeUndefined();
+    expect(result?.imprint).toBeUndefined();
+    expect(result?.isbn13).toBeUndefined();
+    expect(result?.releaseDate).toBeUndefined();
+    expect(result?.description).toBeUndefined();
+  });
+
+  it("returns { url } for a page with only a 404 body", () => {
+    const result = parseProduct(
+      "<html><body><h1>404 Not Found</h1></body></html>",
+      "https://x/",
+    );
+    expect(result?.url).toBe("https://x/");
+    expect(result?.isbn13).toBeUndefined();
+  });
+});
