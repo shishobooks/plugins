@@ -286,6 +286,12 @@ describe("searchForManga", () => {
       // Levenshtein distance is huge. Once the series is fetched, the
       // associated titles include the English form, which pickCanonical-
       // Title then surfaces as the display name.
+      //
+      // The reported confidence should reflect the BEST-matching title
+      // across primary + associated (not just the primary). Here the
+      // associated title "365 Days to the Wedding" is a perfect match
+      // for the query, so confidence is 1.0 rather than the ~0.77 the
+      // primary-only substring scoring would produce.
       setupDefaultMocks();
       const jp365Series: MUSeries = {
         ...onePieceSeries,
@@ -308,7 +314,9 @@ describe("searchForManga", () => {
       expect(results[0].title).toBe("365 Days to the Wedding v001");
       expect(results[0].series).toBe("365 Days to the Wedding");
       expect(results[0].seriesNumber).toBe(1);
-      expect(results[0].confidence).toBeGreaterThanOrEqual(0.6);
+      // Confidence comes from the exact-match associated title, not
+      // the partial-substring primary — must be 1.0, not ~0.77.
+      expect(results[0].confidence).toBe(1.0);
     });
   });
 

@@ -176,17 +176,30 @@ function matchCandidates(
 
   for (const candidate of candidates) {
     if (fastPath) {
-      const confidence = computeConfidence(normalizedTarget, candidate);
-      if (confidence === null) continue;
+      // The fast-path confidence is computed against the search-result
+      // record, which only carries the primary title — MU's associated
+      // titles aren't included in the search response. Use it as a gate
+      // so we don't waste a fetch on candidates that can't possibly
+      // match, but recompute against the full series once we have it
+      // so the final score reflects the best-matching associated title
+      // (e.g. the English localized title when MU's primary is the
+      // Japanese romaji). Without this, matches like "365 Days to the
+      // Wedding" → "Kekkon Suru tte, Hontou desu ka: 365 Days To The
+      // Wedding" report ~0.77 instead of the ~1.0 they earn against
+      // the associated English title.
+      const gatingConfidence = computeConfidence(normalizedTarget, candidate);
+      if (gatingConfidence === null) continue;
       const fullSeries = fetchSeries(candidate.series_id);
       if (!fullSeries) continue;
+      const finalConfidence =
+        computeConfidence(normalizedTarget, fullSeries) ?? gatingConfidence;
       const metadata = buildMetadata(
         fullSeries,
         volumeNumber,
         edition,
         searchTitle,
       );
-      metadata.confidence = confidence;
+      metadata.confidence = finalConfidence;
       results.push(metadata);
     } else {
       const fullSeries = fetchSeries(candidate.series_id);

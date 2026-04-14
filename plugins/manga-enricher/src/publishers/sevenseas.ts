@@ -257,19 +257,23 @@ function extractCover(
 /**
  * Extract the per-volume synopsis from a Seven Seas product page.
  *
- * Within `<div id="volume-meta">`, Seven Seas renders fields (Series,
- * Story & Art, Release Date, ISBN) at the top, then a row-of-dots
- * separator paragraph (`<p>▪ ▪ ▪ …</p>` — U+25AA), then the synopsis as
- * a sequence of `<p>` children, ending at the retailers block. A
- * `<p class="bookcrew">` block with translator credits may appear
- * between the fields and the separator on some pages; we drop it by
- * class (and anything else before the separator).
+ * Seven Seas has changed this markup at least once. Two shapes are
+ * supported:
  *
- * We walk `#volume-meta`'s direct children, find the separator `<p>`
- * (text starts with U+25AA), collect every `<p>` child after it that
- * isn't `class="bookcrew"`, concatenate their `.text`, and run the
- * result through `stripHTML` to neutralize any residual markup. Multiple
- * paragraphs are joined with `\n\n`.
+ *   1. **Current `gomanga2025` template** — description paragraphs
+ *      are wrapped in `<div class="description-content">` inside
+ *      `#volume-meta`. This is what the live site serves today. When
+ *      the wrapper exists we take all `<p>` children inside it.
+ *
+ *   2. **Earlier templates** (old `gomanga2017/2020` and the first
+ *      `gomanga2025` snapshots) — description paragraphs are direct
+ *      children of `#volume-meta`, separated from the fields above
+ *      by a row-of-dots paragraph (`<p>▪ ▪ ▪ …</p>` — U+25AA). A
+ *      `<p class="bookcrew">` translator-credits block may sit
+ *      between the fields and the separator; we drop it by class.
+ *
+ * Paragraphs are joined with `\n\n` and passed through `stripHTML`
+ * to neutralize any residual inline markup.
  */
 function extractDescription(
   doc: ReturnType<typeof shisho.html.parse>,
@@ -277,27 +281,40 @@ function extractDescription(
   const meta = shisho.html.querySelector(doc, "div#volume-meta");
   if (!meta) return undefined;
 
-  const children = meta.children ?? [];
-  let separatorIndex = -1;
-  for (let i = 0; i < children.length; i++) {
-    const c = children[i];
-    if (c.tag !== "p") continue;
-    if (c.text.trim().startsWith("\u25AA")) {
-      separatorIndex = i;
-      break;
+  const paragraphs: string[] = [];
+
+  // Path 1: current template with description-content wrapper.
+  const wrapper = shisho.html.querySelector(meta, "div.description-content");
+  if (wrapper) {
+    const ps = shisho.html.querySelectorAll(wrapper, "p");
+    for (const p of ps) {
+      const text = p.text.replace(/\s+/g, " ").trim();
+      if (text) paragraphs.push(text);
+    }
+  } else {
+    // Path 2: legacy separator-walk.
+    const children = meta.children ?? [];
+    let separatorIndex = -1;
+    for (let i = 0; i < children.length; i++) {
+      const c = children[i];
+      if (c.tag !== "p") continue;
+      if (c.text.trim().startsWith("\u25AA")) {
+        separatorIndex = i;
+        break;
+      }
+    }
+    if (separatorIndex === -1) return undefined;
+
+    for (let i = separatorIndex + 1; i < children.length; i++) {
+      const c = children[i];
+      if (c.tag !== "p") continue;
+      const cls = c.attributes.class ?? "";
+      if (cls.includes("bookcrew")) continue;
+      const text = c.text.replace(/\s+/g, " ").trim();
+      if (text) paragraphs.push(text);
     }
   }
-  if (separatorIndex === -1) return undefined;
 
-  const paragraphs: string[] = [];
-  for (let i = separatorIndex + 1; i < children.length; i++) {
-    const c = children[i];
-    if (c.tag !== "p") continue;
-    const cls = c.attributes.class ?? "";
-    if (cls.includes("bookcrew")) continue;
-    const text = c.text.replace(/\s+/g, " ").trim();
-    if (text) paragraphs.push(text);
-  }
   if (paragraphs.length === 0) return undefined;
 
   const cleaned = stripHTML(paragraphs.join("\n\n")).trim();

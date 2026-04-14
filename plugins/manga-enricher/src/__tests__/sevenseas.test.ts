@@ -25,6 +25,15 @@ const dim25Html = readFileSync(
   "utf-8",
 );
 
+// The live site's gomanga2025 template wraps description paragraphs in
+// a <div class="description-content"> that wasn't present in the earlier
+// fixtures above. This fixture (captured from the live page) exercises
+// the new wrapper path.
+const daysLiveHtml = readFileSync(
+  resolve(__dirname, "fixtures/sevenseas-365-days-vol1-live.html"),
+  "utf-8",
+);
+
 describe("sevenseasScraper.matchPublisher", () => {
   it("matches 'Seven Seas'", () => {
     expect(sevenseasScraper.matchPublisher("Seven Seas")).toBe(true);
@@ -388,6 +397,36 @@ describe("parseProduct — description", () => {
   it("omits description when #volume-meta is absent", () => {
     const result = parseProduct("<html><body></body></html>", "https://x/");
     expect(result?.description).toBeUndefined();
+  });
+
+  it("extracts description from the live-template description-content wrapper", () => {
+    // Regression guard: the current gomanga2025 template wraps the
+    // description paragraphs in `<div class="description-content">`
+    // inside #volume-meta. Earlier snapshots didn't have this wrapper,
+    // so the scraper must support both shapes.
+    const result = parseProduct(
+      daysLiveHtml,
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+    expect(result?.description).toMatch(/^A sweet .fake engagement. romance/);
+    expect(result?.description).toContain("J.T.C. travel agency");
+    expect(result?.description).not.toMatch(/</);
+    // The tagline-paragraph / body-paragraph separator must survive.
+    expect(result?.description).toMatch(/!\n\nThe J\.T\.C/);
+  });
+
+  it("still extracts ISBN/date/cover from the live fixture", () => {
+    // Sanity check that the live-template fixture doesn't regress the
+    // labelled-field extraction either.
+    const result = parseProduct(
+      daysLiveHtml,
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+    expect(result?.isbn13).toBe("9798888432631");
+    expect(result?.releaseDate).toBe("2023-11-14T00:00:00Z");
+    expect(result?.coverUrl).toBe(
+      "https://sevenseasentertainment.com/wp-content/uploads/2023/07/365ToWeddingM1_site.jpg",
+    );
   });
 });
 
