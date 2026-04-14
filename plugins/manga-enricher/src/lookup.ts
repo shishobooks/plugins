@@ -310,8 +310,15 @@ function buildMetadata(
   // becomes "Attack on Titan" — while still respecting whichever language
   // variant the user typed (MU's associated-titles list usually contains
   // a near-exact match).
+  //
+  // If the query named an edition variant ("Collector's Edition",
+  // "Omnibus", etc.), append it to the canonical series. MU only stores
+  // the base series — the edition is a publisher-side variant — so the
+  // canonical title comes back without it, and we lose the edition
+  // distinction in the displayed title unless we add it back.
   if (searchTitle) {
-    metadata.series = pickCanonicalTitle(series, searchTitle) ?? searchTitle;
+    const canonical = pickCanonicalTitle(series, searchTitle) ?? searchTitle;
+    metadata.series = edition ? `${canonical} ${edition}` : canonical;
   }
 
   if (volumeNumber !== undefined) {

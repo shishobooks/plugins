@@ -685,6 +685,30 @@ describe("searchForManga", () => {
         "Collector's Edition",
       );
     });
+
+    it("includes the edition variant in the displayed series and title", () => {
+      // MU only stores the base "Fruits Basket" series — there's no
+      // separate MU entry for the Collector's Edition. pickCanonicalTitle
+      // returns "Fruits Basket", so the edition must be re-appended for
+      // the displayed title to reflect what the user named in the file.
+      setupDefaultMocks();
+      const fruitsBasketSeries: MUSeries = {
+        ...onePieceSeries,
+        series_id: 789,
+        title: "Fruits Basket",
+      };
+      mockedSearchSeries.mockReturnValue([fruitsBasketSeries]);
+      mockedFetchSeries.mockReturnValue(fruitsBasketSeries);
+      mockedVizSearch.mockReturnValue(vizVolumeData);
+
+      const context = makeContext({
+        query: "Fruits Basket Collector's Edition v01.cbz",
+      });
+      const results = searchForManga(context);
+
+      expect(results[0].series).toBe("Fruits Basket Collector's Edition");
+      expect(results[0].title).toBe("Fruits Basket Collector's Edition v001");
+    });
   });
 });
 
