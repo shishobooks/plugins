@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "manga-enricher",
   "name": "Manga Enricher",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Enriches manga metadata from MangaUpdates and publisher websites (Viz, Kodansha USA, Yen Press, Seven Seas)",
   "minShishoVersion": "0.0.28",
   "author": "Shisho Team",
