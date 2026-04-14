@@ -257,3 +257,78 @@ describe("parseProduct — imprint", () => {
     expect(result?.imprint).toBeUndefined();
   });
 });
+
+describe("parseProduct — ISBN", () => {
+  it("extracts 979-8 prefix ISBN (365 Days fixture)", () => {
+    const result = parseProduct(
+      daysSeries365Html,
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+    expect(result?.isbn13).toBe("9798888432631");
+  });
+
+  it("extracts 978 prefix ISBN (Tokyo Revengers omnibus fixture)", () => {
+    const result = parseProduct(
+      tokyoRevengersOmnibusHtml,
+      "https://sevenseasentertainment.com/books/tokyo-revengers-omnibus-vol-1-2/",
+    );
+    expect(result?.isbn13).toBe("9781638585718");
+  });
+
+  it("extracts ISBN from new-template fixture (2.5 Dim Seduction)", () => {
+    const result = parseProduct(
+      dim25Html,
+      "https://sevenseasentertainment.com/books/2-5-dimensional-seduction-vol-1/",
+    );
+    expect(result?.isbn13).toBe("9781648278815");
+  });
+
+  it("omits ISBN when #volume-meta is absent", () => {
+    const result = parseProduct("<html><body></body></html>", "https://x/");
+    expect(result?.isbn13).toBeUndefined();
+  });
+
+  it("omits ISBN when the value is not 13 digits after hyphen stripping", () => {
+    const html = `
+      <html><body>
+        <div id="volume-meta">
+          <p><b>ISBN:</b> 123-456</p>
+        </div>
+        <div id="single-book-retailers"></div>
+      </body></html>
+    `;
+    const result = parseProduct(html, "https://x/");
+    expect(result?.isbn13).toBeUndefined();
+  });
+});
+
+describe("parseProduct — release date", () => {
+  it("parses the month-name date from the 365 Days fixture", () => {
+    const result = parseProduct(
+      daysSeries365Html,
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+    expect(result?.releaseDate).toBe("2023-11-14T00:00:00Z");
+  });
+
+  it("parses the slash-format date from the Tokyo Revengers omnibus fixture", () => {
+    const result = parseProduct(
+      tokyoRevengersOmnibusHtml,
+      "https://sevenseasentertainment.com/books/tokyo-revengers-omnibus-vol-1-2/",
+    );
+    expect(result?.releaseDate).toBe("2022-07-26T00:00:00Z");
+  });
+
+  it("parses the month-name date from the new-template fixture", () => {
+    const result = parseProduct(
+      dim25Html,
+      "https://sevenseasentertainment.com/books/2-5-dimensional-seduction-vol-1/",
+    );
+    expect(result?.releaseDate).toBe("2022-02-08T00:00:00Z");
+  });
+
+  it("omits releaseDate when #volume-meta is absent", () => {
+    const result = parseProduct("<html><body></body></html>", "https://x/");
+    expect(result?.releaseDate).toBeUndefined();
+  });
+});

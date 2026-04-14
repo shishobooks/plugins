@@ -146,6 +146,56 @@ export function parseSevenSeasDate(dateStr: string): string | undefined {
 }
 
 /**
+ * Slice the substring of the raw page HTML that corresponds to the
+ * `#volume-meta` block — from the opening `<div id="volume-meta"` up to
+ * (but not including) the next `<div id="single-book-retailers"` marker
+ * (or end-of-document if that marker is missing).
+ *
+ * We use this instead of walking the DOM for two fields (ISBN, release
+ * date) because the value lives as a text node *following* a `<b>` tag,
+ * and the `<b>`'s parent differs between templates — `<p>` on new pages,
+ * the containing `<div>` on old pages with `</br>` separators. A regex
+ * against the raw slice is simpler and survives both layouts.
+ *
+ * Returns an empty string when the `#volume-meta` marker is absent, so
+ * `extractLabeledValue` will cleanly produce `undefined` on pages that
+ * don't look like Seven Seas product pages at all.
+ */
+function sliceVolumeMetaHtml(html: string): string {
+  const startMarker = '<div id="volume-meta"';
+  const endMarker = '<div id="single-book-retailers"';
+  const start = html.indexOf(startMarker);
+  if (start === -1) return "";
+  const end = html.indexOf(endMarker, start);
+  return end === -1 ? html.slice(start) : html.slice(start, end);
+}
+
+/**
+ * Find the value that follows a `<b>Label:</b>` within the volume-meta
+ * HTML slice. Label matching is case-insensitive. Returns the trimmed
+ * value (whitespace collapsed to single spaces) or undefined.
+ *
+ * The regex captures everything up to the next `<` character, which is
+ * either the closing tag of the parent `<p>`, a `</br>` separator in the
+ * old template, or the opening tag of the next field.
+ */
+function extractLabeledValue(
+  metaHtml: string,
+  label: string,
+): string | undefined {
+  if (!metaHtml) return undefined;
+  const escapedLabel = label.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+  const re = new RegExp(
+    `<b>\\s*${escapedLabel}\\s*:\\s*<\\/b>\\s*([^<]+)`,
+    "i",
+  );
+  const match = metaHtml.match(re);
+  if (!match) return undefined;
+  const value = match[1].replace(/\s+/g, " ").trim();
+  return value || undefined;
+}
+
+/**
  * Extract the sub-imprint label from a Seven Seas product page.
  *
  * Sub-imprints (Ghost Ship, Steamship, Airship, Danmei, etc.) render as
@@ -209,6 +259,20 @@ export function parseProduct(
 
   const imprint = extractImprint(doc);
   if (imprint) metadata.imprint = imprint;
+
+  const metaHtml = sliceVolumeMetaHtml(html);
+
+  const rawIsbn = extractLabeledValue(metaHtml, "ISBN");
+  if (rawIsbn) {
+    const cleaned = rawIsbn.replace(/-/g, "").replace(/\s+/g, "");
+    if (/^\d{13}$/.test(cleaned)) metadata.isbn13 = cleaned;
+  }
+
+  const rawDate = extractLabeledValue(metaHtml, "Release Date");
+  if (rawDate) {
+    const parsed = parseSevenSeasDate(rawDate);
+    if (parsed) metadata.releaseDate = parsed;
+  }
 
   return metadata;
 }
