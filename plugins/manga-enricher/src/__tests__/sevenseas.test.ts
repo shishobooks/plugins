@@ -1,10 +1,29 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import {
   buildProductPath,
+  parseProduct,
   parseSevenSeasDate,
   sevenseasScraper,
   slugify,
 } from "../publishers/sevenseas";
 import { describe, expect, it } from "vitest";
+
+const daysSeries365Html = readFileSync(
+  resolve(__dirname, "fixtures/sevenseas-365-days-vol1.html"),
+  "utf-8",
+);
+
+const tokyoRevengersOmnibusHtml = readFileSync(
+  resolve(__dirname, "fixtures/sevenseas-tokyo-revengers-omnibus-vol1-2.html"),
+  "utf-8",
+);
+
+const dim25Html = readFileSync(
+  resolve(__dirname, "fixtures/sevenseas-25dim-seduction-vol1.html"),
+  "utf-8",
+);
 
 describe("sevenseasScraper.matchPublisher", () => {
   it("matches 'Seven Seas'", () => {
@@ -155,5 +174,47 @@ describe("parseSevenSeasDate", () => {
     // ISO-dash format is NOT accepted — Seven Seas doesn't produce it,
     // and accepting it would mask upstream bugs.
     expect(parseSevenSeasDate("2022-07-26")).toBeUndefined();
+  });
+});
+
+describe("parseProduct — cover and url plumbing", () => {
+  const daysUrl =
+    "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/";
+
+  it("sets the url field to the passed-in value", () => {
+    const result = parseProduct(daysSeries365Html, daysUrl);
+    expect(result?.url).toBe(daysUrl);
+  });
+
+  it("extracts the cover URL from #volume-cover img[src]", () => {
+    const result = parseProduct(daysSeries365Html, daysUrl);
+    expect(result?.coverUrl).toBe(
+      "https://sevenseasentertainment.com/wp-content/uploads/2023/07/365ToWeddingM1_site.jpg",
+    );
+  });
+
+  it("extracts cover for the old-template omnibus fixture", () => {
+    const url =
+      "https://sevenseasentertainment.com/books/tokyo-revengers-omnibus-vol-1-2/";
+    const result = parseProduct(tokyoRevengersOmnibusHtml, url);
+    expect(result?.coverUrl).toBe(
+      "https://sevenseasentertainment.com/wp-content/uploads/2022/02/tokyorevengers1-2_site.jpg",
+    );
+  });
+
+  it("extracts cover for the new-template Ghost Ship fixture", () => {
+    const url =
+      "https://sevenseasentertainment.com/books/2-5-dimensional-seduction-vol-1/";
+    const result = parseProduct(dim25Html, url);
+    expect(result?.coverUrl).toBe(
+      "https://sevenseasentertainment.com/wp-content/uploads/2021/12/2.5-Dimensional-Seduction1_site.jpg",
+    );
+  });
+
+  it("omits coverUrl when the page has no #volume-cover element", () => {
+    const result = parseProduct("<html><body></body></html>", "https://x/");
+    expect(result).not.toBeNull();
+    expect(result?.url).toBe("https://x/");
+    expect(result?.coverUrl).toBeUndefined();
   });
 });

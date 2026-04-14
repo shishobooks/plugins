@@ -145,6 +145,45 @@ export function parseSevenSeasDate(dateStr: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Extract the per-volume cover URL from a Seven Seas product page.
+ *
+ * Seven Seas renders the cover as `<div id="volume-cover"><img src="...">`
+ * with an absolute URL in the `src` attribute — no lazy-load shenanigans
+ * to unwind. We use the attribute directly when it starts with "http".
+ */
+function extractCover(
+  doc: ReturnType<typeof shisho.html.parse>,
+): string | undefined {
+  const img = shisho.html.querySelector(doc, "div#volume-cover img");
+  const src = img?.attributes.src;
+  return src && src.startsWith("http") ? src : undefined;
+}
+
+/**
+ * Parse a Seven Seas product page into VolumeMetadata. Always returns
+ * at least `{ url }` — fields that cannot be extracted are simply
+ * omitted. The `| null` return type is reserved for a future error-page
+ * detection path; the current implementation never returns null.
+ */
+export function parseProduct(
+  html: string,
+  url: string,
+): VolumeMetadata | null {
+  // Some Seven Seas responses (and the web.archive.org snapshots used for
+  // test fixtures) omit the `<html>` root element entirely, which trips
+  // up strict parsers. Wrap defensively so the downstream selectors always
+  // see a well-formed tree.
+  const wrapped = /<html[\s>]/i.test(html) ? html : `<html>${html}</html>`;
+  const doc = shisho.html.parse(wrapped);
+  const metadata: VolumeMetadata = { url };
+
+  const coverUrl = extractCover(doc);
+  if (coverUrl) metadata.coverUrl = coverUrl;
+
+  return metadata;
+}
+
 export const sevenseasScraper: PublisherScraper = {
   name: "Seven Seas Entertainment",
 
