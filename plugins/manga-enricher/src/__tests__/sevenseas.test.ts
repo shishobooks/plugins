@@ -1,4 +1,8 @@
-import { sevenseasScraper, slugify } from "../publishers/sevenseas";
+import {
+  buildProductPath,
+  sevenseasScraper,
+  slugify,
+} from "../publishers/sevenseas";
 import { describe, expect, it } from "vitest";
 
 describe("sevenseasScraper.matchPublisher", () => {
@@ -68,5 +72,49 @@ describe("slugify", () => {
 
   it("returns empty string for punctuation-only input", () => {
     expect(slugify("!!!")).toBe("");
+  });
+});
+
+describe("buildProductPath", () => {
+  it("builds a plain volume path", () => {
+    expect(buildProductPath("Monster Musume", 1)).toBe(
+      "/books/monster-musume-vol-1/",
+    );
+  });
+
+  it("appends a non-omnibus edition to the slug", () => {
+    expect(buildProductPath("Rozen Maiden", 5, "Collector's Edition")).toBe(
+      "/books/rozen-maiden-collectors-edition-vol-5/",
+    );
+  });
+
+  it("builds a 2-in-1 omnibus range URL (omnibus sequence 1 -> vols 1-2)", () => {
+    expect(buildProductPath("Tokyo Revengers", 1, "Omnibus")).toBe(
+      "/books/tokyo-revengers-omnibus-vol-1-2/",
+    );
+  });
+
+  it("builds a 2-in-1 omnibus range URL (omnibus sequence 3 -> vols 5-6)", () => {
+    expect(buildProductPath("Tokyo Revengers", 3, "Omnibus")).toBe(
+      "/books/tokyo-revengers-omnibus-vol-5-6/",
+    );
+  });
+
+  it("detects 'omnibus' case-insensitively", () => {
+    expect(buildProductPath("Tokyo Revengers", 1, "omnibus")).toBe(
+      "/books/tokyo-revengers-omnibus-vol-1-2/",
+    );
+  });
+
+  it("does NOT fold an omnibus edition into the slug", () => {
+    // The slug is the base series slug; the "-omnibus-" segment is
+    // injected separately. Verifies we don't produce
+    // /books/tokyo-revengers-omnibus-omnibus-vol-1-2/.
+    const path = buildProductPath("Tokyo Revengers", 1, "Omnibus");
+    expect(path).not.toMatch(/-omnibus-omnibus-/);
+  });
+
+  it("returns null when the slug is empty (punctuation-only title)", () => {
+    expect(buildProductPath("!!!", 1)).toBeNull();
   });
 });
