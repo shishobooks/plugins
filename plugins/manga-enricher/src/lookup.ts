@@ -7,6 +7,7 @@ import {
 } from "./mangaupdates/mapping";
 import type { MUSeries } from "./mangaupdates/types";
 import { kodanshaScraper } from "./publishers/kodansha";
+import { sevenseasScraper } from "./publishers/sevenseas";
 import type { PublisherScraper, VolumeMetadata } from "./publishers/types";
 import { vizScraper } from "./publishers/viz";
 import { yenpressScraper } from "./publishers/yenpress";
@@ -28,6 +29,7 @@ const SCRAPERS: readonly PublisherScraper[] = [
   vizScraper,
   kodanshaScraper,
   yenpressScraper,
+  sevenseasScraper,
 ];
 
 /**
