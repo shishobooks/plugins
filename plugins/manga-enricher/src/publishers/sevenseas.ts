@@ -80,6 +80,71 @@ export function buildProductPath(
   return `/books/${slug}-vol-${volumeNumber}/`;
 }
 
+const MONTHS: Record<string, string> = {
+  jan: "01",
+  january: "01",
+  feb: "02",
+  february: "02",
+  mar: "03",
+  march: "03",
+  apr: "04",
+  april: "04",
+  may: "05",
+  jun: "06",
+  june: "06",
+  jul: "07",
+  july: "07",
+  aug: "08",
+  august: "08",
+  sep: "09",
+  sept: "09",
+  september: "09",
+  oct: "10",
+  october: "10",
+  nov: "11",
+  november: "11",
+  dec: "12",
+  december: "12",
+};
+
+/**
+ * Parse a Seven Seas date string into ISO 8601 (midnight UTC). Two
+ * formats are accepted, corresponding to the two site template
+ * generations we've observed:
+ *
+ *   1. "November 14, 2023" — newer (gomanga2025) pages. Same shape as
+ *      Yen Press, which is why we reuse the same MONTHS table.
+ *   2. "2022/07/26" — older (gomanga2017/2020) pages. YYYY/MM/DD with
+ *      numeric slashes. Single-digit months and days are tolerated.
+ *
+ * Dash-separated ISO dates are deliberately NOT accepted — Seven Seas
+ * never emits them, and accepting them would mask upstream bugs where
+ * already-parsed ISO dates get round-tripped back through here.
+ *
+ * Returns undefined on any input that doesn't match either format.
+ */
+export function parseSevenSeasDate(dateStr: string): string | undefined {
+  const normalized = dateStr.replace(/\s+/g, " ").trim();
+
+  // Slash format: 2022/07/26 or 2013/1/5
+  const slashMatch = normalized.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (slashMatch) {
+    const [, year, month, day] = slashMatch;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T00:00:00Z`;
+  }
+
+  // Month-name format: November 14, 2023 / Nov 14, 2023
+  const wordMatch = normalized.match(/^([A-Za-z]+)\s+(\d{1,2})\s*,\s*(\d{4})$/);
+  if (wordMatch) {
+    const month = MONTHS[wordMatch[1].toLowerCase()];
+    if (!month) return undefined;
+    const day = wordMatch[2].padStart(2, "0");
+    return `${wordMatch[3]}-${month}-${day}T00:00:00Z`;
+  }
+
+  return undefined;
+}
+
 export const sevenseasScraper: PublisherScraper = {
   name: "Seven Seas Entertainment",
 

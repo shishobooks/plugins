@@ -1,5 +1,6 @@
 import {
   buildProductPath,
+  parseSevenSeasDate,
   sevenseasScraper,
   slugify,
 } from "../publishers/sevenseas";
@@ -116,5 +117,43 @@ describe("buildProductPath", () => {
 
   it("returns null when the slug is empty (punctuation-only title)", () => {
     expect(buildProductPath("!!!", 1)).toBeNull();
+  });
+});
+
+describe("parseSevenSeasDate", () => {
+  it("parses long month names", () => {
+    expect(parseSevenSeasDate("November 14, 2023")).toBe(
+      "2023-11-14T00:00:00Z",
+    );
+  });
+
+  it("parses short month names", () => {
+    expect(parseSevenSeasDate("Nov 14, 2023")).toBe("2023-11-14T00:00:00Z");
+  });
+
+  it("parses YYYY/MM/DD slash format (old template)", () => {
+    expect(parseSevenSeasDate("2022/07/26")).toBe("2022-07-26T00:00:00Z");
+  });
+
+  it("parses YYYY/M/D slash format with single digits", () => {
+    expect(parseSevenSeasDate("2013/1/5")).toBe("2013-01-05T00:00:00Z");
+  });
+
+  it("zero-pads single-digit days in month-name format", () => {
+    expect(parseSevenSeasDate("Feb 3, 2020")).toBe("2020-02-03T00:00:00Z");
+  });
+
+  it("tolerates extra whitespace", () => {
+    expect(parseSevenSeasDate("  November  14 , 2023 ")).toBe(
+      "2023-11-14T00:00:00Z",
+    );
+  });
+
+  it("returns undefined for unparseable input", () => {
+    expect(parseSevenSeasDate("")).toBeUndefined();
+    expect(parseSevenSeasDate("TBA")).toBeUndefined();
+    // ISO-dash format is NOT accepted — Seven Seas doesn't produce it,
+    // and accepting it would mask upstream bugs.
+    expect(parseSevenSeasDate("2022-07-26")).toBeUndefined();
   });
 });
