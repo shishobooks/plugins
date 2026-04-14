@@ -244,6 +244,55 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.4.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-14",
+          "changelog": "## [0.4.0] - 2026-04-14\n\n### Bug Fixes\n- Use bookTitleBare in goodreads autocomplete fallback (#23)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.4.0/goodreads-enricher-0.4.0.zip",
+          "sha256": "d7632b3d8adb4c8ab239718b17576ac8793bcbf52707e7bc59d9920dd55bf5d0",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.3.3",
           "manifestVersion": 1,
           "releaseDate": "2026-04-12",
