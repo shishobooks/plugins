@@ -472,10 +472,25 @@ function findVolumeData(
   // Walk the publishers in order, attempting each one's matching scraper.
   // The first successful scrape wins. If a publisher has no matching
   // scraper, we skip it rather than falling back to unrelated scrapers.
+  //
+  // Each scraper call is guarded — a scraper that throws (e.g., because
+  // shisho.http.fetch blew up on anti-bot protection, or the DOM parser
+  // choked on an unexpected page) must not kill the entire search. The
+  // contract is "return null on any failure" but we enforce it here too
+  // so a buggy or unlucky scraper can't take down enrichment for every
+  // file that hits its publisher.
   for (const publisher of orderedPublishers) {
     const scraper = SCRAPERS.find((s) => s.matchPublisher(publisher.name));
     if (!scraper) continue;
-    const data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
+    let data: VolumeMetadata | null = null;
+    try {
+      data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
+    } catch (err) {
+      shisho.log.warn(
+        `${scraper.name} scraper threw for "${seriesTitle}" vol ${volumeNumber}: ${String(err)}`,
+      );
+      continue;
+    }
     if (data) return { data, scraperName: scraper.name };
   }
 

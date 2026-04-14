@@ -8,12 +8,23 @@ const BASE_URL = "https://sevenseasentertainment.com";
 
 function fetchHtml(url: string): string | null {
   shisho.log.debug(`SevenSeas: fetching ${url}`);
-  const response = shisho.http.fetch(url, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      Accept: "text/html,application/xhtml+xml",
-    },
-  });
+  // shisho.http.fetch can throw (not just return a !ok response) when it
+  // encounters TLS errors, connection resets, or anti-bot protection that
+  // returns a malformed body. Seven Seas' Cloudflare edge triggers this for
+  // non-browser User-Agents, so every fetch here must be guarded — an
+  // uncaught throw bubbles up and kills the entire search for the file.
+  let response: ReturnType<typeof shisho.http.fetch> | null = null;
+  try {
+    response = shisho.http.fetch(url, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+  } catch (err) {
+    shisho.log.warn(`SevenSeas: fetch threw for ${url}: ${String(err)}`);
+    return null;
+  }
   if (!response || !response.ok) {
     shisho.log.warn(
       `SevenSeas: HTTP ${response?.status ?? "no response"} ${url}`,

@@ -2,6 +2,7 @@ import { pickCanonicalTitle, searchForManga } from "../lookup";
 import { fetchSeries, searchSeries } from "../mangaupdates/api";
 import type { MUSeries } from "../mangaupdates/types";
 import { kodanshaScraper } from "../publishers/kodansha";
+import { sevenseasScraper } from "../publishers/sevenseas";
 import { vizScraper } from "../publishers/viz";
 import { yenpressScraper } from "../publishers/yenpress";
 import type { SearchContext } from "@shisho/plugin-sdk";
@@ -36,6 +37,14 @@ vi.mock("../publishers/yenpress", () => ({
   },
 }));
 
+vi.mock("../publishers/sevenseas", () => ({
+  sevenseasScraper: {
+    name: "Seven Seas Entertainment",
+    matchPublisher: vi.fn(),
+    searchVolume: vi.fn(),
+  },
+}));
+
 const mockedSearchSeries = vi.mocked(searchSeries);
 const mockedFetchSeries = vi.mocked(fetchSeries);
 const mockedVizMatch = vi.mocked(vizScraper.matchPublisher);
@@ -44,6 +53,8 @@ const mockedKodanshaMatch = vi.mocked(kodanshaScraper.matchPublisher);
 const mockedKodanshaSearch = vi.mocked(kodanshaScraper.searchVolume);
 const mockedYenpressMatch = vi.mocked(yenpressScraper.matchPublisher);
 const mockedYenpressSearch = vi.mocked(yenpressScraper.searchVolume);
+const mockedSevenSeasMatch = vi.mocked(sevenseasScraper.matchPublisher);
+const mockedSevenSeasSearch = vi.mocked(sevenseasScraper.searchVolume);
 
 function makeContext(overrides: Partial<SearchContext> = {}): SearchContext {
   return { query: "", ...overrides };
@@ -69,6 +80,8 @@ function setupDefaultMocks() {
   mockedKodanshaSearch.mockReturnValue(null);
   mockedYenpressMatch.mockImplementation((p: string) => /yen press/i.test(p));
   mockedYenpressSearch.mockReturnValue(null);
+  mockedSevenSeasMatch.mockImplementation((p: string) => /seven seas/i.test(p));
+  mockedSevenSeasSearch.mockReturnValue(null);
 }
 
 describe("searchForManga", () => {
@@ -334,6 +347,46 @@ describe("searchForManga", () => {
           { type: "isbn_13", value: "9781569319017" },
         ]),
       );
+    });
+
+    it("treats a throwing scraper as a miss and still returns MU-level metadata", () => {
+      // A scraper that throws (e.g., shisho.http.fetch blew up on anti-bot
+      // protection, or the DOM parser choked) must NOT kill the whole
+      // search. findVolumeData catches the throw, logs a warning, and
+      // falls through to return the MU-derived metadata — the user sees
+      // series-level info even when per-volume scraping fails.
+      setupDefaultMocks();
+      const series: MUSeries = {
+        ...onePieceSeries,
+        title: "365 Days to the Wedding",
+        publishers: [
+          {
+            publisher_name: "Seven Seas",
+            type: "English",
+            notes: "11 Volumes; Complete",
+          },
+        ],
+      };
+      mockedSearchSeries.mockReturnValue([series]);
+      mockedFetchSeries.mockReturnValue(series);
+      mockedSevenSeasSearch.mockImplementation(() => {
+        throw new Error("fetch: blocked by anti-bot");
+      });
+
+      const context = makeContext({
+        query: "365 Days to the Wedding v01.cbz",
+      });
+      const results = searchForManga(context);
+
+      // The search MUST still return the candidate. The user's report was
+      // that "nothing comes back" when volumeNumber is set — this test is
+      // the regression guard for that.
+      expect(results).toHaveLength(1);
+      expect(results[0].series).toBe("365 Days to the Wedding");
+      expect(results[0].seriesNumber).toBe(1);
+      // Per-volume scrape failed, so publisher stays as MU's English entry
+      // rather than the scraper's canonical name.
+      expect(results[0].publisher).toBe("Seven Seas");
     });
 
     it("sets publisher to the successful scraper, not MU's first English entry", () => {

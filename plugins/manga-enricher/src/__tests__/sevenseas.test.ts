@@ -492,6 +492,19 @@ describe("sevenseasScraper.searchVolume", () => {
     expect(sevenseasScraper.searchVolume("Some Series", 1)).toBeNull();
   });
 
+  it("returns null when shisho.http.fetch throws (anti-bot / TLS error)", () => {
+    // Seven Seas' Cloudflare edge has been observed to make the host's
+    // fetch throw instead of returning a !ok response. An uncaught throw
+    // here would bubble up through findVolumeData and kill the entire
+    // search for the file — the scraper must swallow it and return null.
+    const mock = vi.mocked(shisho.http.fetch);
+    mock.mockReset();
+    mock.mockImplementationOnce(() => {
+      throw new Error("fetch: blocked by anti-bot");
+    });
+    expect(sevenseasScraper.searchVolume("Some Series", 1)).toBeNull();
+  });
+
   it("returns null for punctuation-only or empty titles without fetching", () => {
     const mock = vi.mocked(shisho.http.fetch);
     mock.mockReset();
