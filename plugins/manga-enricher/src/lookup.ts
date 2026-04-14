@@ -7,6 +7,7 @@ import {
 } from "./mangaupdates/mapping";
 import type { MUSeries } from "./mangaupdates/types";
 import { kodanshaScraper } from "./publishers/kodansha";
+import { sevenseasScraper } from "./publishers/sevenseas";
 import type { PublisherScraper, VolumeMetadata } from "./publishers/types";
 import { vizScraper } from "./publishers/viz";
 import { yenpressScraper } from "./publishers/yenpress";
@@ -28,6 +29,7 @@ const SCRAPERS: readonly PublisherScraper[] = [
   vizScraper,
   kodanshaScraper,
   yenpressScraper,
+  sevenseasScraper,
 ];
 
 /**
@@ -174,17 +176,30 @@ function matchCandidates(
 
   for (const candidate of candidates) {
     if (fastPath) {
-      const confidence = computeConfidence(normalizedTarget, candidate);
-      if (confidence === null) continue;
+      // The fast-path confidence is computed against the search-result
+      // record, which only carries the primary title — MU's associated
+      // titles aren't included in the search response. Use it as a gate
+      // so we don't waste a fetch on candidates that can't possibly
+      // match, but recompute against the full series once we have it
+      // so the final score reflects the best-matching associated title
+      // (e.g. the English localized title when MU's primary is the
+      // Japanese romaji). Without this, matches like "365 Days to the
+      // Wedding" → "Kekkon Suru tte, Hontou desu ka: 365 Days To The
+      // Wedding" report ~0.77 instead of the ~1.0 they earn against
+      // the associated English title.
+      const gatingConfidence = computeConfidence(normalizedTarget, candidate);
+      if (gatingConfidence === null) continue;
       const fullSeries = fetchSeries(candidate.series_id);
       if (!fullSeries) continue;
+      const finalConfidence =
+        computeConfidence(normalizedTarget, fullSeries) ?? gatingConfidence;
       const metadata = buildMetadata(
         fullSeries,
         volumeNumber,
         edition,
         searchTitle,
       );
-      metadata.confidence = confidence;
+      metadata.confidence = finalConfidence;
       results.push(metadata);
     } else {
       const fullSeries = fetchSeries(candidate.series_id);
@@ -470,10 +485,32 @@ function findVolumeData(
   // Walk the publishers in order, attempting each one's matching scraper.
   // The first successful scrape wins. If a publisher has no matching
   // scraper, we skip it rather than falling back to unrelated scrapers.
+  //
+  // Each scraper call is guarded — a scraper that throws (e.g., because
+  // shisho.http.fetch blew up on anti-bot protection, or the DOM parser
+  // choked on an unexpected page) must not kill the entire search. The
+  // contract is "return null on any failure" but we enforce it here too
+  // so a buggy or unlucky scraper can't take down enrichment for every
+  // file that hits its publisher.
+  //
+  // Throws are logged at error level (not warn) with the stack preserved
+  // when available, so a genuine bug in a scraper — which looks identical
+  // to an anti-bot failure at the call site — still stays visible to
+  // anyone scanning logs for errors.
   for (const publisher of orderedPublishers) {
     const scraper = SCRAPERS.find((s) => s.matchPublisher(publisher.name));
     if (!scraper) continue;
-    const data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
+    let data: VolumeMetadata | null = null;
+    try {
+      data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
+    } catch (err) {
+      const detail =
+        err instanceof Error ? (err.stack ?? err.message) : String(err);
+      shisho.log.error(
+        `${scraper.name} scraper threw for "${seriesTitle}" vol ${volumeNumber}: ${detail}`,
+      );
+      continue;
+    }
     if (data) return { data, scraperName: scraper.name };
   }
 

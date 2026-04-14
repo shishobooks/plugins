@@ -79,6 +79,28 @@ export function parseMonth(monthStr: string): string | undefined {
  * Converts <br> to newlines and </p><p> to double newlines before
  * stripping remaining tags.
  */
+/**
+ * Slugify a title for use in URL paths: lowercase, drop apostrophes
+ * (both ASCII `'` and Unicode right-single-quote `'` / U+2019), then
+ * collapse runs of non-alphanumeric characters to single hyphens and
+ * trim leading/trailing hyphens.
+ *
+ * Used by publisher scrapers that construct product-page URLs directly
+ * from a series title (Kodansha, Seven Seas). Matches the de-facto
+ * convention those sites use for their slugs — e.g.,
+ * "Rozen Maiden Collector's Edition" → "rozen-maiden-collectors-edition"
+ * (apostrophe dropped, not hyphenated). This differs from Yen Press,
+ * which preserves apostrophes as hyphens; that scraper implements its
+ * own slug helper.
+ */
+export function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/['\u2019]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function stripHTML(html: string): string {
   if (!html) return "";
   return html

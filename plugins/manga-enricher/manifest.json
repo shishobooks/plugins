@@ -3,14 +3,14 @@
   "id": "manga-enricher",
   "name": "Manga Enricher",
   "version": "0.1.0",
-  "description": "Enriches manga metadata from MangaUpdates and publisher websites (Viz, Kodansha USA, Yen Press)",
+  "description": "Enriches manga metadata from MangaUpdates and publisher websites (Viz, Kodansha USA, Yen Press, Seven Seas)",
   "minShishoVersion": "0.0.28",
   "author": "Shisho Team",
   "homepage": "https://github.com/shishobooks/plugins",
   "license": "MIT",
   "capabilities": {
     "metadataEnricher": {
-      "description": "Fetches manga metadata from MangaUpdates and scrapes per-volume details from Viz, Kodansha USA, and Yen Press",
+      "description": "Fetches manga metadata from MangaUpdates and scrapes per-volume details from Viz, Kodansha USA, Yen Press, and Seven Seas",
       "fileTypes": [
         "cbz",
         "cbr"
@@ -34,7 +34,7 @@
       ]
     },
     "httpAccess": {
-      "description": "Calls the MangaUpdates API and scrapes Viz Media, Kodansha USA, and Yen Press product pages",
+      "description": "Calls the MangaUpdates API and scrapes Viz Media, Kodansha USA, Yen Press, and Seven Seas product pages",
       "domains": [
         "api.mangaupdates.com",
         "cdn.mangaupdates.com",
@@ -43,7 +43,8 @@
         "kodansha.us",
         "production.image.azuki.co",
         "yenpress.com",
-        "images.yenpress.com"
+        "images.yenpress.com",
+        "sevenseasentertainment.com"
       ]
     },
     "identifierTypes": [
