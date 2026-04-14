@@ -132,6 +132,11 @@ export function parseYenPressDate(dateStr: string): string | undefined {
  * class="paragraph fs-16">...</p></div>`. Yen Press also has a `<meta
  * name="description">` tag but it truncates at ~200 chars; the paragraph
  * block is the authoritative full text.
+ *
+ * Yen Press uses literal newlines inside the `<p>` element to separate
+ * paragraphs. We preserve single and double newlines (so paragraph
+ * structure survives) but cap runs of 3+ newlines at 2 and clean up
+ * horizontal whitespace runs inside lines.
  */
 function extractDescription(
   doc: ReturnType<typeof shisho.html.parse>,
@@ -139,8 +144,14 @@ function extractDescription(
   const container = shisho.html.querySelector(doc, "div.content-heading-txt");
   if (!container) return undefined;
   const paragraph = shisho.html.querySelector(container, "p.paragraph");
-  const raw = paragraph?.text.trim();
-  return raw ? stripHTML(raw) : undefined;
+  if (!paragraph) return undefined;
+  const cleaned = paragraph.text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return cleaned ? stripHTML(cleaned) : undefined;
 }
 
 /**

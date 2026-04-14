@@ -178,6 +178,32 @@ describe("parseProduct — description and cover", () => {
       /^https:\/\/images\.yenpress\.com\/imgs\//,
     );
   });
+
+  it("preserves single and double newlines in the description", () => {
+    // Single \n stays single (soft line break inside a paragraph).
+    // \n\n stays as \n\n (paragraph separator with blank line).
+    // 3+ \n collapse to \n\n (cap excessive blank lines).
+    // Horizontal whitespace runs collapse to a single space.
+    const html = `
+      <html><body>
+        <div class="content-heading-txt">
+          <p class="paragraph fs-16">First    line with extra   spaces.
+Second line, single newline.
+
+Third paragraph, blank line above.
+
+
+
+
+Fourth paragraph after four newlines.</p>
+        </div>
+      </body></html>
+    `;
+    const result = parseProduct(html, "https://yenpress.com/x");
+    expect(result?.description).toBe(
+      "First line with extra spaces.\nSecond line, single newline.\n\nThird paragraph, blank line above.\n\nFourth paragraph after four newlines.",
+    );
+  });
 });
 
 describe("parseProduct — detail-box fields", () => {
