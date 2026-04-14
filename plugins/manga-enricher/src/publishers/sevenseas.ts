@@ -292,10 +292,7 @@ function extractDescription(
  * omitted. The `| null` return type is reserved for a future error-page
  * detection path; the current implementation never returns null.
  */
-export function parseProduct(
-  html: string,
-  url: string,
-): VolumeMetadata | null {
+export function parseProduct(html: string, url: string): VolumeMetadata | null {
   // Some Seven Seas responses (and the web.archive.org snapshots used for
   // test fixtures) omit the `<html>` root element entirely, which trips
   // up strict parsers. Wrap defensively so the downstream selectors always

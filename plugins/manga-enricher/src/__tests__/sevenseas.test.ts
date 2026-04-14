@@ -360,7 +360,9 @@ describe("parseProduct — description", () => {
       dim25Html,
       "https://sevenseasentertainment.com/books/2-5-dimensional-seduction-vol-1/",
     );
-    expect(result?.description).toMatch(/^A hot-blooded romantic cosplay comedy/);
+    expect(result?.description).toMatch(
+      /^A hot-blooded romantic cosplay comedy/,
+    );
     expect(result?.description).toContain("Okumura");
   });
 
@@ -429,14 +431,9 @@ function mockFetchSequence(
 
 describe("sevenseasScraper.searchVolume", () => {
   it("fetches the product page directly and returns merged metadata", () => {
-    mockFetchSequence([
-      { status: 200, ok: true, body: daysSeries365Html },
-    ]);
+    mockFetchSequence([{ status: 200, ok: true, body: daysSeries365Html }]);
 
-    const result = sevenseasScraper.searchVolume(
-      "365 Days to the Wedding",
-      1,
-    );
+    const result = sevenseasScraper.searchVolume("365 Days to the Wedding", 1);
 
     expect(result).not.toBeNull();
     expect(result?.url).toBe(
