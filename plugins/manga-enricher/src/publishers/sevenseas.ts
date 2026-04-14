@@ -146,6 +146,32 @@ export function parseSevenSeasDate(dateStr: string): string | undefined {
 }
 
 /**
+ * Extract the sub-imprint label from a Seven Seas product page.
+ *
+ * Sub-imprints (Ghost Ship, Steamship, Airship, Danmei, etc.) render as
+ * a sibling to the age-rating badge with the class `age-rating` and an
+ * id of the form `<XX>-block` — e.g., `<div id="GS-block"
+ * class="age-rating"><a href="...">Ghost Ship</a></div>`. The age-rating
+ * badge itself also has `class="age-rating"` but uses ids like
+ * `"teen"`, `"olderteen15"`, so we filter by id suffix to distinguish.
+ *
+ * Returns undefined for pages that only contain the rating badge (main
+ * Seven Seas line with no sub-imprint).
+ */
+function extractImprint(
+  doc: ReturnType<typeof shisho.html.parse>,
+): string | undefined {
+  const ratings = shisho.html.querySelectorAll(doc, "div.age-rating");
+  for (const div of ratings) {
+    const id = div.attributes.id ?? "";
+    if (!id.endsWith("-block")) continue;
+    const text = div.text.replace(/\s+/g, " ").trim();
+    if (text) return text;
+  }
+  return undefined;
+}
+
+/**
  * Extract the per-volume cover URL from a Seven Seas product page.
  *
  * Seven Seas renders the cover as `<div id="volume-cover"><img src="...">`
@@ -180,6 +206,9 @@ export function parseProduct(
 
   const coverUrl = extractCover(doc);
   if (coverUrl) metadata.coverUrl = coverUrl;
+
+  const imprint = extractImprint(doc);
+  if (imprint) metadata.imprint = imprint;
 
   return metadata;
 }

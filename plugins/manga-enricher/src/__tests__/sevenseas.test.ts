@@ -218,3 +218,42 @@ describe("parseProduct — cover and url plumbing", () => {
     expect(result?.coverUrl).toBeUndefined();
   });
 });
+
+describe("parseProduct — imprint", () => {
+  it("extracts 'Ghost Ship' from the #GS-block div (nested <a>)", () => {
+    const result = parseProduct(
+      dim25Html,
+      "https://sevenseasentertainment.com/books/2-5-dimensional-seduction-vol-1/",
+    );
+    expect(result?.imprint).toBe("Ghost Ship");
+  });
+
+  it("extracts a plain-text imprint from the #SS-block div", () => {
+    // Synthetic HTML — the Steamship fixture (Ladies on Top) isn't
+    // included as a full fixture since Ghost Ship already exercises the
+    // nested-<a> variant; this test covers the plain-text sibling shape
+    // (<div id="SS-block" class="age-rating">Steamship</div>) that the
+    // old template uses when the label is unlinked.
+    const html = `
+      <html><body>
+        <div id="volume-cover">
+          <img src="https://sevenseasentertainment.com/cover.jpg">
+          <div id="SS-block" class="age-rating">Steamship</div>
+          <div class="age-rating" id="olderteen17"></div>
+        </div>
+      </body></html>
+    `;
+    const result = parseProduct(html, "https://sevenseasentertainment.com/x/");
+    expect(result?.imprint).toBe("Steamship");
+  });
+
+  it("omits imprint when only the age-rating badge is present (main SS line)", () => {
+    // The 365 Days fixture has <div class="age-rating" id="teen"></div>
+    // but no -block sibling — this is the main Seven Seas line.
+    const result = parseProduct(
+      daysSeries365Html,
+      "https://sevenseasentertainment.com/books/365-days-to-the-wedding-vol-1/",
+    );
+    expect(result?.imprint).toBeUndefined();
+  });
+});
