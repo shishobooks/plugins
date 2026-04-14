@@ -35,36 +35,47 @@ const daysLiveHtml = readFileSync(
 );
 
 describe("sevenseasScraper.matchPublisher", () => {
-  it("matches 'Seven Seas'", () => {
-    expect(sevenseasScraper.matchPublisher("Seven Seas")).toBe(true);
-  });
+  // Every alias we want to route to this scraper, enumerated in one place
+  // so it's obvious which publisher strings Seven Seas claims. Adding a
+  // new alias is a one-line change to PUBLISHER_PATTERN in sevenseas.ts
+  // plus adding the string here.
+  const matchingAliases = [
+    "Seven Seas",
+    "Seven Seas Entertainment",
+    "Seven Sea", // singular-typo variant observed on MU
+    "Seven Seas Ghost Ship",
+    "Seven Seas Steamship",
+    "Ghost Ship",
+    "Steamship",
+    "Waves of Color",
+    "Shinobi 7",
+    "gomanga",
+  ];
 
-  it("matches 'Seven Seas Entertainment'", () => {
-    expect(sevenseasScraper.matchPublisher("Seven Seas Entertainment")).toBe(
-      true,
-    );
-  });
+  for (const alias of matchingAliases) {
+    it(`matches "${alias}"`, () => {
+      expect(sevenseasScraper.matchPublisher(alias)).toBe(true);
+    });
+  }
 
   it("is case-insensitive", () => {
     expect(sevenseasScraper.matchPublisher("seven seas")).toBe(true);
+    expect(sevenseasScraper.matchPublisher("GHOST SHIP")).toBe(true);
+    expect(sevenseasScraper.matchPublisher("STEAMSHIP")).toBe(true);
   });
 
   it("tolerates extra whitespace between words", () => {
     expect(sevenseasScraper.matchPublisher("Seven  Seas")).toBe(true);
+    expect(sevenseasScraper.matchPublisher("Ghost  Ship")).toBe(true);
   });
 
   it("does not match unrelated publishers", () => {
     expect(sevenseasScraper.matchPublisher("Yen Press")).toBe(false);
     expect(sevenseasScraper.matchPublisher("Viz Media")).toBe(false);
     expect(sevenseasScraper.matchPublisher("Kodansha USA")).toBe(false);
-  });
-
-  it("does not match bare imprint names (known MVP limitation)", () => {
-    // MangaUpdates sometimes lists Seven Seas sub-imprints as standalone
-    // publishers ("Ghost Ship", "Airship", "Steamship"). The MVP scraper
-    // only claims titles whose MU publisher string contains "Seven Seas".
-    // Filed as a follow-up; this test documents the boundary.
-    expect(sevenseasScraper.matchPublisher("Ghost Ship")).toBe(false);
+    // "Airship" is a Seven Seas light-novel imprint but lives on
+    // airshipnovels.com, which this scraper doesn't understand. It's
+    // deliberately NOT in the alias list.
     expect(sevenseasScraper.matchPublisher("Airship")).toBe(false);
   });
 });

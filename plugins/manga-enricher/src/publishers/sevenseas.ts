@@ -362,11 +362,30 @@ export function parseProduct(html: string, url: string): VolumeMetadata | null {
   return metadata;
 }
 
+/**
+ * Case-insensitive regex that accepts every publisher-name variant we've
+ * observed on MangaUpdates for Seven Seas titles, including imprints that
+ * sometimes appear as standalone publishers:
+ *
+ * - "Seven Seas", "Seven Seas Entertainment", "Seven Sea" (singular typo)
+ * - "Seven Seas Ghost Ship", "Seven Seas Steamship" (composed names)
+ * - "Ghost Ship", "Steamship", "Waves of Color" (bare imprint names)
+ * - "Shinobi 7" (another Seven Seas imprint)
+ * - "gomanga" (Seven Seas' own brand/store name)
+ *
+ * All of these live on `sevenseasentertainment.com` and share the same
+ * URL scheme, so routing them all to this scraper is correct. "Airship"
+ * is NOT in this list — it's a Seven Seas light-novel imprint but lives
+ * on `airshipnovels.com`, which this scraper doesn't understand.
+ */
+const PUBLISHER_PATTERN =
+  /\b(seven\s+seas?|ghost\s+ship|steamship|waves\s+of\s+color|shinobi\s*7|gomanga)\b/i;
+
 export const sevenseasScraper: PublisherScraper = {
   name: "Seven Seas Entertainment",
 
   matchPublisher(publisherName: string): boolean {
-    return /\bseven\s+seas\b/i.test(publisherName);
+    return PUBLISHER_PATTERN.test(publisherName);
   },
 
   searchVolume(
