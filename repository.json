@@ -8,8 +8,7 @@
       "name": "Open Library Enricher",
       "overview": "Fetches book metadata, covers, and identifiers from Open Library's free API",
       "description": "Enriches book metadata from Open Library",
-      "author": "Shisho Team",
-      "homepage": "https://github.com/shishobooks/plugins",
+      "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/open-library-enricher",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/open-library-enricher/logo.svg",
       "versions": [
         {
@@ -18,6 +17,7 @@
           "releaseDate": "2026-04-12",
           "changelog": "## [0.3.1] - 2026-04-12\n\n### Bug Fixes\n- Capture last commit in release changelog generation (#15)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.3.1/open-library-enricher-0.3.1.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/open-library-enricher@0.3.1",
           "sha256": "a57ad85cbe1b3288aa3e7f3d38a279f40f4e12aa14c6925094aec629d061cf99",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -73,6 +73,7 @@
           "releaseDate": "2026-04-05",
           "changelog": "## [0.3.0] - 2026-04-05\n\n_No plugin code changes in this release._\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.3.0/open-library-enricher-0.3.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/open-library-enricher@0.3.0",
           "sha256": "0b415cc0813ef21c6b982127c5407f10d73641b08b9e918b4aeb5e29107469ba",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -128,6 +129,7 @@
           "releaseDate": "2026-04-05",
           "changelog": "## [0.2.0] - 2026-04-05\n\n### Bug Fixes\n- Handle missing Unreleased header in plugin changelogs during release (#10)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.2.0/open-library-enricher-0.2.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/open-library-enricher@0.2.0",
           "sha256": "dfd53b760538b2e0b202e764cf203417dce58e6513b41fb5aac9e6d5ce801db8",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -183,6 +185,7 @@
           "releaseDate": "2026-04-05",
           "changelog": "## [0.1.0] - 2026-04-05\n\n### Features\n- Add minShishoVersion to release process and enrich plugin metadata (#5)\n- Open Library metadata enricher plugin (#1)\n- Add per-plugin release process\n- Add plugin repository foundation\n\n### Bug Fixes\n- Address code review findings for enricher plugin (#2)\n\n### Other\n- Migrate from Yarn to pnpm workspaces (#7)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.1.0/open-library-enricher-0.1.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/open-library-enricher@0.1.0",
           "sha256": "180f24565cd4c305b30f3cc93bc5660984ba94572da94f537b0026fbf47dc691",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -239,8 +242,7 @@
       "name": "Goodreads Enricher",
       "overview": "Fetches book metadata and covers from Goodreads",
       "description": "Enriches book metadata from Goodreads",
-      "author": "Shisho Team",
-      "homepage": "https://github.com/shishobooks/plugins",
+      "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/goodreads-enricher",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
         {
@@ -249,6 +251,7 @@
           "releaseDate": "2026-04-14",
           "changelog": "## [0.4.0] - 2026-04-14\n\n### Bug Fixes\n- Use bookTitleBare in goodreads autocomplete fallback (#23)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.4.0/goodreads-enricher-0.4.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.4.0",
           "sha256": "d7632b3d8adb4c8ab239718b17576ac8793bcbf52707e7bc59d9920dd55bf5d0",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -298,6 +301,7 @@
           "releaseDate": "2026-04-12",
           "changelog": "## [0.3.3] - 2026-04-12\n\n### Other\n- Use shared stripHTML in goodreads-enricher (#18)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.3.3/goodreads-enricher-0.3.3.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.3.3",
           "sha256": "e01bce359eed5d8ec4cd99e1d8a103cdaa088f6121ebef4eefa9692cce090f9c",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -347,6 +351,7 @@
           "releaseDate": "2026-04-12",
           "changelog": "## [0.3.2] - 2026-04-12\n\n### Bug Fixes\n- Capture last commit in release changelog generation (#15)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.3.2/goodreads-enricher-0.3.2.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.3.2",
           "sha256": "ae5a079e1e56dd7cd0d5c49aaa623dc37ee8aee3e3c1d317562e5b239c72e8ff",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -396,6 +401,7 @@
           "releaseDate": "2026-04-07",
           "changelog": "## [0.3.1] - 2026-04-07\n\n### Bug Fixes\n- Add retry logic for Goodreads HTTP 503 errors (#14)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.3.1/goodreads-enricher-0.3.1.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.3.1",
           "sha256": "da711d4c9c03d37d66f4d4ba1459b6570cf86d5d79c08aa7078677d401f7554a",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -445,6 +451,7 @@
           "releaseDate": "2026-04-05",
           "changelog": "## [0.3.0] - 2026-04-05\n\n_No plugin code changes in this release._\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.3.0/goodreads-enricher-0.3.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.3.0",
           "sha256": "e35bfd1ab637c76996c6dff443f123adce917afc4f601a218179ea346d323062",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -494,6 +501,7 @@
           "releaseDate": "2026-04-05",
           "changelog": "## [0.2.0] - 2026-04-05\n\n### Bug Fixes\n- Handle missing Unreleased header in plugin changelogs during release (#10)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.2.0/goodreads-enricher-0.2.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.2.0",
           "sha256": "0d5c8a3e3dbf14b540f94284dfff4f05c7e1cfabce632dde25833a14263c4ec1",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -543,6 +551,7 @@
           "releaseDate": "2026-04-05",
           "changelog": "## [0.1.0] - 2026-04-05\n\n### Features\n- Goodreads metadata enricher plugin (#4)\n- Add minShishoVersion to release process and enrich plugin metadata (#5)\n\n### Other\n- Migrate from Yarn to pnpm workspaces (#7)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.1.0/goodreads-enricher-0.1.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.1.0",
           "sha256": "d5fb3ca6a0b3f5703cafa2c5731163d648830168993eef2ecfcb6f5ae1e1abc1",
           "minShishoVersion": "0.0.23",
           "capabilities": {
@@ -593,8 +602,7 @@
       "name": "Audible Enricher",
       "overview": "Fetches audiobook metadata from Audible and Audnexus",
       "description": "Enriches audiobook metadata from Audible and Audnexus",
-      "author": "Shisho Team",
-      "homepage": "https://github.com/shishobooks/plugins",
+      "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/audible-enricher",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/audible-enricher/logo.svg",
       "versions": [
         {
@@ -603,6 +611,7 @@
           "releaseDate": "2026-04-12",
           "changelog": "## [0.1.0] - 2026-04-12\n\n### Features\n- Audible metadata enricher plugin (#16)\n\n### Other\n- Register audible-enricher in plugin repository (#17)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/audible-enricher@0.1.0/audible-enricher-0.1.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/audible-enricher@0.1.0",
           "sha256": "f1edd7468b0f483aa61e98aaea148b61a7d8fd74f8558ac5229b5a5c908d324c",
           "minShishoVersion": "0.0.28",
           "capabilities": {
@@ -665,8 +674,8 @@
       "name": "Manga Enricher",
       "overview": "Fetches manga metadata from MangaUpdates and per-volume details from Viz Media, Kodansha USA, Yen Press, and Seven Seas",
       "description": "Enriches manga metadata from MangaUpdates and publisher websites (Viz, Kodansha USA, Yen Press, Seven Seas)",
-      "author": "Shisho Team",
-      "homepage": "https://github.com/shishobooks/plugins",
+      "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/manga-enricher",
+      "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/manga-enricher/logo.svg",
       "versions": [
         {
           "version": "0.2.0",
@@ -674,6 +683,7 @@
           "releaseDate": "2026-04-14",
           "changelog": "## [0.2.0] - 2026-04-14\n\n### Features\n- Seven Seas publisher scraper for manga-enricher (#21)\n- Yen Press publisher scraper for manga-enricher (#20)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/manga-enricher@0.2.0/manga-enricher-0.2.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/manga-enricher@0.2.0",
           "sha256": "366abf0aef90a114fb2f1e91c75e57e4a6c0b707c18fd685fb4a78dd213ebf35",
           "minShishoVersion": "0.0.28",
           "capabilities": {
@@ -731,6 +741,7 @@
           "releaseDate": "2026-04-13",
           "changelog": "## [0.1.0] - 2026-04-13\n\n### Features\n- Manga metadata enricher plugin (#19)\n",
           "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/manga-enricher@0.1.0/manga-enricher-0.1.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/manga-enricher@0.1.0",
           "sha256": "1b194cc90b76777687f1b07d8316c24b0c317fda63594be41907fd179e4ab7a0",
           "minShishoVersion": "0.0.28",
           "capabilities": {

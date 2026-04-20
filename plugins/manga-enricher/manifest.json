@@ -5,8 +5,7 @@
   "version": "0.2.0",
   "description": "Enriches manga metadata from MangaUpdates and publisher websites (Viz, Kodansha USA, Yen Press, Seven Seas)",
   "minShishoVersion": "0.0.28",
-  "author": "Shisho Team",
-  "homepage": "https://github.com/shishobooks/plugins",
+  "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/manga-enricher",
   "license": "MIT",
   "capabilities": {
     "metadataEnricher": {

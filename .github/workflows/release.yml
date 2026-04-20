@@ -232,6 +232,7 @@ jobs:
             # Update repository.json
             MANIFEST_FILE="dist/$ID/manifest.json"
             DOWNLOAD_URL="$REPO_URL/releases/download/$TAG/$ZIP_NAME"
+            RELEASE_URL="$REPO_URL/releases/tag/$TAG"
             RELEASE_DATE=$(date +%Y-%m-%d)
 
             MANIFEST_VER=$(jq -r '.manifestVersion' "$MANIFEST_FILE")
@@ -245,6 +246,7 @@ jobs:
               --arg releaseDate "$RELEASE_DATE" \
               --arg changelog "$CHANGELOG_SECTION" \
               --arg downloadUrl "$DOWNLOAD_URL" \
+              --arg releaseUrl "$RELEASE_URL" \
               --arg sha256 "$SHA256" \
               --argjson capabilities "$CAPABILITIES" \
               '{
@@ -253,6 +255,7 @@ jobs:
                 releaseDate: $releaseDate,
                 changelog: $changelog,
                 downloadUrl: $downloadUrl,
+                releaseUrl: $releaseUrl,
                 sha256: $sha256
               } + (if $minShishoVersion != "" then {minShishoVersion: $minShishoVersion} else {} end)
                 + (if $capabilities != null then {capabilities: $capabilities} else {} end)')

@@ -5,8 +5,7 @@
   "version": "0.4.0",
   "description": "Enriches book metadata from Goodreads",
   "minShishoVersion": "0.0.23",
-  "author": "Shisho Team",
-  "homepage": "https://github.com/shishobooks/plugins",
+  "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/goodreads-enricher",
   "license": "MIT",
   "capabilities": {
     "metadataEnricher": {
