@@ -1,6 +1,6 @@
 services:
   shisho:
-    image: ghcr.io/shishobooks/shisho:0.0.28
+    image: ghcr.io/shishobooks/shisho:0.0.32
     ports:
       - "8080:5173"
     volumes:
