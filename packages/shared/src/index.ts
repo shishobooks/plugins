@@ -40,6 +40,40 @@ export function normalizeForComparison(text: string): string {
 }
 
 /**
+ * Drop anything after a subtitle delimiter (`:`, en-dash, em-dash).
+ * Lets us compare a base title like "Yesteryear" against a full title like
+ * "Yesteryear: A GMA Book Club Pick" without the subtitle inflating the
+ * edit distance. Use on both sides of a title comparison.
+ */
+export function stripSubtitle(text: string): string {
+  const idx = text.search(/[:–—]/);
+  return idx >= 0 ? text.slice(0, idx).trim() : text;
+}
+
+/**
+ * Confidence (0-1) that `title` matches `query`, based on Levenshtein
+ * distance over normalized strings. Compares both the full titles and
+ * subtitle-stripped versions, returning the higher score so a query like
+ * "Yesteryear" still scores 1.0 against "Yesteryear: A GMA Book Club Pick".
+ * Accepts raw unnormalized text — normalization is applied internally.
+ */
+export function titleMatchConfidence(query: string, title: string): number {
+  return Math.max(
+    rawTitleConfidence(query, title),
+    rawTitleConfidence(stripSubtitle(query), stripSubtitle(title)),
+  );
+}
+
+function rawTitleConfidence(query: string, title: string): number {
+  const nq = normalizeForComparison(query);
+  const nt = normalizeForComparison(title);
+  if (nq.length === 0 || nt.length === 0) return 0;
+  const distance = levenshteinDistance(nq, nt);
+  const maxLen = Math.max(nq.length, nt.length);
+  return 1 - distance / maxLen;
+}
+
+/**
  * Parse month name to 2-digit string.
  * Supports full names (January) and abbreviations (Jan, Sep, Sept).
  */

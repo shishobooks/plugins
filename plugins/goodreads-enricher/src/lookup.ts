@@ -3,14 +3,11 @@ import { cleanTitle, stripImageSuffix, toMetadata } from "./mapping";
 import { parseBookPage } from "./parsing";
 import type { GRAutocompleteResult, GRLookupResult } from "./types";
 import {
-  levenshteinDistance,
   normalizeForComparison,
   stripHTML,
+  titleMatchConfidence,
 } from "@shisho-plugins/shared";
 import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
-
-const MAX_LEVENSHTEIN_DISTANCE = 5;
-const MAX_LEVENSHTEIN_RATIO = 0.4;
 
 /**
  * Search for candidate books using the Goodreads autocomplete API.
@@ -95,21 +92,11 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
     return [];
   }
 
-  const normalizedTarget = normalizeForComparison(title);
-  const filtered: ParsedMetadata[] = [];
+  // Preserve API relevance order; score via titleMatchConfidence so a
+  // subtitle in either side (query or result) doesn't tank the score.
+  const matches: ParsedMetadata[] = [];
 
   for (const result of results) {
-    const normalizedResult = normalizeForComparison(result.bookTitleBare);
-    const distance = levenshteinDistance(normalizedTarget, normalizedResult);
-    const maxLen = Math.max(normalizedTarget.length, normalizedResult.length);
-
-    if (
-      distance > MAX_LEVENSHTEIN_DISTANCE ||
-      (maxLen > 0 && distance / maxLen > MAX_LEVENSHTEIN_RATIO)
-    ) {
-      continue;
-    }
-
     // If we have an author in context, require match
     if (authorName) {
       const normalizedAuthor = normalizeForComparison(authorName);
@@ -119,11 +106,11 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
       }
     }
 
-    const confidence = maxLen > 0 ? 1 - distance / maxLen : 1;
-    filtered.push(enrichSearchResult(result, confidence));
+    const confidence = titleMatchConfidence(title, result.bookTitleBare);
+    matches.push(enrichSearchResult(result, confidence));
   }
 
-  return filtered;
+  return matches;
 }
 
 /**

@@ -14,15 +14,13 @@ import { yenpressScraper } from "./publishers/yenpress";
 import {
   levenshteinDistance,
   normalizeForComparison,
+  titleMatchConfidence,
 } from "@shisho-plugins/shared";
 import type {
   ParsedIdentifier,
   ParsedMetadata,
   SearchContext,
 } from "@shisho/plugin-sdk";
-
-const MAX_LEVENSHTEIN_DISTANCE = 5;
-const MAX_LEVENSHTEIN_RATIO = 0.4;
 
 /** Registry of publisher scrapers. Order matters for the fallback path. */
 const SCRAPERS: readonly PublisherScraper[] = [
@@ -116,105 +114,45 @@ function tryTitleSearch(context: SearchContext): ParsedMetadata[] {
     );
     if (candidates.length === 0) continue;
 
-    const normalizedTarget = normalizeForComparison(attempt);
-
-    // Fast path: compare against search-result primary titles only. Fetch
-    // the full series (for authors/publishers/categories) only when a
-    // candidate matches.
-    const fastResults = matchCandidates(
+    const results = matchCandidates(
       candidates,
-      normalizedTarget,
+      attempt,
       parsed.volumeNumber,
       parsed.edition,
       parsed.seriesTitle,
-      true,
     );
-    if (fastResults.length > 0) return fastResults;
-
-    // Slow path: the search API response does NOT include associated
-    // titles, so we missed any candidate that matches only by an alternate
-    // title (e.g., MU's primary is a Japanese romaji with no English
-    // substring). Fetch the full series for every candidate and re-check
-    // — associated titles are included in the detail response.
-    shisho.log.debug(
-      `No fast-path matches for "${attempt}"; falling back to associated-title check`,
-    );
-    const slowResults = matchCandidates(
-      candidates,
-      normalizedTarget,
-      parsed.volumeNumber,
-      parsed.edition,
-      parsed.seriesTitle,
-      false,
-    );
-    if (slowResults.length > 0) return slowResults;
+    if (results.length > 0) return results;
   }
 
   return [];
 }
 
 /**
- * Common matching loop for both fast and slow paths.
- *
- * In the fast path (`fastPath=true`), confidence is computed from the
- * search-result record (primary title only). For matches we then fetch
- * the full series so the returned metadata has authors/publishers/etc.
- *
- * In the slow path (`fastPath=false`), every candidate is fetched
- * up-front so confidence sees associated titles too. A single fetch per
- * candidate is shared between the confidence check and metadata building.
+ * Fetch the full series for every candidate and score against all of its
+ * titles (primary + associated). Fetching up-front lets the score see
+ * associated titles — e.g., a query of "365 Days to the Wedding" matches
+ * MU's associated English title where the primary is the Japanese romaji.
  */
 function matchCandidates(
   candidates: MUSeries[],
-  normalizedTarget: string,
+  target: string,
   volumeNumber: number | undefined,
   edition: string | undefined,
   searchTitle: string,
-  fastPath: boolean,
 ): ParsedMetadata[] {
   const results: ParsedMetadata[] = [];
 
   for (const candidate of candidates) {
-    if (fastPath) {
-      // The fast-path confidence is computed against the search-result
-      // record, which only carries the primary title — MU's associated
-      // titles aren't included in the search response. Use it as a gate
-      // so we don't waste a fetch on candidates that can't possibly
-      // match, but recompute against the full series once we have it
-      // so the final score reflects the best-matching associated title
-      // (e.g. the English localized title when MU's primary is the
-      // Japanese romaji). Without this, matches like "365 Days to the
-      // Wedding" → "Kekkon Suru tte, Hontou desu ka: 365 Days To The
-      // Wedding" report ~0.77 instead of the ~1.0 they earn against
-      // the associated English title.
-      const gatingConfidence = computeConfidence(normalizedTarget, candidate);
-      if (gatingConfidence === null) continue;
-      const fullSeries = fetchSeries(candidate.series_id);
-      if (!fullSeries) continue;
-      const finalConfidence =
-        computeConfidence(normalizedTarget, fullSeries) ?? gatingConfidence;
-      const metadata = buildMetadata(
-        fullSeries,
-        volumeNumber,
-        edition,
-        searchTitle,
-      );
-      metadata.confidence = finalConfidence;
-      results.push(metadata);
-    } else {
-      const fullSeries = fetchSeries(candidate.series_id);
-      if (!fullSeries) continue;
-      const confidence = computeConfidence(normalizedTarget, fullSeries);
-      if (confidence === null) continue;
-      const metadata = buildMetadata(
-        fullSeries,
-        volumeNumber,
-        edition,
-        searchTitle,
-      );
-      metadata.confidence = confidence;
-      results.push(metadata);
-    }
+    const fullSeries = fetchSeries(candidate.series_id);
+    if (!fullSeries) continue;
+    const metadata = buildMetadata(
+      fullSeries,
+      volumeNumber,
+      edition,
+      searchTitle,
+    );
+    metadata.confidence = computeConfidence(target, fullSeries);
+    results.push(metadata);
   }
 
   return results;
@@ -241,60 +179,44 @@ function collectSeriesTitles(series: MUSeries): string[] {
 }
 
 /**
- * Compute a confidence score for a search result against the target query.
- * Returns null if no title passes any threshold.
+ * Compute a confidence score for a series against the target query.
  *
- * Two strategies are tried for each candidate title (primary + associated):
+ * Two strategies are tried for each candidate title (primary + associated),
+ * taking the best across them:
  * 1. Substring containment — if the target is contained in the candidate
  *    (or vice versa), that's a strong signal even when edit distance is
  *    large. This handles titles like "Japanese Romaji: English Title"
  *    where the query matches only the English portion.
- * 2. Levenshtein distance — fallback for near-misses that aren't strict
- *    substrings (typos, punctuation differences).
+ * 2. Subtitle-aware Levenshtein — compares both the full strings and
+ *    subtitle-stripped versions, taking the higher score so "Yesteryear"
+ *    matches "Yesteryear: A GMA Book Club Pick" at 1.0.
  */
-function computeConfidence(
-  normalizedTarget: string,
-  candidate: MUSeries,
-): number | null {
-  const candidateTitles = collectSeriesTitles(candidate);
+function computeConfidence(target: string, candidate: MUSeries): number {
+  const normalizedTarget = normalizeForComparison(target);
+  let bestConfidence = 0;
 
-  let bestConfidence: number | null = null;
-
-  for (const title of candidateTitles) {
+  for (const title of collectSeriesTitles(candidate)) {
     const normalized = normalizeForComparison(title);
     const maxLen = Math.max(normalizedTarget.length, normalized.length);
     const minLen = Math.min(normalizedTarget.length, normalized.length);
 
-    let confidence: number | null = null;
-
-    // Strategy 1: substring containment.
+    // Take the max of both strategies: substring containment (strong signal
+    // for "Romaji: English" style titles) and subtitle-aware Levenshtein
+    // (catches near-misses and subtitle variants).
+    let confidence = titleMatchConfidence(target, title);
     if (
       normalizedTarget.length >= MIN_SUBSTRING_LENGTH &&
       minLen > 0 &&
       (normalized.includes(normalizedTarget) ||
         normalizedTarget.includes(normalized))
     ) {
-      // Scale confidence by how much of the longer title the shorter one
-      // covers, with a floor of 0.6 so substring hits always beat the
-      // Levenshtein cutoff.
-      confidence = 0.6 + 0.4 * (minLen / maxLen);
-    } else {
-      // Strategy 2: Levenshtein fallback.
-      const distance = levenshteinDistance(normalizedTarget, normalized);
-      if (
-        distance <= MAX_LEVENSHTEIN_DISTANCE &&
-        (maxLen === 0 || distance / maxLen <= MAX_LEVENSHTEIN_RATIO)
-      ) {
-        confidence = maxLen > 0 ? 1 - distance / maxLen : 1;
-      }
+      // Scale by how much of the longer title the shorter one covers, with a
+      // floor of 0.6 so substring hits beat weak Levenshtein scores.
+      const substringConfidence = 0.6 + 0.4 * (minLen / maxLen);
+      if (substringConfidence > confidence) confidence = substringConfidence;
     }
 
-    if (
-      confidence !== null &&
-      (bestConfidence === null || confidence > bestConfidence)
-    ) {
-      bestConfidence = confidence;
-    }
+    if (confidence > bestConfidence) bestConfidence = confidence;
   }
 
   return bestConfidence;

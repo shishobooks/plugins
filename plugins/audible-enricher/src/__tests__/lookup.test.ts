@@ -177,7 +177,7 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(1);
     });
 
-    it("filters out results with high Levenshtein distance", () => {
+    it("keeps loosely-matching results with low confidence", () => {
       setupDefaultMocks();
       mockedSearchProducts.mockReturnValue([
         { ...sampleProduct, title: "A Completely Different Title Altogether" },
@@ -186,7 +186,8 @@ describe("searchForBooks", () => {
       const context = makeContext({ query: "Project Hail Mary" });
       const results = searchForBooks(context);
 
-      expect(results).toHaveLength(0);
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBeLessThan(0.5);
     });
 
     it("computes confidence from Levenshtein distance", () => {
@@ -198,6 +199,37 @@ describe("searchForBooks", () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].confidence).toBe(1.0);
+    });
+
+    it("gives high confidence when query matches title ignoring subtitle", () => {
+      setupDefaultMocks();
+      mockedSearchProducts.mockReturnValue([
+        { ...sampleProduct, title: "Yesteryear: A GMA Book Club Pick" },
+      ]);
+
+      const context = makeContext({ query: "Yesteryear" });
+      const results = searchForBooks(context);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(1.0);
+    });
+
+    it("preserves API result order", () => {
+      setupDefaultMocks();
+      mockedSearchProducts.mockReturnValue([
+        { ...sampleProduct, asin: "A1", title: "Project Hail Mary" },
+        { ...sampleProduct, asin: "A2", title: "Project Hail" },
+        { ...sampleProduct, asin: "A3", title: "Project Hail Mary" },
+      ]);
+
+      const context = makeContext({ query: "Project Hail Mary" });
+      const results = searchForBooks(context);
+
+      expect(results.map((r) => r.identifiers?.[0].value)).toEqual([
+        "A1",
+        "A2",
+        "A3",
+      ]);
     });
 
     it("enriches with Audnexus genres, tags, and cover on search results", () => {
