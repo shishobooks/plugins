@@ -5,8 +5,7 @@
   "version": "0.3.1",
   "description": "Enriches book metadata from Open Library",
   "minShishoVersion": "0.0.23",
-  "author": "Shisho Team",
-  "homepage": "https://github.com/shishobooks/plugins",
+  "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/open-library-enricher",
   "license": "MIT",
   "capabilities": {
     "metadataEnricher": {

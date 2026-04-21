@@ -5,8 +5,7 @@
   "version": "0.1.0",
   "description": "Enriches audiobook metadata from Audible and Audnexus",
   "minShishoVersion": "0.0.28",
-  "author": "Shisho Team",
-  "homepage": "https://github.com/shishobooks/plugins",
+  "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/audible-enricher",
   "license": "MIT",
   "capabilities": {
     "metadataEnricher": {

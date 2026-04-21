@@ -21,7 +21,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
-    "@shisho/plugin-sdk": "0.0.28",
+    "@shisho/plugin-sdk": "0.0.32",
     "@types/node": "^25.6.0",
     "concurrently": "^9.1.2",
     "esbuild": "^0.24.0",
