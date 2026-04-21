@@ -12,6 +12,62 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/open-library-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.4.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-21",
+          "changelog": "## [0.4.0] - 2026-04-21\n\n### Other\n- Bump Shisho to 0.0.32, polish metadata, rework logos (#24)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.4.0/open-library-enricher-0.4.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/open-library-enricher@0.4.0",
+          "sha256": "7ce388a34f552805575c56e9ba98bdd13dad2652e47e36062f4be7bae2a07a3f",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Open Library API",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "narrators",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Open Library API and fetches cover images",
+              "domains": [
+                "*.openlibrary.org",
+                "*.archive.org"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "openlibrary_work",
+                "name": "Open Library Work",
+                "urlTemplate": "https://openlibrary.org/works/{value}",
+                "pattern": "^OL\\d+W$"
+              },
+              {
+                "id": "openlibrary_edition",
+                "name": "Open Library Edition",
+                "urlTemplate": "https://openlibrary.org/books/{value}",
+                "pattern": "^OL\\d+M$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.3.1",
           "manifestVersion": 1,
           "releaseDate": "2026-04-12",
@@ -245,6 +301,56 @@
       "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/goodreads-enricher",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
+        {
+          "version": "0.5.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-21",
+          "changelog": "## [0.5.0] - 2026-04-21\n\n### Other\n- Bump Shisho to 0.0.32, polish metadata, rework logos (#24)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.5.0/goodreads-enricher-0.5.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.5.0",
+          "sha256": "97fd444fdc6d4f5882f6cf1efa19721e8eb4738876d84d5c01955e114f70669b",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
         {
           "version": "0.4.0",
           "manifestVersion": 1,
@@ -606,6 +712,68 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/audible-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.2.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-21",
+          "changelog": "## [0.2.0] - 2026-04-21\n\n### Other\n- Bump Shisho to 0.0.32, polish metadata, rework logos (#24)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/audible-enricher@0.2.0/audible-enricher-0.2.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/audible-enricher@0.2.0",
+          "sha256": "b94718c430faa35c1a78e610b556908b01d06ea2a43a1ea188da223a887f32b1",
+          "minShishoVersion": "0.0.28",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches audiobook metadata from Audible catalog API and Audnexus",
+              "fileTypes": [
+                "m4b"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "narrators",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url",
+                "language",
+                "abridged"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Audible catalog API, Audnexus API, and fetches cover images from Amazon CDN",
+              "domains": [
+                "api.audible.com",
+                "api.audible.co.uk",
+                "api.audible.de",
+                "api.audible.fr",
+                "api.audible.it",
+                "api.audible.es",
+                "api.audible.ca",
+                "api.audible.com.au",
+                "api.audible.in",
+                "api.audible.co.jp",
+                "api.audible.com.br",
+                "api.audnex.us",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "asin",
+                "name": "ASIN",
+                "urlTemplate": "https://www.audible.com/pd/{value}",
+                "pattern": "^(B[\\dA-Z]{9}|\\d{9}[\\dX])$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.1.0",
           "manifestVersion": 1,
           "releaseDate": "2026-04-12",
@@ -677,6 +845,64 @@
       "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/manga-enricher",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/manga-enricher/logo.svg",
       "versions": [
+        {
+          "version": "0.3.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-21",
+          "changelog": "## [0.3.0] - 2026-04-21\n\n### Other\n- Bump Shisho to 0.0.32, polish metadata, rework logos (#24)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/manga-enricher@0.3.0/manga-enricher-0.3.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/manga-enricher@0.3.0",
+          "sha256": "7b042817dd0eae7386da7d10ff8c53dfea2d6844e58f22c42ba9e2b666524c93",
+          "minShishoVersion": "0.0.28",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches manga metadata from MangaUpdates and scrapes per-volume details from Viz, Kodansha USA, Yen Press, and Seven Seas",
+              "fileTypes": [
+                "cbz",
+                "cbr"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "description",
+                "publisher",
+                "imprint",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url",
+                "language"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls the MangaUpdates API and scrapes Viz Media, Kodansha USA, Yen Press, and Seven Seas product pages",
+              "domains": [
+                "api.mangaupdates.com",
+                "cdn.mangaupdates.com",
+                "www.viz.com",
+                "dw9to29mmj727.cloudfront.net",
+                "kodansha.us",
+                "production.image.azuki.co",
+                "yenpress.com",
+                "images.yenpress.com",
+                "sevenseasentertainment.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "mangaupdates_series",
+                "name": "MangaUpdates Series",
+                "urlTemplate": "https://www.mangaupdates.com/series.html?id={value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
         {
           "version": "0.2.0",
           "manifestVersion": 1,

@@ -1,6 +1,6 @@
 {
   "name": "@shisho-plugins/manga-enricher",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "dependencies": {
     "@shisho-plugins/shared": "workspace:*"

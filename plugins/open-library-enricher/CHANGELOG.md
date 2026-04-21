@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-21
+
+### Other
+- Bump Shisho to 0.0.32, polish metadata, rework logos (#24)
+
+
 ## [0.3.1] - 2026-04-12
 
 ### Bug Fixes
