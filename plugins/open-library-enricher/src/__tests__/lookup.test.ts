@@ -226,7 +226,7 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(0);
     });
 
-    it("filters out results with high Levenshtein distance", () => {
+    it("keeps loosely-matching results with low confidence", () => {
       const context = makeContext({
         query: "The Hobbit",
       });
@@ -244,13 +244,12 @@ describe("searchForBooks", () => {
       mockedSearchBooks.mockReturnValue(searchResult);
 
       const results = searchForBooks(context);
-      expect(results).toHaveLength(0);
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBeLessThan(0.5);
     });
 
-    it("filters out short title matches that exceed relative threshold", () => {
-      const context = makeContext({
-        query: "Dune",
-      });
+    it("gives high confidence when query matches title ignoring subtitle", () => {
+      const context = makeContext({ query: "The Hobbit" });
 
       const searchResult: OLSearchResult = {
         numFound: 1,
@@ -258,14 +257,15 @@ describe("searchForBooks", () => {
         docs: [
           {
             key: "/works/OL999W",
-            title: "Duneland", // distance 4, but ratio 4/8 = 0.5 > 0.4
+            title: "The Hobbit: An Unexpected Companion",
           },
         ],
       };
       mockedSearchBooks.mockReturnValue(searchResult);
 
       const results = searchForBooks(context);
-      expect(results).toHaveLength(0);
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(1.0);
     });
   });
 

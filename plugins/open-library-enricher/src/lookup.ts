@@ -2,15 +2,12 @@ import { fetchByISBN, fetchEdition, fetchWork, searchBooks } from "./api";
 import type { OLEdition, OLSearchDoc, OLWork } from "./types";
 import {
   extractOLId,
-  levenshteinDistance,
   normalizeDescription,
   normalizeForComparison,
   parseOLDate,
 } from "./utils";
+import { titleMatchConfidence } from "@shisho-plugins/shared";
 import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
-
-const MAX_LEVENSHTEIN_DISTANCE = 5;
-const MAX_LEVENSHTEIN_RATIO = 0.4;
 
 /**
  * Search for candidate books in Open Library using the priority lookup chain:
@@ -144,22 +141,11 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
     return [];
   }
 
-  // Filter and convert matching results
+  // Preserve API relevance order; score via titleMatchConfidence so a
+  // subtitle in either side (query or result) doesn't tank the score.
   const results: ParsedMetadata[] = [];
-  const normalizedTarget = normalizeForComparison(title);
 
   for (const doc of searchResult.docs) {
-    const normalizedDoc = normalizeForComparison(doc.title);
-    const distance = levenshteinDistance(normalizedTarget, normalizedDoc);
-
-    const maxLen = Math.max(normalizedTarget.length, normalizedDoc.length);
-    if (
-      distance > MAX_LEVENSHTEIN_DISTANCE ||
-      (maxLen > 0 && distance / maxLen > MAX_LEVENSHTEIN_RATIO)
-    ) {
-      continue;
-    }
-
     // If we have an author in context, require overlap
     if (authorName) {
       if (!doc.author_name) {
@@ -177,7 +163,7 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
       }
     }
 
-    const confidence = maxLen > 0 ? 1 - distance / maxLen : 1;
+    const confidence = titleMatchConfidence(title, doc.title);
     results.push(searchDocToResult(doc, confidence));
   }
 

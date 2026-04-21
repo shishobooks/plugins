@@ -4,6 +4,8 @@ import {
   parseMonth,
   slugify,
   stripHTML,
+  stripSubtitle,
+  titleMatchConfidence,
 } from "../index";
 import { describe, expect, it } from "vitest";
 
@@ -193,5 +195,57 @@ describe("stripHTML", () => {
 
   it("trims whitespace", () => {
     expect(stripHTML("  <p>text</p>  ")).toBe("text");
+  });
+});
+
+describe("stripSubtitle", () => {
+  it("cuts at colon", () => {
+    expect(stripSubtitle("Yesteryear: A GMA Book Club Pick")).toBe(
+      "Yesteryear",
+    );
+  });
+
+  it("cuts at em-dash", () => {
+    expect(stripSubtitle("Title — Subtitle")).toBe("Title");
+  });
+
+  it("cuts at en-dash", () => {
+    expect(stripSubtitle("Title – Subtitle")).toBe("Title");
+  });
+
+  it("returns input unchanged when no delimiter present", () => {
+    expect(stripSubtitle("Yesteryear")).toBe("Yesteryear");
+  });
+
+  it("trims trailing whitespace", () => {
+    expect(stripSubtitle("Title : Subtitle")).toBe("Title");
+  });
+});
+
+describe("titleMatchConfidence", () => {
+  it("returns 1.0 for identical titles", () => {
+    expect(titleMatchConfidence("The Hobbit", "The Hobbit")).toBe(1);
+  });
+
+  it("returns 1.0 when query matches title minus subtitle", () => {
+    expect(
+      titleMatchConfidence("Yesteryear", "Yesteryear: A GMA Book Club Pick"),
+    ).toBe(1);
+  });
+
+  it("returns 1.0 when title matches query minus subtitle", () => {
+    expect(
+      titleMatchConfidence("Yesteryear: A GMA Book Club Pick", "Yesteryear"),
+    ).toBe(1);
+  });
+
+  it("returns lower confidence for unrelated titles", () => {
+    expect(
+      titleMatchConfidence("The Hobbit", "Pride and Prejudice"),
+    ).toBeLessThan(0.5);
+  });
+
+  it("is tolerant of case and punctuation differences", () => {
+    expect(titleMatchConfidence("the hobbit!", "The Hobbit")).toBe(1);
   });
 });

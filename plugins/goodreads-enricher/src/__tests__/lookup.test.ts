@@ -171,7 +171,7 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(0);
     });
 
-    it("filters out results with high Levenshtein distance", () => {
+    it("keeps loosely-matching results with low confidence", () => {
       const context = makeContext({
         query: "The Hobbit",
       });
@@ -180,9 +180,25 @@ describe("searchForBooks", () => {
         bookTitleBare: "A Completely Different Title Altogether",
       };
       mockedSearchAutocomplete.mockReturnValue([differentTitle]);
+      mockBookPageSuccess();
 
       const results = searchForBooks(context);
-      expect(results).toHaveLength(0);
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBeLessThan(0.5);
+    });
+
+    it("gives high confidence when query matches title ignoring subtitle", () => {
+      const context = makeContext({ query: "The Hobbit" });
+      const withSubtitle: GRAutocompleteResult = {
+        ...sampleAutocomplete,
+        bookTitleBare: "The Hobbit: The Unexpected Journey Companion",
+      };
+      mockedSearchAutocomplete.mockReturnValue([withSubtitle]);
+      mockBookPageSuccess();
+
+      const results = searchForBooks(context);
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(1.0);
     });
 
     it("computes confidence from Levenshtein distance", () => {

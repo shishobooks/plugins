@@ -149,7 +149,7 @@ describe("searchForManga", () => {
       expect(searchForManga(context)).toEqual([]);
     });
 
-    it("filters out results that fail the Levenshtein threshold", () => {
+    it("keeps loosely-matching results with low confidence", () => {
       setupDefaultMocks();
       mockedSearchSeries.mockReturnValue([
         { ...onePieceSeries, title: "A Totally Different Long Title Here" },
@@ -160,7 +160,24 @@ describe("searchForManga", () => {
       });
 
       const context = makeContext({ query: "One Piece v01.cbz" });
-      expect(searchForManga(context)).toEqual([]);
+      const results = searchForManga(context);
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBeLessThan(0.5);
+    });
+
+    it("gives high confidence when query matches title ignoring subtitle", () => {
+      setupDefaultMocks();
+      const withSubtitle: MUSeries = {
+        ...onePieceSeries,
+        title: "Yesteryear: A GMA Book Club Pick",
+      };
+      mockedSearchSeries.mockReturnValue([withSubtitle]);
+      mockedFetchSeries.mockReturnValue(withSubtitle);
+
+      const context = makeContext({ query: "Yesteryear v01.cbz" });
+      const results = searchForManga(context);
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(1.0);
     });
 
     it("computes confidence from Levenshtein distance", () => {

@@ -6,14 +6,8 @@ import {
 } from "./api";
 import { audibleToMetadata, audnexusToMetadata } from "./mapping";
 import type { AudibleProduct } from "./types";
-import {
-  levenshteinDistance,
-  normalizeForComparison,
-} from "@shisho-plugins/shared";
+import { titleMatchConfidence } from "@shisho-plugins/shared";
 import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
-
-const MAX_LEVENSHTEIN_DISTANCE = 5;
-const MAX_LEVENSHTEIN_RATIO = 0.4;
 
 /**
  * Search for candidate audiobooks.
@@ -102,25 +96,13 @@ function tryTitleAuthorSearch(
     }
   }
 
-  // Filter by Levenshtein distance and compute confidence
-  const normalizedTarget = normalizeForComparison(title);
+  // Preserve API relevance order; score each result via titleMatchConfidence
+  // which handles subtitle variants ("Yesteryear" vs "Yesteryear: A GMA …").
   const results: ParsedMetadata[] = [];
 
   for (const { product, marketplace } of candidates) {
-    const normalizedResult = normalizeForComparison(product.title);
-    const distance = levenshteinDistance(normalizedTarget, normalizedResult);
-    const maxLen = Math.max(normalizedTarget.length, normalizedResult.length);
-
-    if (
-      distance > MAX_LEVENSHTEIN_DISTANCE ||
-      (maxLen > 0 && distance / maxLen > MAX_LEVENSHTEIN_RATIO)
-    ) {
-      continue;
-    }
-
-    const confidence = maxLen > 0 ? 1 - distance / maxLen : 1;
     const metadata = audibleToMetadata(product, marketplace);
-    metadata.confidence = confidence;
+    metadata.confidence = titleMatchConfidence(title, product.title);
 
     // Enrich with Audnexus data (genres, tags, cover, series, identifiers)
     // Audnexus provides better series selection (primary vs first-in-array),
