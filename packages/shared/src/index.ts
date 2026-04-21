@@ -66,9 +66,10 @@ export function titleMatchConfidence(query: string, title: string): number {
 function rawTitleConfidence(query: string, title: string): number {
   const nq = normalizeForComparison(query);
   const nt = normalizeForComparison(title);
+  if (nq.length === 0 || nt.length === 0) return 0;
   const distance = levenshteinDistance(nq, nt);
   const maxLen = Math.max(nq.length, nt.length);
-  return maxLen > 0 ? 1 - distance / maxLen : 1;
+  return 1 - distance / maxLen;
 }
 
 /**

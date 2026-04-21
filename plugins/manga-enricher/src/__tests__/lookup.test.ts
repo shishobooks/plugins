@@ -265,11 +265,11 @@ describe("searchForManga", () => {
       expect(results[0].title).toBe("Demon Slayer: Kimetsu no Yaiba v001");
     });
 
-    it("falls back to fetching full series when no primary title matches", () => {
+    it("scores candidates against associated titles, not just the primary", () => {
       // MangaUpdates search results don't include associated titles, so
-      // when the primary title alone doesn't match the query, the lookup
-      // must fetch the full series record (which DOES have associated
-      // titles) and re-run the confidence check.
+      // candidates whose primary title doesn't match the query must still
+      // score correctly once the full series record (with its associated
+      // titles) is fetched.
       setupDefaultMocks();
       const searchResult: MUSeries = {
         series_id: 999,
@@ -287,8 +287,6 @@ describe("searchForManga", () => {
       const context = makeContext({ query: "Attack on Titan v01.cbz" });
       const results = searchForManga(context);
 
-      // Fetch is called once (slow path): primary-title check fails, so
-      // we fetch full series to access associated titles.
       expect(mockedFetchSeries).toHaveBeenCalledWith(999);
       expect(results).toHaveLength(1);
       expect(results[0].seriesNumber).toBe(1);
@@ -296,14 +294,6 @@ describe("searchForManga", () => {
     });
 
     it("matches via substring when the query is contained in the candidate title", () => {
-      // MangaUpdates' search response includes only the primary title
-      // (typically Japanese romaji), so the fast path's substring check
-      // must accept "365 Days to the Wedding" as matching "Kekkon Suru
-      // tte, Hontou desu ka: 365 Days To The Wedding" even though the
-      // Levenshtein distance is huge. Once the series is fetched, the
-      // associated titles include the English form, which pickCanonical-
-      // Title then surfaces as the display name.
-      //
       // The reported confidence should reflect the BEST-matching title
       // across primary + associated (not just the primary). Here the
       // associated title "365 Days to the Wedding" is a perfect match

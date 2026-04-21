@@ -94,7 +94,7 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
 
   // Preserve API relevance order; score via titleMatchConfidence so a
   // subtitle in either side (query or result) doesn't tank the score.
-  const filtered: ParsedMetadata[] = [];
+  const matches: ParsedMetadata[] = [];
 
   for (const result of results) {
     // If we have an author in context, require match
@@ -107,10 +107,10 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
     }
 
     const confidence = titleMatchConfidence(title, result.bookTitleBare);
-    filtered.push(enrichSearchResult(result, confidence));
+    matches.push(enrichSearchResult(result, confidence));
   }
 
-  return filtered;
+  return matches;
 }
 
 /**
