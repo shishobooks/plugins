@@ -12,6 +12,62 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/open-library-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.4.1",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-21",
+          "changelog": "## [0.4.1] - 2026-04-21\n\n### Bug Fixes\n- Stop dropping subtitle variants from enricher search results (#25)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/open-library-enricher@0.4.1/open-library-enricher-0.4.1.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/open-library-enricher@0.4.1",
+          "sha256": "4c2c06dd6192745a0ee89e85284758ccb0df1571e8f5304d3af8b9f24e5678d5",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Open Library API",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "narrators",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Open Library API and fetches cover images",
+              "domains": [
+                "*.openlibrary.org",
+                "*.archive.org"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "openlibrary_work",
+                "name": "Open Library Work",
+                "urlTemplate": "https://openlibrary.org/works/{value}",
+                "pattern": "^OL\\d+W$"
+              },
+              {
+                "id": "openlibrary_edition",
+                "name": "Open Library Edition",
+                "urlTemplate": "https://openlibrary.org/books/{value}",
+                "pattern": "^OL\\d+M$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.4.0",
           "manifestVersion": 1,
           "releaseDate": "2026-04-21",
@@ -301,6 +357,56 @@
       "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/goodreads-enricher",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
+        {
+          "version": "0.5.1",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-21",
+          "changelog": "## [0.5.1] - 2026-04-21\n\n### Bug Fixes\n- Stop dropping subtitle variants from enricher search results (#25)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.5.1/goodreads-enricher-0.5.1.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.5.1",
+          "sha256": "81b20b17d144c5e79d2ef615a07400db47e82f8bf4605c232cfe0bfea1bd518c",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
         {
           "version": "0.5.0",
           "manifestVersion": 1,
@@ -712,6 +818,68 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/audible-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.2.1",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-21",
+          "changelog": "## [0.2.1] - 2026-04-21\n\n### Bug Fixes\n- Stop dropping subtitle variants from enricher search results (#25)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/audible-enricher@0.2.1/audible-enricher-0.2.1.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/audible-enricher@0.2.1",
+          "sha256": "0332acf365c0362536a81962216f9ed71ec33b5a5efd8afbb82956f9a9b82101",
+          "minShishoVersion": "0.0.28",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches audiobook metadata from Audible catalog API and Audnexus",
+              "fileTypes": [
+                "m4b"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "narrators",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url",
+                "language",
+                "abridged"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Audible catalog API, Audnexus API, and fetches cover images from Amazon CDN",
+              "domains": [
+                "api.audible.com",
+                "api.audible.co.uk",
+                "api.audible.de",
+                "api.audible.fr",
+                "api.audible.it",
+                "api.audible.es",
+                "api.audible.ca",
+                "api.audible.com.au",
+                "api.audible.in",
+                "api.audible.co.jp",
+                "api.audible.com.br",
+                "api.audnex.us",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "asin",
+                "name": "ASIN",
+                "urlTemplate": "https://www.audible.com/pd/{value}",
+                "pattern": "^(B[\\dA-Z]{9}|\\d{9}[\\dX])$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.2.0",
           "manifestVersion": 1,
           "releaseDate": "2026-04-21",
@@ -845,6 +1013,64 @@
       "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/manga-enricher",
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/manga-enricher/logo.svg",
       "versions": [
+        {
+          "version": "0.3.1",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-21",
+          "changelog": "## [0.3.1] - 2026-04-21\n\n### Bug Fixes\n- Stop dropping subtitle variants from enricher search results (#25)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/manga-enricher@0.3.1/manga-enricher-0.3.1.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/manga-enricher@0.3.1",
+          "sha256": "7c7263f274f57d5448c349e7ab681973061b8f8576f80fa32b7923a6f6e92254",
+          "minShishoVersion": "0.0.28",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches manga metadata from MangaUpdates and scrapes per-volume details from Viz, Kodansha USA, Yen Press, and Seven Seas",
+              "fileTypes": [
+                "cbz",
+                "cbr"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "description",
+                "publisher",
+                "imprint",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url",
+                "language"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls the MangaUpdates API and scrapes Viz Media, Kodansha USA, Yen Press, and Seven Seas product pages",
+              "domains": [
+                "api.mangaupdates.com",
+                "cdn.mangaupdates.com",
+                "www.viz.com",
+                "dw9to29mmj727.cloudfront.net",
+                "kodansha.us",
+                "production.image.azuki.co",
+                "yenpress.com",
+                "images.yenpress.com",
+                "sevenseasentertainment.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "mangaupdates_series",
+                "name": "MangaUpdates Series",
+                "urlTemplate": "https://www.mangaupdates.com/series.html?id={value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
         {
           "version": "0.3.0",
           "manifestVersion": 1,

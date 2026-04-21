@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-04-21
+
+### Bug Fixes
+- Stop dropping subtitle variants from enricher search results (#25)
+
+
 ## [0.2.0] - 2026-04-21
 
 ### Other

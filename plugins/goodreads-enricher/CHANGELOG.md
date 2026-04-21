@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-04-21
+
+### Bug Fixes
+- Stop dropping subtitle variants from enricher search results (#25)
+
+
 ## [0.5.0] - 2026-04-21
 
 ### Other
