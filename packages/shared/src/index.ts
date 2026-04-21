@@ -55,6 +55,7 @@ export function stripSubtitle(text: string): string {
  * distance over normalized strings. Compares both the full titles and
  * subtitle-stripped versions, returning the higher score so a query like
  * "Yesteryear" still scores 1.0 against "Yesteryear: A GMA Book Club Pick".
+ * Accepts raw unnormalized text — normalization is applied internally.
  */
 export function titleMatchConfidence(query: string, title: string): number {
   return Math.max(

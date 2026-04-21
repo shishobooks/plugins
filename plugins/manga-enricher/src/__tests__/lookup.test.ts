@@ -290,7 +290,9 @@ describe("searchForManga", () => {
       expect(mockedFetchSeries).toHaveBeenCalledWith(999);
       expect(results).toHaveLength(1);
       expect(results[0].seriesNumber).toBe(1);
-      expect(results[0].confidence).toBeGreaterThanOrEqual(0.6);
+      // Exact match on an associated title should score 1.0, not just
+      // clear the old substring floor.
+      expect(results[0].confidence).toBe(1.0);
     });
 
     it("matches via substring when the query is contained in the candidate title", () => {
