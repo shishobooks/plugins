@@ -99,6 +99,24 @@ describe("toMetadata", () => {
       expect(metadata.subtitle).toBe("A Brief History of Humankind");
     });
 
+    it("splits the work title fallback when edition title is empty", () => {
+      const result = makeResult({
+        edition: {
+          key: "/books/OL123M",
+          title: "",
+        },
+        work: {
+          key: "/works/OL456W",
+          title: "Sapiens: A Brief History of Humankind",
+        },
+      });
+      mockedFetchCover.mockReturnValue(null);
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("Sapiens");
+      expect(metadata.subtitle).toBe("A Brief History of Humankind");
+    });
+
     it("keeps the full title when edition subtitle is present", () => {
       const result = makeResult({
         edition: {
