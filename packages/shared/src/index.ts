@@ -55,7 +55,10 @@ export function stripSubtitle(text: string): string {
  * Returns the original title and no subtitle if there is no colon or
  * either side would be empty after trimming. Only splits on `:` — not
  * dashes — since a colon is the conventional subtitle delimiter on
- * book covers and catalog data.
+ * book covers and catalog data, while dashes are too ambiguous to
+ * commit to a `subtitle` field. (`stripSubtitle` above is less picky
+ * because it is only used for title-match scoring, where over-stripping
+ * is safe.)
  */
 export function splitTitleSubtitle(title: string): {
   title: string;
