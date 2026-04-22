@@ -51,6 +51,25 @@ export function stripSubtitle(text: string): string {
 }
 
 /**
+ * Split a title on its first colon into base title and subtitle.
+ * Returns the original title and no subtitle if there is no colon or
+ * either side would be empty after trimming. Only splits on `:` — not
+ * dashes — since a colon is the conventional subtitle delimiter on
+ * book covers and catalog data.
+ */
+export function splitTitleSubtitle(title: string): {
+  title: string;
+  subtitle?: string;
+} {
+  const idx = title.indexOf(":");
+  if (idx < 0) return { title };
+  const base = title.slice(0, idx).trim();
+  const sub = title.slice(idx + 1).trim();
+  if (!base || !sub) return { title };
+  return { title: base, subtitle: sub };
+}
+
+/**
  * Confidence (0-1) that `title` matches `query`, based on Levenshtein
  * distance over normalized strings. Compares both the full titles and
  * subtitle-stripped versions, returning the higher score so a query like

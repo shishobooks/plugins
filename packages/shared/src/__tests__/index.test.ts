@@ -3,6 +3,7 @@ import {
   normalizeForComparison,
   parseMonth,
   slugify,
+  splitTitleSubtitle,
   stripHTML,
   stripSubtitle,
   titleMatchConfidence,
@@ -247,5 +248,43 @@ describe("titleMatchConfidence", () => {
 
   it("is tolerant of case and punctuation differences", () => {
     expect(titleMatchConfidence("the hobbit!", "The Hobbit")).toBe(1);
+  });
+});
+
+describe("splitTitleSubtitle", () => {
+  it("splits on the first colon", () => {
+    expect(splitTitleSubtitle("Dune: A Novel")).toEqual({
+      title: "Dune",
+      subtitle: "A Novel",
+    });
+  });
+
+  it("treats only the first colon as the delimiter", () => {
+    expect(splitTitleSubtitle("A: B: C")).toEqual({
+      title: "A",
+      subtitle: "B: C",
+    });
+  });
+
+  it("trims whitespace around both halves", () => {
+    expect(splitTitleSubtitle("Dune  :   A Novel  ")).toEqual({
+      title: "Dune",
+      subtitle: "A Novel",
+    });
+  });
+
+  it("returns the original title when there is no colon", () => {
+    expect(splitTitleSubtitle("The Hobbit")).toEqual({ title: "The Hobbit" });
+  });
+
+  it("does not split on en-dashes or em-dashes", () => {
+    expect(splitTitleSubtitle("Foo – Bar")).toEqual({ title: "Foo – Bar" });
+    expect(splitTitleSubtitle("Foo — Bar")).toEqual({ title: "Foo — Bar" });
+  });
+
+  it("does not split when either half would be empty", () => {
+    expect(splitTitleSubtitle(":foo")).toEqual({ title: ":foo" });
+    expect(splitTitleSubtitle("foo:")).toEqual({ title: "foo:" });
+    expect(splitTitleSubtitle("foo:   ")).toEqual({ title: "foo:   " });
   });
 });

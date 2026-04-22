@@ -1,5 +1,9 @@
 import type { GRLookupResult } from "./types";
-import { parseMonth, stripHTML } from "@shisho-plugins/shared";
+import {
+  parseMonth,
+  splitTitleSubtitle,
+  stripHTML,
+} from "@shisho-plugins/shared";
 import type {
   ParsedAuthor,
   ParsedIdentifier,
@@ -15,11 +19,16 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
   const { autocomplete, pageData } = result;
   const metadata: ParsedMetadata = {};
 
-  // Title - prefer autocomplete bare title (no series suffix), fall back to JSON-LD name
+  // Title - prefer autocomplete bare title (no series suffix), fall back to JSON-LD name.
+  // Goodreads has no subtitle field; derive one from a title with a colon.
   const rawTitle =
     autocomplete?.bookTitleBare ?? pageData.schemaOrg?.name ?? undefined;
   if (rawTitle) {
-    metadata.title = cleanTitle(rawTitle);
+    const split = splitTitleSubtitle(cleanTitle(rawTitle));
+    metadata.title = split.title;
+    if (split.subtitle) {
+      metadata.subtitle = split.subtitle;
+    }
   }
 
   // Authors - prefer JSON-LD authors (more complete), fall back to autocomplete

@@ -164,6 +164,39 @@ describe("toMetadata", () => {
       const metadata = toMetadata(result);
       expect(metadata.title).toBe("The Hobbit, or There and Back Again");
     });
+
+    it("splits subtitle from a title containing a colon", () => {
+      const result = makeResult({
+        autocomplete: {
+          ...baseAutocomplete,
+          bookTitleBare: "Sapiens: A Brief History of Humankind",
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("Sapiens");
+      expect(metadata.subtitle).toBe("A Brief History of Humankind");
+    });
+
+    it("splits subtitle after stripping series suffix", () => {
+      const result = makeResult({
+        autocomplete: {
+          ...baseAutocomplete,
+          bookTitleBare: "Dune: A Novel (Dune, #1)",
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("Dune");
+      expect(metadata.subtitle).toBe("A Novel");
+    });
+
+    it("leaves subtitle undefined when title has no colon", () => {
+      const result = makeResult();
+
+      const metadata = toMetadata(result);
+      expect(metadata.subtitle).toBeUndefined();
+    });
   });
 
   describe("author mapping", () => {

@@ -171,6 +171,25 @@ describe("audibleToMetadata", () => {
     const metadata = audibleToMetadata(product, "us");
     expect(metadata.releaseDate).toBe("2021-05-04T00:00:00Z");
   });
+
+  it("derives subtitle from a colon in title when API subtitle is absent", () => {
+    const product = makeAudibleProduct({
+      title: "Sapiens: A Brief History of Humankind",
+    });
+    const metadata = audibleToMetadata(product, "us");
+    expect(metadata.title).toBe("Sapiens");
+    expect(metadata.subtitle).toBe("A Brief History of Humankind");
+  });
+
+  it("keeps the full title when API subtitle is present", () => {
+    const product = makeAudibleProduct({
+      title: "Sapiens: A Brief History of Humankind",
+      subtitle: "A Novel",
+    });
+    const metadata = audibleToMetadata(product, "us");
+    expect(metadata.title).toBe("Sapiens: A Brief History of Humankind");
+    expect(metadata.subtitle).toBe("A Novel");
+  });
 });
 
 describe("audnexusToMetadata", () => {
@@ -396,5 +415,24 @@ describe("language and abridged in audnexusToMetadata", () => {
     const metadata = audnexusToMetadata(book, "us");
     expect(metadata.language).toBeUndefined();
     expect(metadata.abridged).toBeUndefined();
+  });
+
+  it("derives subtitle from a colon in title when API subtitle is absent", () => {
+    const book = makeAudnexusBook({
+      title: "Sapiens: A Brief History of Humankind",
+    });
+    const metadata = audnexusToMetadata(book, "us");
+    expect(metadata.title).toBe("Sapiens");
+    expect(metadata.subtitle).toBe("A Brief History of Humankind");
+  });
+
+  it("keeps the full title when API subtitle is present", () => {
+    const book = makeAudnexusBook({
+      title: "Sapiens: A Brief History of Humankind",
+      subtitle: "A Novel",
+    });
+    const metadata = audnexusToMetadata(book, "us");
+    expect(metadata.title).toBe("Sapiens: A Brief History of Humankind");
+    expect(metadata.subtitle).toBe("A Novel");
   });
 });

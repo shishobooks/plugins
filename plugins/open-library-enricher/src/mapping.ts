@@ -7,6 +7,7 @@ import {
   parseSeriesNumber,
   toTitleCase,
 } from "./utils";
+import { splitTitleSubtitle } from "@shisho-plugins/shared";
 import type {
   ParsedAuthor,
   ParsedIdentifier,
@@ -21,12 +22,18 @@ export function toMetadata(result: OLLookupResult): ParsedMetadata {
 
   const metadata: ParsedMetadata = {};
 
-  // Title (prefer edition)
-  metadata.title = edition.title || work.title;
-
-  // Subtitle
+  // Title (prefer edition). If there's no explicit subtitle, derive one
+  // from a title with a colon.
+  const rawTitle = edition.title || work.title;
   if (edition.subtitle) {
+    metadata.title = rawTitle;
     metadata.subtitle = edition.subtitle;
+  } else {
+    const split = splitTitleSubtitle(rawTitle);
+    metadata.title = split.title;
+    if (split.subtitle) {
+      metadata.subtitle = split.subtitle;
+    }
   }
 
   // Authors

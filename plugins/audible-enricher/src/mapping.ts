@@ -3,7 +3,7 @@ import {
   type AudibleProduct,
   type AudnexusBook,
 } from "./types";
-import { stripHTML } from "@shisho-plugins/shared";
+import { splitTitleSubtitle, stripHTML } from "@shisho-plugins/shared";
 import type { ParsedMetadata } from "@shisho/plugin-sdk";
 
 /**
@@ -136,10 +136,15 @@ export function audibleToMetadata(
 ): ParsedMetadata {
   const metadata: ParsedMetadata = {};
 
-  metadata.title = product.title;
-
   if (product.subtitle) {
+    metadata.title = product.title;
     metadata.subtitle = product.subtitle;
+  } else {
+    const split = splitTitleSubtitle(product.title);
+    metadata.title = split.title;
+    if (split.subtitle) {
+      metadata.subtitle = split.subtitle;
+    }
   }
 
   if (product.authors && product.authors.length > 0) {
@@ -208,10 +213,15 @@ export function audnexusToMetadata(
 ): ParsedMetadata {
   const metadata: ParsedMetadata = {};
 
-  metadata.title = book.title;
-
   if (book.subtitle) {
+    metadata.title = book.title;
     metadata.subtitle = book.subtitle;
+  } else {
+    const split = splitTitleSubtitle(book.title);
+    metadata.title = split.title;
+    if (split.subtitle) {
+      metadata.subtitle = split.subtitle;
+    }
   }
 
   if (book.authors && book.authors.length > 0) {

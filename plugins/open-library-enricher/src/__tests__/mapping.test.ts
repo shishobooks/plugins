@@ -84,6 +84,35 @@ describe("toMetadata", () => {
       expect(metadata.publisher).toBeUndefined();
       expect(metadata.narrators).toBeUndefined();
     });
+
+    it("derives subtitle from a colon in title when edition subtitle is absent", () => {
+      const result = makeResult({
+        edition: {
+          key: "/books/OL123M",
+          title: "Sapiens: A Brief History of Humankind",
+        },
+      });
+      mockedFetchCover.mockReturnValue(null);
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("Sapiens");
+      expect(metadata.subtitle).toBe("A Brief History of Humankind");
+    });
+
+    it("keeps the full title when edition subtitle is present", () => {
+      const result = makeResult({
+        edition: {
+          key: "/books/OL123M",
+          title: "Sapiens: A Brief History",
+          subtitle: "From Animals into Gods",
+        },
+      });
+      mockedFetchCover.mockReturnValue(null);
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("Sapiens: A Brief History");
+      expect(metadata.subtitle).toBe("From Animals into Gods");
+    });
   });
 
   describe("series extraction", () => {
