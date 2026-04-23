@@ -273,6 +273,18 @@ describe("normalizeIsbn", () => {
     expect(normalizeIsbn("not an isbn")).toBe("");
     expect(normalizeIsbn("123456789012345")).toBe("");
   });
+
+  it("rejects ISBN-13s with an invalid check digit", () => {
+    // Correct checksum for 978026110221 is 7, not 9.
+    expect(normalizeIsbn("9780261102219")).toBe("");
+    // All-nines has the wrong checksum (correct would be 4, not 9).
+    expect(normalizeIsbn("9999999999999")).toBe("");
+  });
+
+  it("rejects ISBN-10s with an invalid check digit", () => {
+    // Correct checksum for 026110221 is 4, not 5.
+    expect(normalizeIsbn("0261102215")).toBe("");
+  });
 });
 
 describe("isbn10To13", () => {

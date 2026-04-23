@@ -137,15 +137,40 @@ export function slugify(title: string): string {
 
 /**
  * Strip all formatting from an ISBN — dashes, spaces, other punctuation —
- * and uppercase any trailing `x` checksum. Returns `""` for input that
- * doesn't look like an ISBN (anything other than 10 or 13 digits, with an
- * optional X checksum on ISBN-10).
+ * uppercase any trailing `x` checksum, and verify the check digit. Returns
+ * `""` for input that isn't a structurally-valid ISBN-10 or ISBN-13 with a
+ * correct checksum. Rejecting bad-checksum numbers here keeps callers
+ * (e.g. query-identifier routing) from mis-classifying arbitrary digit
+ * strings as ISBNs.
  */
 export function normalizeIsbn(isbn: string): string {
   const stripped = isbn.replace(/[^0-9Xx]/g, "").toUpperCase();
-  if (/^\d{13}$/.test(stripped)) return stripped;
-  if (/^\d{9}[\dX]$/.test(stripped)) return stripped;
+  if (/^\d{13}$/.test(stripped) && isValidIsbn13Checksum(stripped)) {
+    return stripped;
+  }
+  if (/^\d{9}[\dX]$/.test(stripped) && isValidIsbn10Checksum(stripped)) {
+    return stripped;
+  }
   return "";
+}
+
+function isValidIsbn13Checksum(isbn: string): boolean {
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(isbn[i], 10) * (i % 2 === 0 ? 1 : 3);
+  }
+  const check = (10 - (sum % 10)) % 10;
+  return check === parseInt(isbn[12], 10);
+}
+
+function isValidIsbn10Checksum(isbn: string): boolean {
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(isbn[i], 10) * (10 - i);
+  }
+  const last = isbn[9];
+  const check = last === "X" ? 10 : parseInt(last, 10);
+  return (sum + check) % 11 === 0;
 }
 
 /**

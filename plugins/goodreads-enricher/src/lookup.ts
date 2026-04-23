@@ -12,7 +12,8 @@ import {
 import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
 
 /**
- * Search for candidate books using the Goodreads autocomplete API.
+ * Search for candidate books across Goodreads' book-page and autocomplete
+ * endpoints.
  *
  * Priority:
  *   1. Query-embedded identifier (URL / GR ID / ISBN / ASIN) — wins over
@@ -121,26 +122,79 @@ function lookupByGoodreadsId(bookId: string): ParsedMetadata[] {
 
   const pageData = parseBookPage(html);
   const metadata = toMetadata({ bookId, pageData });
-  metadata.url = `https://www.goodreads.com/book/show/${bookId}`;
   metadata.confidence = 1.0;
   return [metadata];
 }
 
 /**
  * ISBN lookup via autocomplete. There is no dedicated ISBN endpoint on
- * Goodreads, so we search + take the first result, then verify via the
- * book page's JSON-LD ISBN: exact match → confidence 1.0, otherwise 0.9.
+ * Goodreads, so we search + take the first result and try to verify it
+ * against the book page's JSON-LD ISBN:
+ *   - Verified match           → confidence 1.0
+ *   - Page fetched, no match   → drop the result entirely (the top
+ *                                autocomplete hit was a near-miss for
+ *                                a different book)
+ *   - Page fetch failed        → confidence 0.9 (can't verify, but
+ *                                autocomplete said this was the best
+ *                                hit so we still surface it)
  */
 function lookupByIsbn(isbn: string): ParsedMetadata[] {
   shisho.log.info(`Searching by ISBN: ${isbn}`);
   const results = searchAutocomplete(isbn);
   if (!results || results.length === 0) return [];
 
-  const enriched = enrichSearchResult(results[0], 0.9);
-  if (hasMatchingIsbn(enriched, isbn)) {
-    enriched.confidence = 1.0;
+  return verifyAutocompleteMatch(results[0], (metadata) =>
+    hasMatchingIsbn(metadata, isbn),
+  );
+}
+
+/**
+ * ASIN lookup via autocomplete — same shape and verification policy as
+ * {@link lookupByIsbn}.
+ */
+function lookupByAsin(asin: string): ParsedMetadata[] {
+  shisho.log.info(`Searching by ASIN: ${asin}`);
+  const results = searchAutocomplete(asin);
+  if (!results || results.length === 0) return [];
+
+  return verifyAutocompleteMatch(results[0], (metadata) =>
+    hasMatchingAsin(metadata, asin),
+  );
+}
+
+/**
+ * Verify an autocomplete hit by fetching its book page. Returns a
+ * three-way outcome: verified match (1.0), unverifiable fetch failure
+ * (0.9 from autocomplete data), or verified mismatch (dropped).
+ */
+function verifyAutocompleteMatch(
+  autocomplete: GRAutocompleteResult,
+  isMatch: (metadata: ParsedMetadata) => boolean,
+): ParsedMetadata[] {
+  const bookId = autocomplete.bookId;
+  const html = fetchBookPage(bookId);
+  if (!html) {
+    shisho.log.debug(
+      `Book page unavailable for ${bookId}; returning unverified autocomplete result`,
+    );
+    return [autocompleteToMetadata(autocomplete, 0.9)];
   }
-  return [enriched];
+
+  const pageData = parseBookPage(html);
+  const metadata = toMetadata({ bookId, autocomplete, pageData });
+  if (!metadata.coverUrl && autocomplete.imageUrl) {
+    metadata.coverUrl = stripImageSuffix(autocomplete.imageUrl);
+  }
+
+  if (!isMatch(metadata)) {
+    shisho.log.debug(
+      `Book ${bookId} failed identifier verification; dropping result`,
+    );
+    return [];
+  }
+
+  metadata.confidence = 1.0;
+  return [metadata];
 }
 
 function hasMatchingIsbn(metadata: ParsedMetadata, isbn: string): boolean {
@@ -151,24 +205,6 @@ function hasMatchingIsbn(metadata: ParsedMetadata, isbn: string): boolean {
         isbnsMatch(id.value, isbn),
     ) ?? false
   );
-}
-
-/**
- * ASIN lookup via autocomplete, same shape as ISBN: Goodreads has no
- * dedicated ASIN endpoint, so we search, take the first result, and
- * verify via the book page's Apollo ASIN. Match → confidence 1.0;
- * otherwise 0.9 (still usable, just not verified exact).
- */
-function lookupByAsin(asin: string): ParsedMetadata[] {
-  shisho.log.info(`Searching by ASIN: ${asin}`);
-  const results = searchAutocomplete(asin);
-  if (!results || results.length === 0) return [];
-
-  const enriched = enrichSearchResult(results[0], 0.9);
-  if (hasMatchingAsin(enriched, asin)) {
-    enriched.confidence = 1.0;
-  }
-  return [enriched];
 }
 
 function hasMatchingAsin(metadata: ParsedMetadata, asin: string): boolean {
@@ -254,7 +290,6 @@ function enrichSearchResult(
     metadata.coverUrl = stripImageSuffix(autocomplete.imageUrl);
   }
 
-  metadata.url = `https://www.goodreads.com/book/show/${bookId}`;
   metadata.confidence = confidence;
 
   return metadata;

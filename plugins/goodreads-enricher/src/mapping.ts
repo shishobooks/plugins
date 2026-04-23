@@ -1,5 +1,5 @@
 import type { GRLookupResult } from "./types";
-import { parseMonth, stripHTML } from "@shisho-plugins/shared";
+import { normalizeIsbn, parseMonth, stripHTML } from "@shisho-plugins/shared";
 import type {
   ParsedAuthor,
   ParsedIdentifier,
@@ -81,6 +81,8 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
     metadata.coverUrl = stripImageSuffix(rawCoverUrl);
   }
 
+  metadata.url = `https://www.goodreads.com/book/show/${result.bookId}`;
+
   return metadata;
 }
 
@@ -98,30 +100,36 @@ export function cleanTitle(title: string): string {
 }
 
 /**
- * Collect all identifiers from the lookup result.
+ * Collect all identifiers from the lookup result. ISBN and ASIN values
+ * are normalized and shape-checked before emission so the server never
+ * receives malformed identifiers (dashes, whitespace, wrong length, or
+ * a bad checksum).
  */
 function collectIdentifiers(result: GRLookupResult): ParsedIdentifier[] {
   const identifiers: ParsedIdentifier[] = [];
 
-  // Goodreads book ID
   identifiers.push({ type: "goodreads", value: result.bookId });
 
-  // ISBN from JSON-LD
-  if (result.pageData.schemaOrg?.isbn) {
-    const isbn = result.pageData.schemaOrg.isbn;
-    if (isbn.length === 13) {
-      identifiers.push({ type: "isbn_13", value: isbn });
-    } else if (isbn.length === 10) {
-      identifiers.push({ type: "isbn_10", value: isbn });
-    }
+  const isbn = normalizeIsbn(result.pageData.schemaOrg?.isbn ?? "");
+  if (isbn.length === 13) {
+    identifiers.push({ type: "isbn_13", value: isbn });
+  } else if (isbn.length === 10) {
+    identifiers.push({ type: "isbn_10", value: isbn });
   }
 
-  // ASIN for Kindle / Amazon editions
-  if (result.pageData.schemaOrg?.asin) {
-    identifiers.push({ type: "asin", value: result.pageData.schemaOrg.asin });
+  const asin = normalizeAsin(result.pageData.schemaOrg?.asin);
+  if (asin) {
+    identifiers.push({ type: "asin", value: asin });
   }
 
   return identifiers;
+}
+
+/** Return an uppercased, shape-checked Kindle ASIN, or `undefined`. */
+function normalizeAsin(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const upper = raw.trim().toUpperCase();
+  return /^B[A-Z0-9]{9}$/.test(upper) ? upper : undefined;
 }
 
 /**

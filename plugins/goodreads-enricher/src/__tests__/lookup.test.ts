@@ -123,17 +123,19 @@ describe("searchForBooks", () => {
       expect(results[0].confidence).toBe(1.0);
     });
 
-    it("returns result with confidence 0.9 when book page ISBN does not match", () => {
+    it("drops the result when the book page ISBN does not match the query", () => {
+      // Verified mismatch — autocomplete's top hit is a different book
+      // (The Hobbit, ISBN 9780261102217) than the one we asked for. We'd
+      // rather return nothing than surface a wrong book at high confidence.
       const context = makeContext({
-        identifiers: [{ type: "isbn_13", value: "9999999999999" }],
+        identifiers: [{ type: "isbn_13", value: "9780261102200" }],
       });
       mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
       mockBookPageSuccess();
 
       const results = searchForBooks(context);
 
-      expect(results).toHaveLength(1);
-      expect(results[0].confidence).toBe(0.9);
+      expect(results).toHaveLength(0);
     });
 
     it("matches when query ISBN-10 equals page ISBN-13", () => {
@@ -213,7 +215,7 @@ describe("searchForBooks", () => {
       });
     });
 
-    it("returns confidence 0.9 when book page ASIN does not match", () => {
+    it("drops the result when the book page ASIN does not match the query", () => {
       const context = makeContext({
         identifiers: [{ type: "asin", value: "BXXXXXXXXX" }],
       });
@@ -222,8 +224,7 @@ describe("searchForBooks", () => {
 
       const results = searchForBooks(context);
 
-      expect(results).toHaveLength(1);
-      expect(results[0].confidence).toBe(0.9);
+      expect(results).toHaveLength(0);
     });
 
     it("is case-insensitive", () => {
