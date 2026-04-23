@@ -83,28 +83,43 @@ export function extractQueryIdentifiers(query: string): {
   // treated as ISBN-10 above, so this only catches Amazon-origin ASINs.
   if (/^B[A-Z0-9]{9}$/i.test(trimmed)) return { asin: trimmed.toUpperCase() };
 
-  // Bare numeric (e.g. "5907") — treat as a Goodreads ID. normalizeIsbn
-  // above already caught 10/13-digit forms, so anything left is a GR ID.
+  // Bare numeric (e.g. "5907") — treat as a Goodreads ID. Note that
+  // `normalizeIsbn` above rejects bad-checksum 10/13-digit values, so a
+  // 13-digit non-ISBN falls through here and we let the page fetch
+  // decide whether the ID actually exists.
   if (/^\d+$/.test(trimmed)) return { goodreadsId: trimmed };
 
   return {};
 }
 
+/**
+ * Collect ISBN values from `context.identifiers`, normalizing each so
+ * the autocomplete query sees a clean digit-only string (dashes,
+ * whitespace, and bad-checksum values are dropped). Mirrors the
+ * `extractQueryIdentifiers` normalization applied to query-typed input.
+ */
 function collectIsbns(context: SearchContext): string[] {
   const isbns: string[] = [];
   for (const id of context.identifiers ?? []) {
-    if (id.type === "isbn_13" || id.type === "isbn_10") {
-      if (!isbns.includes(id.value)) isbns.push(id.value);
-    }
+    if (id.type !== "isbn_13" && id.type !== "isbn_10") continue;
+    const normalized = normalizeIsbn(id.value);
+    if (normalized && !isbns.includes(normalized)) isbns.push(normalized);
   }
   return isbns;
 }
 
+/**
+ * Collect ASIN values from `context.identifiers`, uppercasing and
+ * shape-checking each so autocomplete sees only well-formed Kindle
+ * ASINs (B + 9 alphanumerics).
+ */
 function collectAsins(context: SearchContext): string[] {
   const asins: string[] = [];
   for (const id of context.identifiers ?? []) {
-    if (id.type === "asin" && !asins.includes(id.value)) {
-      asins.push(id.value);
+    if (id.type !== "asin") continue;
+    const upper = id.value.trim().toUpperCase();
+    if (/^B[A-Z0-9]{9}$/.test(upper) && !asins.includes(upper)) {
+      asins.push(upper);
     }
   }
   return asins;

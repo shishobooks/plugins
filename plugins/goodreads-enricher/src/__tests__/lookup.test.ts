@@ -194,6 +194,30 @@ describe("searchForBooks", () => {
       expect(mockedSearchAutocomplete).toHaveBeenCalledTimes(2);
       expect(results).toHaveLength(1);
     });
+
+    it("strips dashes from file-metadata ISBNs before search", () => {
+      const context = makeContext({
+        identifiers: [{ type: "isbn_13", value: "978-0-261-10221-7" }],
+      });
+      mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
+      mockBookPageSuccess();
+
+      searchForBooks(context);
+
+      expect(mockedSearchAutocomplete).toHaveBeenCalledWith("9780261102217");
+    });
+
+    it("drops file-metadata ISBNs with an invalid checksum", () => {
+      const context = makeContext({
+        identifiers: [{ type: "isbn_13", value: "9999999999999" }],
+      });
+      mockedSearchAutocomplete.mockReturnValue(null);
+
+      const results = searchForBooks(context);
+
+      expect(mockedSearchAutocomplete).not.toHaveBeenCalled();
+      expect(results).toHaveLength(0);
+    });
   });
 
   describe("ASIN lookup", () => {
@@ -237,6 +261,30 @@ describe("searchForBooks", () => {
       const results = searchForBooks(context);
 
       expect(results[0].confidence).toBe(1.0);
+    });
+
+    it("uppercases file-metadata ASINs before search", () => {
+      const context = makeContext({
+        identifiers: [{ type: "asin", value: "b002ofc2uc" }],
+      });
+      mockedSearchAutocomplete.mockReturnValue([sampleAutocomplete]);
+      mockBookPageSuccessWithAsin();
+
+      searchForBooks(context);
+
+      expect(mockedSearchAutocomplete).toHaveBeenCalledWith("B002OFC2UC");
+    });
+
+    it("drops malformed file-metadata ASINs before search", () => {
+      const context = makeContext({
+        identifiers: [{ type: "asin", value: "not-an-asin" }],
+      });
+      mockedSearchAutocomplete.mockReturnValue(null);
+
+      const results = searchForBooks(context);
+
+      expect(mockedSearchAutocomplete).not.toHaveBeenCalled();
+      expect(results).toHaveLength(0);
     });
 
     it("runs after ISBN lookup has failed", () => {
