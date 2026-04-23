@@ -1,6 +1,9 @@
 import {
+  isbn10To13,
+  isbnsMatch,
   levenshteinDistance,
   normalizeForComparison,
+  normalizeIsbn,
   parseMonth,
   slugify,
   stripHTML,
@@ -247,5 +250,85 @@ describe("titleMatchConfidence", () => {
 
   it("is tolerant of case and punctuation differences", () => {
     expect(titleMatchConfidence("the hobbit!", "The Hobbit")).toBe(1);
+  });
+});
+
+describe("normalizeIsbn", () => {
+  it("strips dashes and spaces from ISBN-13", () => {
+    expect(normalizeIsbn("978-0-261-10221-7")).toBe("9780261102217");
+    expect(normalizeIsbn("978 0 261 10221 7")).toBe("9780261102217");
+  });
+
+  it("strips arbitrary punctuation", () => {
+    expect(normalizeIsbn("ISBN: 978.0.261.10221.7")).toBe("9780261102217");
+  });
+
+  it("uppercases ISBN-10 X checksum", () => {
+    expect(normalizeIsbn("043942089x")).toBe("043942089X");
+  });
+
+  it("returns empty string for non-ISBN input", () => {
+    expect(normalizeIsbn("1234")).toBe("");
+    expect(normalizeIsbn("")).toBe("");
+    expect(normalizeIsbn("not an isbn")).toBe("");
+    expect(normalizeIsbn("123456789012345")).toBe("");
+  });
+
+  it("rejects ISBN-13s with an invalid check digit", () => {
+    // Correct checksum for 978026110221 is 7, not 9.
+    expect(normalizeIsbn("9780261102219")).toBe("");
+    // All-nines has the wrong checksum (correct would be 4, not 9).
+    expect(normalizeIsbn("9999999999999")).toBe("");
+  });
+
+  it("rejects ISBN-10s with an invalid check digit", () => {
+    // Correct checksum for 026110221 is 4, not 5.
+    expect(normalizeIsbn("0261102215")).toBe("");
+  });
+});
+
+describe("isbn10To13", () => {
+  it("converts ISBN-10 to ISBN-13 with correct checksum", () => {
+    expect(isbn10To13("0261102214")).toBe("9780261102217");
+    expect(isbn10To13("043942089X")).toBe("9780439420891");
+  });
+
+  it("accepts hyphenated ISBN-10", () => {
+    expect(isbn10To13("0-261-10221-4")).toBe("9780261102217");
+  });
+
+  it("returns empty for non-ISBN-10 input", () => {
+    expect(isbn10To13("9780261102217")).toBe("");
+    expect(isbn10To13("not-isbn")).toBe("");
+  });
+});
+
+describe("isbnsMatch", () => {
+  it("matches identical ISBN-13s", () => {
+    expect(isbnsMatch("9780261102217", "9780261102217")).toBe(true);
+  });
+
+  it("matches ISBN-10 against its ISBN-13 equivalent", () => {
+    expect(isbnsMatch("0261102214", "9780261102217")).toBe(true);
+    expect(isbnsMatch("9780261102217", "0261102214")).toBe(true);
+  });
+
+  it("ignores dashes and spaces when matching", () => {
+    expect(isbnsMatch("978-0-261-10221-7", "9780261102217")).toBe(true);
+    expect(isbnsMatch("0-261-10221-4", "9780261102217")).toBe(true);
+  });
+
+  it("is case-insensitive for X checksum", () => {
+    expect(isbnsMatch("043942089x", "043942089X")).toBe(true);
+  });
+
+  it("rejects different ISBNs", () => {
+    expect(isbnsMatch("9780261102217", "9780261103214")).toBe(false);
+    expect(isbnsMatch("0261102214", "9999999999999")).toBe(false);
+  });
+
+  it("rejects malformed input", () => {
+    expect(isbnsMatch("", "9780261102217")).toBe(false);
+    expect(isbnsMatch("1234", "9780261102217")).toBe(false);
   });
 });

@@ -370,6 +370,7 @@ describe("extractFromNextData", () => {
         publicationTime: 1609920000000,
         isbn13: "9781234567890",
         isbn: null,
+        asin: "B08PKY7SD7",
         numPages: 364,
         format: "Kindle Edition",
         language: { name: "English" },
@@ -412,6 +413,7 @@ describe("extractFromNextData", () => {
       "https://m.media-amazon.com/images/books/56377548.jpg",
     );
     expect(result!.schemaOrg!.isbn).toBe("9781234567890");
+    expect(result!.schemaOrg!.asin).toBe("B08PKY7SD7");
     expect(result!.schemaOrg!.numberOfPages).toBe(364);
     expect(result!.schemaOrg!.inLanguage).toBe("English");
     expect(result!.schemaOrg!.author).toEqual([

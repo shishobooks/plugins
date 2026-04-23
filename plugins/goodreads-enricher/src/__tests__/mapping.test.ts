@@ -322,6 +322,51 @@ describe("toMetadata", () => {
         { type: "goodreads", value: "5907" },
       ]);
     });
+
+    it("includes ASIN when present on the Apollo details", () => {
+      const result = makeResult({
+        pageData: {
+          schemaOrg: { name: "Test", asin: "B002OFC2UC" },
+          description: null,
+          series: null,
+          seriesNumber: null,
+          genres: [],
+          publisher: null,
+          publishDate: null,
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.identifiers).toEqual([
+        { type: "goodreads", value: "5907" },
+        { type: "asin", value: "B002OFC2UC" },
+      ]);
+    });
+
+    it("includes both ISBN and ASIN when both are present", () => {
+      const result = makeResult({
+        pageData: {
+          schemaOrg: {
+            name: "Test",
+            isbn: "9780261102217",
+            asin: "B002OFC2UC",
+          },
+          description: null,
+          series: null,
+          seriesNumber: null,
+          genres: [],
+          publisher: null,
+          publishDate: null,
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.identifiers).toEqual([
+        { type: "goodreads", value: "5907" },
+        { type: "isbn_13", value: "9780261102217" },
+        { type: "asin", value: "B002OFC2UC" },
+      ]);
+    });
   });
 
   describe("cover URL", () => {

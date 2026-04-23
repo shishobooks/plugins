@@ -37,6 +37,13 @@ export interface GRSchemaOrg {
   numberOfPages?: number;
   inLanguage?: string;
   isbn?: string;
+  /**
+   * ASIN from the Apollo details object. Goodreads surfaces this for Kindle
+   * and other Amazon-sourced editions. Not part of the real schema.org spec
+   * — we piggyback on this struct since it's how we carry per-edition
+   * identifiers through to `mapping`.
+   */
+  asin?: string;
   author?: Array<{
     name: string;
     url: string;
