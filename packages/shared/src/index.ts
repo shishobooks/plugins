@@ -135,6 +135,52 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Strip all formatting from an ISBN — dashes, spaces, other punctuation —
+ * and uppercase any trailing `x` checksum. Returns `""` for input that
+ * doesn't look like an ISBN (anything other than 10 or 13 digits, with an
+ * optional X checksum on ISBN-10).
+ */
+export function normalizeIsbn(isbn: string): string {
+  const stripped = isbn.replace(/[^0-9Xx]/g, "").toUpperCase();
+  if (/^\d{13}$/.test(stripped)) return stripped;
+  if (/^\d{9}[\dX]$/.test(stripped)) return stripped;
+  return "";
+}
+
+/**
+ * Convert ISBN-10 → ISBN-13 (978 prefix, recalculated checksum).
+ * Returns `""` if the input isn't a valid-shaped ISBN-10.
+ */
+export function isbn10To13(isbn10: string): string {
+  const normalized = normalizeIsbn(isbn10);
+  if (normalized.length !== 10) return "";
+  const body = "978" + normalized.slice(0, 9);
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    const digit = parseInt(body[i], 10);
+    sum += i % 2 === 0 ? digit : digit * 3;
+  }
+  const checksum = (10 - (sum % 10)) % 10;
+  return body + checksum;
+}
+
+/**
+ * Compare two ISBNs for equivalence, tolerant of dashes/spaces and the
+ * ISBN-10 ↔ ISBN-13 split (a 10-digit ISBN and its 978-prefixed 13-digit
+ * form are treated as equal). Returns false if either input isn't a
+ * well-formed ISBN.
+ */
+export function isbnsMatch(a: string, b: string): boolean {
+  const na = normalizeIsbn(a);
+  const nb = normalizeIsbn(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  if (na.length === 10 && nb.length === 13) return isbn10To13(na) === nb;
+  if (na.length === 13 && nb.length === 10) return na === isbn10To13(nb);
+  return false;
+}
+
 export function stripHTML(html: string): string {
   if (!html) return "";
   return html

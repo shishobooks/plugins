@@ -116,6 +116,11 @@ function collectIdentifiers(result: GRLookupResult): ParsedIdentifier[] {
     }
   }
 
+  // ASIN for Kindle / Amazon editions
+  if (result.pageData.schemaOrg?.asin) {
+    identifiers.push({ type: "asin", value: result.pageData.schemaOrg.asin });
+  }
+
   return identifiers;
 }
 

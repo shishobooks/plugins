@@ -3,7 +3,9 @@ import { cleanTitle, stripImageSuffix, toMetadata } from "./mapping";
 import { parseBookPage } from "./parsing";
 import type { GRAutocompleteResult, GRLookupResult } from "./types";
 import {
+  isbnsMatch,
   normalizeForComparison,
+  normalizeIsbn,
   stripHTML,
   titleMatchConfidence,
 } from "@shisho-plugins/shared";
@@ -11,63 +13,171 @@ import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
 
 /**
  * Search for candidate books using the Goodreads autocomplete API.
- * Priority: Goodreads ID -> ISBN -> Title + Author
+ *
+ * Priority:
+ *   1. Query-embedded identifier (URL / GR ID / ISBN / ASIN) — wins over
+ *      every file-metadata identifier and disables the title fallback.
+ *   2. File-metadata Goodreads ID.
+ *   3. File-metadata ISBN.
+ *   4. File-metadata ASIN.
+ *   5. Fuzzy title + author search.
  *
  * For each candidate, fetches the book page and builds full metadata
  * so the server can apply it directly when the user selects a result.
  */
 export function searchForBooks(context: SearchContext): ParsedMetadata[] {
-  // 1. Try existing Goodreads ID
-  const idResults = tryGoodreadsIdSearch(context);
-  if (idResults.length > 0) return idResults;
+  const fromQuery = extractQueryIdentifiers(context.query ?? "");
 
-  // 2. Try ISBN lookup
-  const isbnResults = tryISBNSearch(context);
-  if (isbnResults.length > 0) return isbnResults;
+  // A query-typed identifier trumps ALL file-metadata identifiers. If the
+  // user typed a URL/ID/ISBN/ASIN they're asking for a specific book —
+  // honour that over whatever happens to be on the file, and don't fall
+  // back to a fuzzy title search on a miss.
+  if (fromQuery.goodreadsId) return lookupByGoodreadsId(fromQuery.goodreadsId);
+  if (fromQuery.isbn) return lookupByIsbn(fromQuery.isbn);
+  if (fromQuery.asin) return lookupByAsin(fromQuery.asin);
 
-  // 3. Title + author search
+  const goodreadsId = context.identifiers?.find(
+    (id) => id.type === "goodreads",
+  )?.value;
+  if (goodreadsId) {
+    const results = lookupByGoodreadsId(goodreadsId);
+    if (results.length > 0) return results;
+  }
+
+  for (const isbn of collectIsbns(context)) {
+    const results = lookupByIsbn(isbn);
+    if (results.length > 0) return results;
+  }
+
+  for (const asin of collectAsins(context)) {
+    const results = lookupByAsin(asin);
+    if (results.length > 0) return results;
+  }
+
   return tryTitleAuthorSearch(context);
 }
 
 /**
- * Try search using existing Goodreads identifier.
+ * Parse a free-text query for directly-usable identifiers. Users often
+ * paste a Goodreads URL, ISBN, or ASIN into the title field when they
+ * want a specific book.
  */
-function tryGoodreadsIdSearch(context: SearchContext): ParsedMetadata[] {
-  const identifiers = context.identifiers ?? [];
-  const goodreadsId = identifiers.find((id) => id.type === "goodreads")?.value;
-  if (!goodreadsId) return [];
+export function extractQueryIdentifiers(query: string): {
+  goodreadsId?: string;
+  isbn?: string;
+  asin?: string;
+} {
+  const trimmed = query.trim();
+  if (!trimmed) return {};
 
-  shisho.log.info(`Looking up by Goodreads ID: ${goodreadsId}`);
-  const results = searchAutocomplete(goodreadsId);
-  const match = results?.find((r) => r.bookId === goodreadsId);
+  // Goodreads URL — accept with or without scheme, and ignore any slug suffix.
+  const urlMatch = trimmed.match(/goodreads\.com\/book\/show\/(\d+)/i);
+  if (urlMatch) return { goodreadsId: urlMatch[1] };
 
-  if (match) {
-    return [enrichSearchResult(match, 1.0)];
+  // ISBN, tolerant of dashes/spaces and a trailing X checksum.
+  const normalizedIsbn = normalizeIsbn(trimmed);
+  if (normalizedIsbn) return { isbn: normalizedIsbn };
+
+  // Kindle-style ASIN: B + 9 alphanumerics. Pure-digit 10-char strings are
+  // treated as ISBN-10 above, so this only catches Amazon-origin ASINs.
+  if (/^B[A-Z0-9]{9}$/i.test(trimmed)) return { asin: trimmed.toUpperCase() };
+
+  // Bare numeric (e.g. "5907") — treat as a Goodreads ID. normalizeIsbn
+  // above already caught 10/13-digit forms, so anything left is a GR ID.
+  if (/^\d+$/.test(trimmed)) return { goodreadsId: trimmed };
+
+  return {};
+}
+
+function collectIsbns(context: SearchContext): string[] {
+  const isbns: string[] = [];
+  for (const id of context.identifiers ?? []) {
+    if (id.type === "isbn_13" || id.type === "isbn_10") {
+      if (!isbns.includes(id.value)) isbns.push(id.value);
+    }
   }
+  return isbns;
+}
 
-  return [];
+function collectAsins(context: SearchContext): string[] {
+  const asins: string[] = [];
+  for (const id of context.identifiers ?? []) {
+    if (id.type === "asin" && !asins.includes(id.value)) {
+      asins.push(id.value);
+    }
+  }
+  return asins;
 }
 
 /**
- * Try search using ISBN identifiers.
- * Note: The autocomplete API is a fuzzy search, so results may not exactly match
- * the queried ISBN. There is no dedicated ISBN endpoint on Goodreads.
+ * Direct book-page lookup by Goodreads ID. The autocomplete endpoint isn't
+ * guaranteed to surface an arbitrary ID, so we fetch the book page directly
+ * for a real exact match.
  */
-function tryISBNSearch(context: SearchContext): ParsedMetadata[] {
-  const identifiers = context.identifiers ?? [];
-  const isbns = identifiers
-    .filter((id) => id.type === "isbn_13" || id.type === "isbn_10")
-    .map((id) => id.value);
+function lookupByGoodreadsId(bookId: string): ParsedMetadata[] {
+  shisho.log.info(`Looking up by Goodreads ID: ${bookId}`);
+  const html = fetchBookPage(bookId);
+  if (!html) return [];
 
-  for (const isbn of isbns) {
-    shisho.log.info(`Searching by ISBN: ${isbn}`);
-    const results = searchAutocomplete(isbn);
-    if (results && results.length > 0) {
-      return [enrichSearchResult(results[0], 0.9)];
-    }
+  const pageData = parseBookPage(html);
+  const metadata = toMetadata({ bookId, pageData });
+  metadata.url = `https://www.goodreads.com/book/show/${bookId}`;
+  metadata.confidence = 1.0;
+  return [metadata];
+}
+
+/**
+ * ISBN lookup via autocomplete. There is no dedicated ISBN endpoint on
+ * Goodreads, so we search + take the first result, then verify via the
+ * book page's JSON-LD ISBN: exact match → confidence 1.0, otherwise 0.9.
+ */
+function lookupByIsbn(isbn: string): ParsedMetadata[] {
+  shisho.log.info(`Searching by ISBN: ${isbn}`);
+  const results = searchAutocomplete(isbn);
+  if (!results || results.length === 0) return [];
+
+  const enriched = enrichSearchResult(results[0], 0.9);
+  if (hasMatchingIsbn(enriched, isbn)) {
+    enriched.confidence = 1.0;
   }
+  return [enriched];
+}
 
-  return [];
+function hasMatchingIsbn(metadata: ParsedMetadata, isbn: string): boolean {
+  return (
+    metadata.identifiers?.some(
+      (id) =>
+        (id.type === "isbn_13" || id.type === "isbn_10") &&
+        isbnsMatch(id.value, isbn),
+    ) ?? false
+  );
+}
+
+/**
+ * ASIN lookup via autocomplete, same shape as ISBN: Goodreads has no
+ * dedicated ASIN endpoint, so we search, take the first result, and
+ * verify via the book page's Apollo ASIN. Match → confidence 1.0;
+ * otherwise 0.9 (still usable, just not verified exact).
+ */
+function lookupByAsin(asin: string): ParsedMetadata[] {
+  shisho.log.info(`Searching by ASIN: ${asin}`);
+  const results = searchAutocomplete(asin);
+  if (!results || results.length === 0) return [];
+
+  const enriched = enrichSearchResult(results[0], 0.9);
+  if (hasMatchingAsin(enriched, asin)) {
+    enriched.confidence = 1.0;
+  }
+  return [enriched];
+}
+
+function hasMatchingAsin(metadata: ParsedMetadata, asin: string): boolean {
+  const target = asin.toUpperCase();
+  return (
+    metadata.identifiers?.some(
+      (id) => id.type === "asin" && id.value.toUpperCase() === target,
+    ) ?? false
+  );
 }
 
 /**

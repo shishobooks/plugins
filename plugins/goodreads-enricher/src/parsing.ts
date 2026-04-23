@@ -170,6 +170,7 @@ function buildSchemaOrgFromApollo(
     numberOfPages: (details?.numPages as number) ?? undefined,
     inLanguage: (language?.name as string) ?? undefined,
     isbn: (details?.isbn13 as string) ?? (details?.isbn as string) ?? undefined,
+    asin: (details?.asin as string) ?? undefined,
     author: authors.length > 0 ? authors : undefined,
   };
 }
