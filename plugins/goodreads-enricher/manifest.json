@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "goodreads-enricher",
   "name": "Goodreads Enricher",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Enriches book metadata from Goodreads",
   "minShishoVersion": "0.0.23",
   "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/goodreads-enricher",

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-23
+
+### Features
+- Support exact Goodreads lookups via query URLs, IDs, ISBNs, and ASINs (#27)
+
+
 ## [0.5.1] - 2026-04-21
 
 ### Bug Fixes
