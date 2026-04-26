@@ -210,7 +210,8 @@ export function stripHTML(html: string): string {
   if (!html) return "";
   return html
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|ul|ol|blockquote)>/gi, "\n\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
       String.fromCharCode(parseInt(hex, 16)),
@@ -223,5 +224,7 @@ export function stripHTML(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&nbsp;/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

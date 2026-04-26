@@ -172,6 +172,26 @@ describe("stripHTML", () => {
     expect(stripHTML("<p>First</p><p>Second</p>")).toBe("First\n\nSecond");
   });
 
+  it("inserts paragraph break for standalone </p> followed by other blocks", () => {
+    expect(stripHTML("<p>First</p><div>Aside</div><p>Last</p>")).toBe(
+      "First\n\nAside\n\nLast",
+    );
+  });
+
+  it("inserts newlines between <li> items", () => {
+    expect(stripHTML("<ul><li>One</li><li>Two</li><li>Three</li></ul>")).toBe(
+      "One\nTwo\nThree",
+    );
+  });
+
+  it("inserts paragraph break after headings", () => {
+    expect(stripHTML("<h2>Title</h2>Body text")).toBe("Title\n\nBody text");
+  });
+
+  it("collapses runs of 3+ newlines to a paragraph break", () => {
+    expect(stripHTML("<p>One</p><br /><br /><p>Two</p>")).toBe("One\n\nTwo");
+  });
+
   it("decodes named HTML entities", () => {
     expect(stripHTML("one &amp; two")).toBe("one & two");
     expect(stripHTML("It&apos;s &quot;great&quot;")).toBe('It\'s "great"');
