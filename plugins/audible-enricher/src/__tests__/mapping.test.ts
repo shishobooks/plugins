@@ -222,6 +222,12 @@ describe("audnexusToMetadata", () => {
     expect(metadata.tags).toBeUndefined();
   });
 
+  it("parses full ISO 8601 datetime releaseDate from Audnexus", () => {
+    const book = makeAudnexusBook({ releaseDate: "2025-12-16T00:00:00.000Z" });
+    const metadata = audnexusToMetadata(book, "us");
+    expect(metadata.releaseDate).toBe("2025-12-16T00:00:00Z");
+  });
+
   it("includes ISBN-13 in identifiers when present", () => {
     const book = makeAudnexusBook({ isbn: "9781603935470" });
     const metadata = audnexusToMetadata(book, "us");
