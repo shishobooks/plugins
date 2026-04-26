@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "audible-enricher",
   "name": "Audible Enricher",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Enriches audiobook metadata from Audible and Audnexus",
   "minShishoVersion": "0.0.28",
   "homepage": "https://github.com/shishobooks/plugins/tree/master/plugins/audible-enricher",

@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-04-26
+
+### Bug Fixes
+- Parse Audnexus ISO 8601 datetime release dates (#29)
+
+
 ## [0.2.1] - 2026-04-21
 
 ### Bug Fixes

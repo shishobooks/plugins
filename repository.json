@@ -918,6 +918,68 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/audible-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.2.2",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-26",
+          "changelog": "## [0.2.2] - 2026-04-26\n\n### Bug Fixes\n- Parse Audnexus ISO 8601 datetime release dates (#29)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/audible-enricher@0.2.2/audible-enricher-0.2.2.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/audible-enricher@0.2.2",
+          "sha256": "ce8590dc5d40eb6b461a8943cb0f52dc2bac1c658ab71b6ad4118f8bf8a24e9e",
+          "minShishoVersion": "0.0.28",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches audiobook metadata from Audible catalog API and Audnexus",
+              "fileTypes": [
+                "m4b"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "narrators",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url",
+                "language",
+                "abridged"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Audible catalog API, Audnexus API, and fetches cover images from Amazon CDN",
+              "domains": [
+                "api.audible.com",
+                "api.audible.co.uk",
+                "api.audible.de",
+                "api.audible.fr",
+                "api.audible.it",
+                "api.audible.es",
+                "api.audible.ca",
+                "api.audible.com.au",
+                "api.audible.in",
+                "api.audible.co.jp",
+                "api.audible.com.br",
+                "api.audnex.us",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "asin",
+                "name": "ASIN",
+                "urlTemplate": "https://www.audible.com/pd/{value}",
+                "pattern": "^(B[\\dA-Z]{9}|\\d{9}[\\dX])$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.2.1",
           "manifestVersion": 1,
           "releaseDate": "2026-04-21",
