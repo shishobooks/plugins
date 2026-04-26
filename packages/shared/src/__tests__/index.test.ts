@@ -172,6 +172,63 @@ describe("stripHTML", () => {
     expect(stripHTML("<p>First</p><p>Second</p>")).toBe("First\n\nSecond");
   });
 
+  it("inserts paragraph break for standalone </p> followed by other blocks", () => {
+    expect(stripHTML("<p>First</p><div>Aside</div><p>Last</p>")).toBe(
+      "First\n\nAside\n\nLast",
+    );
+  });
+
+  it("inserts newlines between <li> items", () => {
+    expect(stripHTML("<ul><li>One</li><li>Two</li><li>Three</li></ul>")).toBe(
+      "One\nTwo\nThree",
+    );
+  });
+
+  it("handles tags with attributes", () => {
+    expect(stripHTML('<p class="x">A</p><li data-y="1">B</li>')).toBe("A\n\nB");
+  });
+
+  it("handles paragraph break when next <p> has attributes", () => {
+    expect(stripHTML('<p>A</p><p class="y">B</p>')).toBe("A\n\nB");
+  });
+
+  it("strips non-breaking-space whitespace before newlines", () => {
+    expect(stripHTML("Line one&nbsp;<br />Line two")).toBe(
+      "Line one\nLine two",
+    );
+  });
+
+  it("inserts paragraph break after headings", () => {
+    expect(stripHTML("<h2>Title</h2>Body text")).toBe("Title\n\nBody text");
+  });
+
+  it("collapses runs of 3+ newlines to a paragraph break", () => {
+    expect(stripHTML("<p>One</p><br /><br /><p>Two</p>")).toBe("One\n\nTwo");
+  });
+
+  it("treats <hr> as a section break", () => {
+    expect(stripHTML("Section1<hr>Section2")).toBe("Section1\n\nSection2");
+    expect(stripHTML("Section1<hr />Section2")).toBe("Section1\n\nSection2");
+  });
+
+  it("inserts paragraph breaks for sectioning block tags", () => {
+    expect(
+      stripHTML(
+        "<section>One</section><article>Two</article><aside>Three</aside>",
+      ),
+    ).toBe("One\n\nTwo\n\nThree");
+  });
+
+  it("removes <script> and <style> blocks including their bodies", () => {
+    expect(stripHTML("<script>alert(1)</script>Hi")).toBe("Hi");
+    expect(stripHTML("Before<style>body{color:red}</style>After")).toBe(
+      "BeforeAfter",
+    );
+    expect(
+      stripHTML('<script type="text/javascript">var x = 1;</script>Body'),
+    ).toBe("Body");
+  });
+
   it("decodes named HTML entities", () => {
     expect(stripHTML("one &amp; two")).toBe("one & two");
     expect(stripHTML("It&apos;s &quot;great&quot;")).toBe('It\'s "great"');

@@ -109,11 +109,6 @@ export function parseMonth(monthStr: string): string | undefined {
 }
 
 /**
- * Strip HTML tags and decode common entities, preserving line breaks.
- * Converts <br> to newlines and </p><p> to double newlines before
- * stripping remaining tags.
- */
-/**
  * Slugify a title for use in URL paths: lowercase, drop apostrophes
  * (both ASCII `'` and Unicode right-single-quote `'` / U+2019), then
  * collapse runs of non-alphanumeric characters to single hyphens and
@@ -206,11 +201,30 @@ export function isbnsMatch(a: string, b: string): boolean {
   return false;
 }
 
+/**
+ * Strip HTML tags and decode common entities, preserving paragraph
+ * structure. `<script>`/`<style>` blocks are removed entirely (tags
+ * and body). `<br>` and `</li>` become single newlines; `<hr>` and
+ * block-level closers (`</p>`, `</div>`, `</h1-6>`, `</ul>`, `</ol>`,
+ * `</blockquote>`, `</section>`, `</article>`, `</aside>`, `</header>`,
+ * `</footer>`, `</figure>`) become double newlines. Trailing whitespace
+ * before newlines is dropped and runs of 3+ newlines collapse to `\n\n`.
+ *
+ * Not a sanitizer: an unterminated `<script>` would have its body leak
+ * through as text. Inputs are description fields from trusted sources;
+ * outputs feed metadata, never raw HTML rendering.
+ */
 export function stripHTML(html: string): string {
   if (!html) return "";
   return html
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
+    .replace(/<hr\s*\/?>/gi, "\n\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(
+      /<\/(p|div|h[1-6]|ul|ol|blockquote|section|article|aside|header|footer|figure)>/gi,
+      "\n\n",
+    )
     .replace(/<[^>]+>/g, "")
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
       String.fromCharCode(parseInt(hex, 16)),
@@ -223,5 +237,7 @@ export function stripHTML(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&nbsp;/g, " ")
+    .replace(/[^\S\n]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

@@ -64,16 +64,23 @@ export function extractFromNextData(html: string): GRBookPageData | null {
     // Build schema.org-compatible data from Apollo
     const schemaOrg = buildSchemaOrgFromApollo(book, apolloState);
 
-    // Description — prefer stripped variant, fall back to HTML description
+    // Description — prefer the HTML variant routed through stripHTML so that
+    // <br> and </p><p> become newlines. Goodreads' stripped variant drops
+    // paragraph breaks entirely on some books (e.g. /book/show/9520360), so
+    // we only fall back to it when the HTML variant is missing or empty
+    // after tag-stripping.
+    const htmlDesc = book.description as string | null;
     const strippedDesc = book['description({"stripped":true})'] as
       | string
       | null;
-    const htmlDesc = book.description as string | null;
     let description: string | null = null;
-    if (strippedDesc) {
-      description = strippedDesc.replace(/\r\n/g, "\n").trim();
-    } else if (htmlDesc) {
-      description = stripHTML(htmlDesc);
+    if (htmlDesc) {
+      const cleaned = stripHTML(htmlDesc);
+      if (cleaned) description = cleaned;
+    }
+    if (!description && strippedDesc) {
+      const cleaned = strippedDesc.replace(/\r\n/g, "\n").trim();
+      if (cleaned) description = cleaned;
     }
 
     // Series

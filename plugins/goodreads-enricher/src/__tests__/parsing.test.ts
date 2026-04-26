@@ -489,19 +489,58 @@ describe("extractFromNextData", () => {
     expect(result.seriesNumber).toBeNull();
   });
 
-  it("falls back to HTML description when stripped is missing", () => {
+  it("uses HTML description through stripHTML to preserve paragraph breaks", () => {
+    // Goodreads' stripped variant drops <br> tags entirely on some books
+    // (e.g. /book/show/9520360 The Son of Neptune), jamming paragraphs
+    // together. The HTML variant routed through stripHTML preserves the
+    // breaks correctly.
     const state = {
       "Book:kca://book/123": {
         __typename: "Book",
         title: "Test",
         titleComplete: "Test",
-        description: "A <b>bold</b> description &amp; more.",
+        description:
+          "<b>FIRST.</b> Para one.<br /><br /><b>SECOND.</b> Para two.",
+        'description({"stripped":true})': "FIRST. Para one.SECOND. Para two.",
         details: {},
         bookGenres: [],
       },
     };
     const result = extractFromNextData(makeNextDataHtml(state))!;
 
-    expect(result.description).toBe("A bold description & more.");
+    expect(result.description).toBe("FIRST. Para one.\n\nSECOND. Para two.");
+  });
+
+  it("falls back to stripped description when HTML is missing", () => {
+    const state = {
+      "Book:kca://book/123": {
+        __typename: "Book",
+        title: "Test",
+        titleComplete: "Test",
+        'description({"stripped":true})': "Plain description.",
+        details: {},
+        bookGenres: [],
+      },
+    };
+    const result = extractFromNextData(makeNextDataHtml(state))!;
+
+    expect(result.description).toBe("Plain description.");
+  });
+
+  it("falls back to stripped description when HTML strips to empty", () => {
+    const state = {
+      "Book:kca://book/123": {
+        __typename: "Book",
+        title: "Test",
+        titleComplete: "Test",
+        description: "<br />",
+        'description({"stripped":true})': "Plain description.",
+        details: {},
+        bookGenres: [],
+      },
+    };
+    const result = extractFromNextData(makeNextDataHtml(state))!;
+
+    expect(result.description).toBe("Plain description.");
   });
 });
