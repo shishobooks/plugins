@@ -209,6 +209,10 @@ export function isbnsMatch(a: string, b: string): boolean {
  * `</blockquote>`, `</section>`, `</article>`, `</aside>`, `</header>`,
  * `</footer>`, `</figure>`) become double newlines. Trailing whitespace
  * before newlines is dropped and runs of 3+ newlines collapse to `\n\n`.
+ *
+ * Not a sanitizer: an unterminated `<script>` would have its body leak
+ * through as text. Inputs are description fields from trusted sources;
+ * outputs feed metadata, never raw HTML rendering.
  */
 export function stripHTML(html: string): string {
   if (!html) return "";
@@ -233,7 +237,7 @@ export function stripHTML(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&nbsp;/g, " ")
-    .replace(/[ \t]+\n/g, "\n")
+    .replace(/[^\S\n]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

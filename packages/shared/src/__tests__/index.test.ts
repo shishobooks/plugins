@@ -188,6 +188,16 @@ describe("stripHTML", () => {
     expect(stripHTML('<p class="x">A</p><li data-y="1">B</li>')).toBe("A\n\nB");
   });
 
+  it("handles paragraph break when next <p> has attributes", () => {
+    expect(stripHTML('<p>A</p><p class="y">B</p>')).toBe("A\n\nB");
+  });
+
+  it("strips non-breaking-space whitespace before newlines", () => {
+    expect(stripHTML("Line one&nbsp;<br />Line two")).toBe(
+      "Line one\nLine two",
+    );
+  });
+
   it("inserts paragraph break after headings", () => {
     expect(stripHTML("<h2>Title</h2>Body text")).toBe("Title\n\nBody text");
   });
