@@ -196,6 +196,29 @@ describe("stripHTML", () => {
     expect(stripHTML("<p>One</p><br /><br /><p>Two</p>")).toBe("One\n\nTwo");
   });
 
+  it("treats <hr> as a section break", () => {
+    expect(stripHTML("Section1<hr>Section2")).toBe("Section1\n\nSection2");
+    expect(stripHTML("Section1<hr />Section2")).toBe("Section1\n\nSection2");
+  });
+
+  it("inserts paragraph breaks for sectioning block tags", () => {
+    expect(
+      stripHTML(
+        "<section>One</section><article>Two</article><aside>Three</aside>",
+      ),
+    ).toBe("One\n\nTwo\n\nThree");
+  });
+
+  it("removes <script> and <style> blocks including their bodies", () => {
+    expect(stripHTML("<script>alert(1)</script>Hi")).toBe("Hi");
+    expect(stripHTML("Before<style>body{color:red}</style>After")).toBe(
+      "BeforeAfter",
+    );
+    expect(
+      stripHTML('<script type="text/javascript">var x = 1;</script>Body'),
+    ).toBe("Body");
+  });
+
   it("decodes named HTML entities", () => {
     expect(stripHTML("one &amp; two")).toBe("one & two");
     expect(stripHTML("It&apos;s &quot;great&quot;")).toBe('It\'s "great"');

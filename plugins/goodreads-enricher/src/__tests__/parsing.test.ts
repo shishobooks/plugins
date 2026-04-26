@@ -526,4 +526,21 @@ describe("extractFromNextData", () => {
 
     expect(result.description).toBe("Plain description.");
   });
+
+  it("falls back to stripped description when HTML strips to empty", () => {
+    const state = {
+      "Book:kca://book/123": {
+        __typename: "Book",
+        title: "Test",
+        titleComplete: "Test",
+        description: "<br />",
+        'description({"stripped":true})': "Plain description.",
+        details: {},
+        bookGenres: [],
+      },
+    };
+    const result = extractFromNextData(makeNextDataHtml(state))!;
+
+    expect(result.description).toBe("Plain description.");
+  });
 });

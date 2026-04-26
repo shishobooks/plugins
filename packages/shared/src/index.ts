@@ -203,17 +203,24 @@ export function isbnsMatch(a: string, b: string): boolean {
 
 /**
  * Strip HTML tags and decode common entities, preserving paragraph
- * structure. `<br>` and `</li>` become single newlines; block-level
- * closers (`</p>`, `</div>`, `</h1-6>`, `</ul>`, `</ol>`,
- * `</blockquote>`) become double newlines. Trailing whitespace before
- * newlines is dropped and runs of 3+ newlines collapse to `\n\n`.
+ * structure. `<script>`/`<style>` blocks are removed entirely (tags
+ * and body). `<br>` and `</li>` become single newlines; `<hr>` and
+ * block-level closers (`</p>`, `</div>`, `</h1-6>`, `</ul>`, `</ol>`,
+ * `</blockquote>`, `</section>`, `</article>`, `</aside>`, `</header>`,
+ * `</footer>`, `</figure>`) become double newlines. Trailing whitespace
+ * before newlines is dropped and runs of 3+ newlines collapse to `\n\n`.
  */
 export function stripHTML(html: string): string {
   if (!html) return "";
   return html
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
     .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<hr\s*\/?>/gi, "\n\n")
     .replace(/<\/li>/gi, "\n")
-    .replace(/<\/(p|div|h[1-6]|ul|ol|blockquote)>/gi, "\n\n")
+    .replace(
+      /<\/(p|div|h[1-6]|ul|ol|blockquote|section|article|aside|header|footer|figure)>/gi,
+      "\n\n",
+    )
     .replace(/<[^>]+>/g, "")
     .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
       String.fromCharCode(parseInt(hex, 16)),

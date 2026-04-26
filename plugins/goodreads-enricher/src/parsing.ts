@@ -67,16 +67,20 @@ export function extractFromNextData(html: string): GRBookPageData | null {
     // Description — prefer the HTML variant routed through stripHTML so that
     // <br> and </p><p> become newlines. Goodreads' stripped variant drops
     // paragraph breaks entirely on some books (e.g. /book/show/9520360), so
-    // we only fall back to it when no HTML description is available.
+    // we only fall back to it when the HTML variant is missing or empty
+    // after tag-stripping.
     const htmlDesc = book.description as string | null;
     const strippedDesc = book['description({"stripped":true})'] as
       | string
       | null;
     let description: string | null = null;
     if (htmlDesc) {
-      description = stripHTML(htmlDesc);
-    } else if (strippedDesc) {
-      description = strippedDesc.replace(/\r\n/g, "\n").trim();
+      const cleaned = stripHTML(htmlDesc);
+      if (cleaned) description = cleaned;
+    }
+    if (!description && strippedDesc) {
+      const cleaned = strippedDesc.replace(/\r\n/g, "\n").trim();
+      if (cleaned) description = cleaned;
     }
 
     // Series
