@@ -109,11 +109,6 @@ export function parseMonth(monthStr: string): string | undefined {
 }
 
 /**
- * Strip HTML tags and decode common entities, preserving line breaks.
- * Converts <br> to newlines and </p><p> to double newlines before
- * stripping remaining tags.
- */
-/**
  * Slugify a title for use in URL paths: lowercase, drop apostrophes
  * (both ASCII `'` and Unicode right-single-quote `'` / U+2019), then
  * collapse runs of non-alphanumeric characters to single hyphens and
@@ -206,6 +201,13 @@ export function isbnsMatch(a: string, b: string): boolean {
   return false;
 }
 
+/**
+ * Strip HTML tags and decode common entities, preserving paragraph
+ * structure. `<br>` and `</li>` become single newlines; block-level
+ * closers (`</p>`, `</div>`, `</h1-6>`, `</ul>`, `</ol>`,
+ * `</blockquote>`) become double newlines. Trailing whitespace before
+ * newlines is dropped and runs of 3+ newlines collapse to `\n\n`.
+ */
 export function stripHTML(html: string): string {
   if (!html) return "";
   return html

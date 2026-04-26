@@ -184,6 +184,10 @@ describe("stripHTML", () => {
     );
   });
 
+  it("handles tags with attributes", () => {
+    expect(stripHTML('<p class="x">A</p><li data-y="1">B</li>')).toBe("A\n\nB");
+  });
+
   it("inserts paragraph break after headings", () => {
     expect(stripHTML("<h2>Title</h2>Body text")).toBe("Title\n\nBody text");
   });
