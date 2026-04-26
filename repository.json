@@ -358,6 +358,56 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.6.1",
+          "manifestVersion": 1,
+          "releaseDate": "2026-04-26",
+          "changelog": "## [0.6.1] - 2026-04-26\n\n### Bug Fixes\n- Preserve paragraph breaks in Goodreads descriptions (#28)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.6.1/goodreads-enricher-0.6.1.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.6.1",
+          "sha256": "4a2fa8ec20baabfc81d06490958fa1f864bd88febbf0c697f035b9233b1338b9",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.6.0",
           "manifestVersion": 1,
           "releaseDate": "2026-04-23",

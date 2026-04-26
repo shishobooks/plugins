@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-04-26
+
+### Bug Fixes
+- Preserve paragraph breaks in Goodreads descriptions (#28)
+
+
 ## [0.6.0] - 2026-04-23
 
 ### Features
