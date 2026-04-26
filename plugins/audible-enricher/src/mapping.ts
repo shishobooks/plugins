@@ -8,11 +8,18 @@ import type { ParsedMetadata } from "@shisho/plugin-sdk";
 
 /**
  * Parse a date string to ISO 8601 format.
- * Handles "YYYY-MM-DD" and "YYYY" formats.
+ * Handles "YYYY-MM-DD", "YYYY", and full ISO 8601 datetime strings
+ * (e.g., Audnexus returns "2025-12-16T00:00:00.000Z").
  */
 function toISODate(dateStr: string): string | undefined {
   if (!dateStr) return undefined;
   const trimmed = dateStr.trim();
+
+  // ISO 8601 datetime — extract the YYYY-MM-DD prefix and normalize.
+  const isoMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})T/);
+  if (isoMatch) {
+    return `${isoMatch[1]}T00:00:00Z`;
+  }
 
   // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
