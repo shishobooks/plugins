@@ -204,11 +204,17 @@ export function isbnsMatch(a: string, b: string): boolean {
 /**
  * Strip HTML tags and decode common entities, preserving paragraph
  * structure. `<script>`/`<style>` blocks are removed entirely (tags
- * and body). `<br>` and `</li>` become single newlines; `<hr>` and
- * block-level closers (`</p>`, `</div>`, `</h1-6>`, `</ul>`, `</ol>`,
- * `</blockquote>`, `</section>`, `</article>`, `</aside>`, `</header>`,
- * `</footer>`, `</figure>`) become double newlines. Trailing whitespace
+ * and body). Whitespace between adjacent tags (`>...<`) collapses to
+ * nothing — matching how a browser renders source-formatting newlines
+ * inside inline markup like `<strong>\n  <em>...</em>\n</strong>` —
+ * so each italicized phrase doesn't end up on its own line. `<br>`
+ * and `</li>` become single newlines; `<hr>` and block-level closers
+ * (`</p>`, `</div>`, `</h1-6>`, `</ul>`, `</ol>`, `</blockquote>`,
+ * `</section>`, `</article>`, `</aside>`, `</header>`, `</footer>`,
+ * `</figure>`) become double newlines. Trailing horizontal whitespace
  * before newlines is dropped and runs of 3+ newlines collapse to `\n\n`.
+ * Newlines inside text content are preserved so plaintext callers can
+ * pass already-formatted strings through for entity decoding.
  *
  * Not a sanitizer: an unterminated `<script>` would have its body leak
  * through as text. Inputs are description fields from trusted sources;
@@ -218,6 +224,7 @@ export function stripHTML(html: string): string {
   if (!html) return "";
   return html
     .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
+    .replace(/>\s+</g, "><")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<hr\s*\/?>/gi, "\n\n")
     .replace(/<\/li>/gi, "\n")
