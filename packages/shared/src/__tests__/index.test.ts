@@ -256,6 +256,25 @@ describe("stripHTML", () => {
   it("trims whitespace", () => {
     expect(stripHTML("  <p>text</p>  ")).toBe("text");
   });
+
+  it("collapses source-formatting newlines inside inline tags to a single space", () => {
+    // Goodreads' description HTML for /book/show/59498901 has italicized
+    // phrases wrapped like <strong>\n  <em>Good Inside</em>\n</strong> —
+    // browsers collapse those literal newlines to a space, but a naive
+    // tag-strip leaves the \n in place and turns each italic phrase into
+    // its own line. Make sure we match browser whitespace handling.
+    expect(
+      stripHTML(
+        "Eve Rodsky, <strong>\n  <em>New York Times</em>\n</strong> bestselling author",
+      ),
+    ).toBe("Eve Rodsky, New York Times bestselling author");
+  });
+
+  it("preserves explicit <br> break next to source-formatting whitespace", () => {
+    expect(stripHTML("Para one.<br />\n  <strong>Para two.</strong>")).toBe(
+      "Para one.\nPara two.",
+    );
+  });
 });
 
 describe("stripSubtitle", () => {
