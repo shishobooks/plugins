@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-02
+
+### Features
+- Add configurable subtitle splitting for Goodreads enricher (#31)
+
+
 ## [0.6.2] - 2026-04-27
 
 _No plugin code changes in this release._

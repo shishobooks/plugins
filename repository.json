@@ -358,6 +358,57 @@
       "imageUrl": "https://raw.githubusercontent.com/shishobooks/plugins/master/plugins/goodreads-enricher/logo.svg",
       "versions": [
         {
+          "version": "0.7.0",
+          "manifestVersion": 1,
+          "releaseDate": "2026-05-02",
+          "changelog": "## [0.7.0] - 2026-05-02\n\n### Features\n- Add configurable subtitle splitting for Goodreads enricher (#31)\n",
+          "downloadUrl": "https://github.com/shishobooks/plugins/releases/download/goodreads-enricher@0.7.0/goodreads-enricher-0.7.0.zip",
+          "releaseUrl": "https://github.com/shishobooks/plugins/releases/tag/goodreads-enricher@0.7.0",
+          "sha256": "e1564d51f6bfece207e46ba00a9af4e1df73659cbcd2f0953a35a6e4dc45024d",
+          "minShishoVersion": "0.0.23",
+          "capabilities": {
+            "metadataEnricher": {
+              "description": "Fetches metadata from Goodreads via autocomplete API and book page scraping",
+              "fileTypes": [
+                "epub",
+                "m4b",
+                "pdf"
+              ],
+              "fields": [
+                "title",
+                "subtitle",
+                "authors",
+                "description",
+                "publisher",
+                "releaseDate",
+                "series",
+                "seriesNumber",
+                "genres",
+                "tags",
+                "cover",
+                "identifiers",
+                "url"
+              ]
+            },
+            "httpAccess": {
+              "description": "Calls Goodreads autocomplete API, fetches book pages, and provides cover image URLs",
+              "domains": [
+                "*.goodreads.com",
+                "i.gr-assets.com",
+                "m.media-amazon.com"
+              ]
+            },
+            "identifierTypes": [
+              {
+                "id": "goodreads",
+                "name": "Goodreads",
+                "urlTemplate": "https://www.goodreads.com/book/show/{value}",
+                "pattern": "^\\d+$"
+              }
+            ]
+          }
+        },
+        {
           "version": "0.6.2",
           "manifestVersion": 1,
           "releaseDate": "2026-04-27",
