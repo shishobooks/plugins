@@ -36,5 +36,18 @@ globalThis.shisho = {
 } as unknown as typeof shisho;
 
 beforeEach(() => {
-  vi.restoreAllMocks();
+  vi.resetAllMocks();
+  vi.mocked(shisho.config.getAll).mockReturnValue({});
+  vi.mocked(shisho.url.searchParams).mockImplementation((params) =>
+    sdkMock.url.searchParams(params),
+  );
+  vi.mocked(shisho.url.encodeURIComponent).mockImplementation((str) =>
+    encodeURIComponent(str),
+  );
+  vi.mocked(shisho.url.decodeURIComponent).mockImplementation((str) =>
+    decodeURIComponent(str),
+  );
+  vi.mocked(shisho.url.parse).mockImplementation((url) =>
+    sdkMock.url.parse(url),
+  );
 });
