@@ -1,6 +1,6 @@
 import { toMetadata } from "../mapping";
 import type { GRAutocompleteResult, GRLookupResult } from "../types";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const baseAutocomplete: GRAutocompleteResult = {
   imageUrl: "https://i.gr-assets.com/images/books/5907._SY75_.jpg",
@@ -163,6 +163,57 @@ describe("toMetadata", () => {
 
       const metadata = toMetadata(result);
       expect(metadata.title).toBe("The Hobbit, or There and Back Again");
+    });
+  });
+
+  describe("subtitle splitting", () => {
+    it("splits subtitle on first colon by default", () => {
+      const result = makeResult({
+        autocomplete: {
+          ...baseAutocomplete,
+          bookTitleBare: "A Game of Thrones: A Song of Ice and Fire",
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("A Game of Thrones");
+      expect(metadata.subtitle).toBe("A Song of Ice and Fire");
+    });
+
+    it("does not split subtitle when config is disabled", () => {
+      vi.mocked(shisho.config.get).mockReturnValue("false");
+
+      const result = makeResult({
+        autocomplete: {
+          ...baseAutocomplete,
+          bookTitleBare: "A Game of Thrones: A Song of Ice and Fire",
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("A Game of Thrones: A Song of Ice and Fire");
+      expect(metadata.subtitle).toBeUndefined();
+    });
+
+    it("splits on first colon only when there are multiple", () => {
+      const result = makeResult({
+        autocomplete: {
+          ...baseAutocomplete,
+          bookTitleBare: "Part One: The Beginning: A Novel",
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("Part One");
+      expect(metadata.subtitle).toBe("The Beginning: A Novel");
+    });
+
+    it("leaves title unchanged when no colon", () => {
+      const result = makeResult();
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("The Hobbit, or There and Back Again");
+      expect(metadata.subtitle).toBeUndefined();
     });
   });
 

@@ -1,5 +1,10 @@
 import { fetchBookPage, searchAutocomplete } from "./api";
-import { cleanTitle, stripImageSuffix, toMetadata } from "./mapping";
+import {
+  cleanTitle,
+  splitSubtitle,
+  stripImageSuffix,
+  toMetadata,
+} from "./mapping";
 import { parseBookPage } from "./parsing";
 import type { GRAutocompleteResult, GRLookupResult } from "./types";
 import {
@@ -317,13 +322,18 @@ function autocompleteToMetadata(
   result: GRAutocompleteResult,
   confidence: number,
 ): ParsedMetadata {
+  const cleaned = cleanTitle(result.bookTitleBare ?? result.title);
+  const { title, subtitle } = splitSubtitle(cleaned);
   const metadata: ParsedMetadata = {
-    title: cleanTitle(result.bookTitleBare ?? result.title),
+    title,
     authors: [{ name: result.author.name }],
     identifiers: [{ type: "goodreads", value: result.bookId }],
     url: `https://www.goodreads.com/book/show/${result.bookId}`,
     confidence,
   };
+  if (subtitle) {
+    metadata.subtitle = subtitle;
+  }
 
   if (result.imageUrl) {
     metadata.coverUrl = stripImageSuffix(result.imageUrl);

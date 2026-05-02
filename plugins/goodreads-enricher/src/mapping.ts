@@ -19,7 +19,12 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
   const rawTitle =
     autocomplete?.bookTitleBare ?? pageData.schemaOrg?.name ?? undefined;
   if (rawTitle) {
-    metadata.title = cleanTitle(rawTitle);
+    const cleaned = cleanTitle(rawTitle);
+    const { title, subtitle } = splitSubtitle(cleaned);
+    metadata.title = title;
+    if (subtitle) {
+      metadata.subtitle = subtitle;
+    }
   }
 
   // Authors - prefer JSON-LD authors (more complete), fall back to autocomplete
@@ -97,6 +102,21 @@ export function cleanTitle(title: string): string {
   }
 
   return title;
+}
+
+export function splitSubtitle(title: string): {
+  title: string;
+  subtitle?: string;
+} {
+  if (shisho.config.get("splitSubtitle") === "false") return { title };
+
+  const colonIndex = title.indexOf(": ");
+  if (colonIndex === -1) return { title };
+
+  return {
+    title: title.slice(0, colonIndex).trim(),
+    subtitle: title.slice(colonIndex + 2).trim(),
+  };
 }
 
 /**
