@@ -17,6 +17,7 @@
       ],
       "fields": [
         "title",
+        "subtitle",
         "authors",
         "description",
         "publisher",
@@ -47,5 +48,12 @@
       }
     ]
   },
-  "configSchema": {}
+  "configSchema": {
+    "splitSubtitle": {
+      "type": "boolean",
+      "label": "Split Subtitle from Title",
+      "description": "When enabled, splits the title on the first colon into separate title and subtitle fields. Disable for books where the colon is part of the title (e.g. \"Star Wars: From the Adventures of Luke Skywalker\").",
+      "default": true
+    }
+  }
 }
