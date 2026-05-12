@@ -202,6 +202,20 @@ export function isbnsMatch(a: string, b: string): boolean {
 }
 
 /**
+ * Collapse whitespace inconsistencies while preserving intentional line
+ * breaks. Horizontal whitespace (spaces, tabs) collapses to a single
+ * space; runs of 3+ newlines collapse to a double newline (paragraph
+ * break); single and double newlines are left intact.
+ */
+export function normalizeWhitespace(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
  * Strip HTML tags and decode common entities, preserving paragraph
  * structure. `<script>`/`<style>` blocks are removed entirely (tags
  * and body). Whitespace between adjacent tags (`>...<`) collapses to
