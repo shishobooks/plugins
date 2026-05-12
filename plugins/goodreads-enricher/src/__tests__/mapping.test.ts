@@ -471,6 +471,123 @@ describe("toMetadata", () => {
     });
   });
 
+  describe("whitespace normalization", () => {
+    it("collapses double spaces in author names", () => {
+      const result = makeResult({
+        pageData: {
+          schemaOrg: {
+            name: "The Kiss Quotient",
+            author: [{ name: "Helen  Hoang", url: "/author/123" }],
+          },
+          description: null,
+          series: null,
+          seriesNumber: null,
+          genres: [],
+          publisher: null,
+          publishDate: null,
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.authors).toEqual([{ name: "Helen Hoang" }]);
+    });
+
+    it("collapses extra spaces in title", () => {
+      const result = makeResult({
+        autocomplete: {
+          ...baseAutocomplete,
+          bookTitleBare: "The  Kiss  Quotient",
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.title).toBe("The Kiss Quotient");
+    });
+
+    it("collapses extra spaces in publisher and series", () => {
+      const result = makeResult({
+        pageData: {
+          schemaOrg: null,
+          description: null,
+          series: "The  Empyrean",
+          seriesNumber: 1,
+          genres: [],
+          publisher: "Entangled  Publishing",
+          publishDate: null,
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.publisher).toBe("Entangled Publishing");
+      expect(metadata.series).toBe("The Empyrean");
+    });
+
+    it("collapses extra spaces in genres and tags", () => {
+      const result = makeResult({
+        pageData: {
+          schemaOrg: null,
+          description: null,
+          series: null,
+          seriesNumber: null,
+          genres: [
+            "Science  Fiction",
+            "Historical  Fiction",
+            "Literary  Fiction",
+            "Young  Adult",
+          ],
+          publisher: null,
+          publishDate: null,
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.genres).toEqual([
+        "Science Fiction",
+        "Historical Fiction",
+        "Literary Fiction",
+      ]);
+      expect(metadata.tags).toEqual(["Young Adult"]);
+    });
+
+    it("preserves single and double newlines in descriptions", () => {
+      const result = makeResult({
+        pageData: {
+          schemaOrg: null,
+          description: "First paragraph.\n\nSecond paragraph.\nSame section.",
+          series: null,
+          seriesNumber: null,
+          genres: [],
+          publisher: null,
+          publishDate: null,
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.description).toBe(
+        "First paragraph.\n\nSecond paragraph.\nSame section.",
+      );
+    });
+
+    it("collapses 3+ newlines to double newlines in descriptions", () => {
+      const result = makeResult({
+        pageData: {
+          schemaOrg: null,
+          description: "First paragraph.\n\n\n\nSecond paragraph.",
+          series: null,
+          seriesNumber: null,
+          genres: [],
+          publisher: null,
+          publishDate: null,
+        },
+      });
+
+      const metadata = toMetadata(result);
+      expect(metadata.description).toBe(
+        "First paragraph.\n\nSecond paragraph.",
+      );
+    });
+  });
+
   describe("date parsing", () => {
     it("parses full date with comma", () => {
       const result = makeResult({

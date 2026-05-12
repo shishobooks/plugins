@@ -1,5 +1,10 @@
 import type { GRLookupResult } from "./types";
-import { normalizeIsbn, parseMonth, stripHTML } from "@shisho-plugins/shared";
+import {
+  normalizeIsbn,
+  normalizeWhitespace,
+  parseMonth,
+  stripHTML,
+} from "@shisho-plugins/shared";
 import type {
   ParsedAuthor,
   ParsedIdentifier,
@@ -87,6 +92,28 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
   }
 
   metadata.url = `https://www.goodreads.com/book/show/${result.bookId}`;
+
+  // Collapse stray whitespace in all text fields (e.g. "Helen  Hoang" → "Helen Hoang")
+  if (metadata.title) metadata.title = normalizeWhitespace(metadata.title);
+  if (metadata.subtitle)
+    metadata.subtitle = normalizeWhitespace(metadata.subtitle);
+  if (metadata.description)
+    metadata.description = normalizeWhitespace(metadata.description);
+  if (metadata.publisher)
+    metadata.publisher = normalizeWhitespace(metadata.publisher);
+  if (metadata.series) metadata.series = normalizeWhitespace(metadata.series);
+  if (metadata.authors) {
+    metadata.authors = metadata.authors.map((a) => ({
+      ...a,
+      name: normalizeWhitespace(a.name),
+    }));
+  }
+  if (metadata.genres) {
+    metadata.genres = metadata.genres.map(normalizeWhitespace);
+  }
+  if (metadata.tags) {
+    metadata.tags = metadata.tags.map(normalizeWhitespace);
+  }
 
   return metadata;
 }

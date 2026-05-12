@@ -4,6 +4,7 @@ import {
   levenshteinDistance,
   normalizeForComparison,
   normalizeIsbn,
+  normalizeWhitespace,
   parseMonth,
   slugify,
   stripHTML,
@@ -154,6 +155,47 @@ describe("slugify", () => {
 
   it("returns empty string for punctuation-only input", () => {
     expect(slugify("!!!")).toBe("");
+  });
+});
+
+describe("normalizeWhitespace", () => {
+  it("collapses multiple spaces to a single space", () => {
+    expect(normalizeWhitespace("Helen  Hoang")).toBe("Helen Hoang");
+    expect(normalizeWhitespace("too   many    spaces")).toBe("too many spaces");
+  });
+
+  it("collapses tabs to a single space", () => {
+    expect(normalizeWhitespace("word\t\tword")).toBe("word word");
+    expect(normalizeWhitespace("mixed\t space")).toBe("mixed space");
+  });
+
+  it("preserves single newlines", () => {
+    expect(normalizeWhitespace("line one\nline two")).toBe(
+      "line one\nline two",
+    );
+  });
+
+  it("preserves double newlines (paragraph breaks)", () => {
+    expect(normalizeWhitespace("para one\n\npara two")).toBe(
+      "para one\n\npara two",
+    );
+  });
+
+  it("collapses 3+ newlines to a double newline", () => {
+    expect(normalizeWhitespace("one\n\n\ntwo")).toBe("one\n\ntwo");
+    expect(normalizeWhitespace("one\n\n\n\n\ntwo")).toBe("one\n\ntwo");
+  });
+
+  it("collapses horizontal whitespace around newlines", () => {
+    expect(normalizeWhitespace("end   \n  start")).toBe("end \n start");
+  });
+
+  it("trims leading and trailing whitespace", () => {
+    expect(normalizeWhitespace("  hello  ")).toBe("hello");
+  });
+
+  it("handles text with no issues", () => {
+    expect(normalizeWhitespace("already clean")).toBe("already clean");
   });
 });
 
