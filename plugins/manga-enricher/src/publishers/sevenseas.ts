@@ -26,7 +26,7 @@ function fetchHtml(url: string): string | null {
   // encounters TLS errors, connection resets, or anti-bot protection that
   // returns a malformed body. An uncaught throw bubbles up and kills the
   // entire search for the file — every fetch must be guarded.
-  let response: ReturnType<typeof shisho.http.fetch> | null = null;
+  let response: ReturnType<typeof shisho.http.fetch>;
   try {
     response = shisho.http.fetch(url, {
       headers: {
