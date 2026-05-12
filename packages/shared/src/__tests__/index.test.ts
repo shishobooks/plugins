@@ -194,6 +194,12 @@ describe("normalizeWhitespace", () => {
     expect(normalizeWhitespace("  hello  ")).toBe("hello");
   });
 
+  it("normalizes \\r\\n and lone \\r to \\n before collapsing", () => {
+    expect(normalizeWhitespace("one\r\ntwo")).toBe("one\ntwo");
+    expect(normalizeWhitespace("one\r\n\r\ntwo")).toBe("one\n\ntwo");
+    expect(normalizeWhitespace("one\rtwo")).toBe("one\ntwo");
+  });
+
   it("handles text with no issues", () => {
     expect(normalizeWhitespace("already clean")).toBe("already clean");
   });

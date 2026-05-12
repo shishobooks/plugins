@@ -209,6 +209,7 @@ export function isbnsMatch(a: string, b: string): boolean {
  */
 export function normalizeWhitespace(text: string): string {
   return text
+    .replace(/\r\n?/g, "\n")
     .replace(/[^\S\n]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
