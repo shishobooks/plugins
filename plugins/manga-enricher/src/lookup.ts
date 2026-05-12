@@ -422,9 +422,9 @@ function findVolumeData(
   for (const publisher of orderedPublishers) {
     const scraper = SCRAPERS.find((s) => s.matchPublisher(publisher.name));
     if (!scraper) continue;
-    let data: VolumeMetadata | null = null;
     try {
-      data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
+      const data = scraper.searchVolume(seriesTitle, volumeNumber, edition);
+      if (data) return { data, scraperName: scraper.name };
     } catch (err) {
       const detail =
         err instanceof Error ? (err.stack ?? err.message) : String(err);
@@ -433,7 +433,6 @@ function findVolumeData(
       );
       continue;
     }
-    if (data) return { data, scraperName: scraper.name };
   }
 
   return null;
