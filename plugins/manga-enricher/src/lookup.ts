@@ -271,9 +271,8 @@ function buildMetadata(
     );
     if (scrapeResult) {
       mergeVolumeData(metadata, scrapeResult.data);
-      // The scraper that succeeded is the authoritative English publisher
-      // for this volume — override whatever pickEnglishPublisher chose.
-      metadata.publisher = scrapeResult.scraperName;
+      metadata.publisher =
+        scrapeResult.data.imprint ?? scrapeResult.scraperName;
     }
   }
 
@@ -452,7 +451,6 @@ function mergeVolumeData(
   if (volumeData.subtitle) metadata.subtitle = volumeData.subtitle;
   if (volumeData.description) metadata.description = volumeData.description;
   if (volumeData.releaseDate) metadata.releaseDate = volumeData.releaseDate;
-  if (volumeData.imprint) metadata.imprint = volumeData.imprint;
   if (volumeData.url) metadata.url = volumeData.url;
   // Publisher cover (per-volume) overrides the series-level MU cover.
   if (volumeData.coverUrl) metadata.coverUrl = volumeData.coverUrl;
