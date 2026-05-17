@@ -15,8 +15,8 @@ importers:
         specifier: ^4.7.0
         version: 4.7.1(prettier@3.8.3)
       '@shisho/plugin-sdk':
-        specifier: 0.0.43
-        version: 0.0.43
+        specifier: 0.0.45
+        version: 0.0.45
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
@@ -640,8 +640,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@shisho/plugin-sdk@0.0.43':
-    resolution: {integrity: sha512-um4Td0SqIxC8S5YgqjQVEaV29WVZ6FlY/acQtPm5t6/wj/DfA0JueHbvAqxSJhNEjp5yfxC2/Asj8dfD4I5tsA==}
+  '@shisho/plugin-sdk@0.0.45':
+    resolution: {integrity: sha512-Z1zXpyd3M5v6ie7rnoTzbUKkWPHAdbLyXjW2D7kvY1kmw7+qETDM7Nm7SsCxOXtYJ313zNkhiDb1vKSPfJMtPw==}
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -950,8 +950,8 @@ packages:
   fast-xml-builder@1.2.0:
     resolution: {integrity: sha512-00aAWieqff+ZJhsXA4g1g7M8k+7AYoMUUHF+/zFb5U6Uv/P0Vl4QZo84/IcufzYalLuEj9928bXN9PbbFzMF0Q==}
 
-  fast-xml-parser@5.7.3:
-    resolution: {integrity: sha512-C0AaNuC+mscy6vrAQKAc/rMq+zAPHodfHGZu4sGVehvAQt/JLG1O5zEcYcXSY5zSqr4YVgxsB+pHXTq0i7eDlg==}
+  fast-xml-parser@5.8.0:
+    resolution: {integrity: sha512-6bIM7fsJxeo3uXv7OncQYsBAMPJ7V16Slahl/6M98C/i2q+vB1+4a0MtrvYwDFEUrwDSbAmeLDRXsOBwrL7yAg==}
     hasBin: true
 
   fdir@6.5.0:
@@ -1744,9 +1744,9 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.3':
     optional: true
 
-  '@shisho/plugin-sdk@0.0.43':
+  '@shisho/plugin-sdk@0.0.45':
     dependencies:
-      fast-xml-parser: 5.7.3
+      fast-xml-parser: 5.8.0
       linkedom: 0.18.12
       yaml: 2.9.0
     transitivePeerDependencies:
@@ -2157,12 +2157,13 @@ snapshots:
       path-expression-matcher: 1.5.0
       xml-naming: 0.1.0
 
-  fast-xml-parser@5.7.3:
+  fast-xml-parser@5.8.0:
     dependencies:
       '@nodable/entities': 2.1.0
       fast-xml-builder: 1.2.0
       path-expression-matcher: 1.5.0
       strnum: 2.3.0
+      xml-naming: 0.1.0
 
   fdir@6.5.0(picomatch@4.0.4):
     optionalDependencies:

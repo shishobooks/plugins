@@ -13,7 +13,7 @@ export interface VolumeMetadata {
   isbn13?: string;
   /** ISBN-10. When multiple ISBNs exist, prefer the ebook variant. */
   isbn10?: string;
-  /** Publisher imprint (e.g., "Shonen Jump" on Viz). */
+  /** Publisher imprint (e.g., "Shonen Jump" on Viz). Preferred over scraper name for publisher. */
   imprint?: string;
   /** Publisher product page URL. */
   url?: string;

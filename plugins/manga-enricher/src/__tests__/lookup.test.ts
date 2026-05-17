@@ -351,12 +351,10 @@ describe("searchForManga", () => {
       expect(mockedVizSearch).toHaveBeenCalledWith("One Piece", 1, undefined);
       expect(mockedKodanshaSearch).not.toHaveBeenCalled();
       expect(results[0].description).toBe("Full per-volume synopsis.");
-      expect(results[0].imprint).toBe("Shonen Jump");
       expect(results[0].releaseDate).toBe("2003-06-01T00:00:00Z");
       expect(results[0].url).toBe(vizVolumeData.url);
-      // The successful scraper's canonical name is the authoritative
-      // publisher, not whichever English publisher MU happened to list first.
-      expect(results[0].publisher).toBe("Viz Media");
+      // When an imprint is available, it becomes the publisher (more specific).
+      expect(results[0].publisher).toBe("Shonen Jump");
       // ISBN identifier is merged in addition to mangaupdates_series.
       expect(results[0].identifiers).toEqual(
         expect.arrayContaining([
