@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-17
+
+### Other
+- Upgrade to Shisho v0.0.45 and remove imprint field (#45)
+- Bump @eslint/js from 9.39.4 to 10.0.1 (#40)
+
+
 ## [0.3.1] - 2026-04-21
 
 ### Bug Fixes
