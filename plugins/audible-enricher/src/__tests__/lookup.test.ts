@@ -431,6 +431,17 @@ describe("extractQueryIdentifiers", () => {
     ).toEqual({ asin: "B08G9PRS1K" });
   });
 
+  it("skips an ASIN-shaped slug token and takes the real trailing ASIN", () => {
+    // The boundary in the URL regex prevents matching B12345678X (followed
+    // by "-", not a delimiter) and instead captures the real path-segment
+    // ASIN that ends the URL.
+    expect(
+      extractQueryIdentifiers(
+        "https://www.audible.com/pd/B12345678X-Audiobook/B08G9PRS1K",
+      ),
+    ).toEqual({ asin: "B08G9PRS1K" });
+  });
+
   it("extracts a bare ASIN", () => {
     expect(extractQueryIdentifiers("B08G9PRS1K")).toEqual({
       asin: "B08G9PRS1K",

@@ -446,6 +446,12 @@ describe("extractQueryIdentifiers", () => {
     ).toEqual({ editionId: "OL123M" });
   });
 
+  it("ignores a .json suffix on an edition URL", () => {
+    expect(
+      extractQueryIdentifiers("https://openlibrary.org/books/OL123M.json"),
+    ).toEqual({ editionId: "OL123M" });
+  });
+
   it("extracts a work ID from a works URL", () => {
     expect(
       extractQueryIdentifiers("https://openlibrary.org/works/OL456W"),

@@ -55,16 +55,13 @@ export function extractQueryIdentifiers(query: string): {
   if (!trimmed) return {};
 
   // Open Library URLs — /books/<edition>, /works/<work>, /isbn/<isbn>.
-  // The ID is bounded by a path/query/fragment delimiter or end-of-string
-  // so a trailing slug is ignored and a malformed ID isn't truncated.
-  const editionUrl = trimmed.match(
-    /openlibrary\.org\/books\/(OL\d+M)(?:[/?#]|$)/i,
-  );
+  // The trailing M/W (edition/work) and the ISBN character class each
+  // terminate the captured ID where it ends, so any trailing slug,
+  // ".json", or query string is ignored.
+  const editionUrl = trimmed.match(/openlibrary\.org\/books\/(OL\d+M)/i);
   if (editionUrl) return { editionId: editionUrl[1].toUpperCase() };
 
-  const workUrl = trimmed.match(
-    /openlibrary\.org\/works\/(OL\d+W)(?:[/?#]|$)/i,
-  );
+  const workUrl = trimmed.match(/openlibrary\.org\/works\/(OL\d+W)/i);
   if (workUrl) return { workId: workUrl[1].toUpperCase() };
 
   const isbnUrl = trimmed.match(/openlibrary\.org\/isbn\/([\dX-]+)/i);
