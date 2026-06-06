@@ -4,7 +4,7 @@ import {
   getMarketplaces,
   searchProducts,
 } from "../api";
-import { searchForBooks } from "../lookup";
+import { extractQueryIdentifiers, searchForBooks } from "../lookup";
 import type { AudibleProduct, AudnexusBook } from "../types";
 import type { SearchContext } from "@shisho/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
@@ -331,5 +331,124 @@ describe("searchForBooks", () => {
       const results = searchForBooks(context);
       expect(results).toHaveLength(0);
     });
+  });
+
+  describe("query-embedded identifiers", () => {
+    it("uses an Audible URL pasted into the title field", () => {
+      setupDefaultMocks();
+      mockedFetchAudnexusBook.mockReturnValue(sampleAudnexusBook);
+
+      const context = makeContext({
+        query:
+          "https://www.audible.com/pd/Project-Hail-Mary-Audiobook/B08G9PRS1K",
+      });
+      const results = searchForBooks(context);
+
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B08G9PRS1K", "us");
+      expect(mockedSearchProducts).not.toHaveBeenCalled();
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(1.0);
+    });
+
+    it("uses an Audible URL with a query string", () => {
+      setupDefaultMocks();
+      mockedFetchAudnexusBook.mockReturnValue(sampleAudnexusBook);
+
+      const context = makeContext({
+        query:
+          "https://www.audible.co.uk/pd/Project-Hail-Mary/B08G9PRS1K?ref=a_search",
+      });
+      const results = searchForBooks(context);
+
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B08G9PRS1K", "us");
+      expect(results).toHaveLength(1);
+    });
+
+    it("uses a bare ASIN pasted into the title field", () => {
+      setupDefaultMocks();
+      mockedFetchAudnexusBook.mockReturnValue(sampleAudnexusBook);
+
+      const context = makeContext({ query: "B08G9PRS1K" });
+      const results = searchForBooks(context);
+
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B08G9PRS1K", "us");
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(1.0);
+    });
+
+    it("query-embedded ASIN overrides file-metadata ASIN", () => {
+      setupDefaultMocks();
+      mockedFetchAudnexusBook.mockReturnValue(sampleAudnexusBook);
+
+      const context = makeContext({
+        query: "B08G9PRS1K",
+        identifiers: [{ type: "asin", value: "B0OTHER999" }],
+      });
+      searchForBooks(context);
+
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B08G9PRS1K", "us");
+      expect(mockedFetchAudnexusBook).not.toHaveBeenCalledWith(
+        "B0OTHER999",
+        "us",
+      );
+    });
+
+    it("does not fall back to title search when query identifier misses", () => {
+      setupDefaultMocks();
+
+      const context = makeContext({
+        query: "B08G9PRS1K",
+        identifiers: [{ type: "asin", value: "B0OTHER999" }],
+      });
+      const results = searchForBooks(context);
+
+      expect(results).toHaveLength(0);
+      expect(mockedSearchProducts).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("extractQueryIdentifiers", () => {
+  it("extracts an ASIN from an Audible product URL", () => {
+    expect(
+      extractQueryIdentifiers(
+        "https://www.audible.com/pd/Project-Hail-Mary-Audiobook/B08G9PRS1K",
+      ),
+    ).toEqual({ asin: "B08G9PRS1K" });
+  });
+
+  it("extracts an ASIN from a URL with a query string", () => {
+    expect(
+      extractQueryIdentifiers(
+        "https://www.audible.com/pd/Title/B08G9PRS1K?ref=a_search_c1",
+      ),
+    ).toEqual({ asin: "B08G9PRS1K" });
+  });
+
+  it("extracts an ASIN from a non-US marketplace URL", () => {
+    expect(
+      extractQueryIdentifiers("https://www.audible.co.uk/pd/Title/B08G9PRS1K"),
+    ).toEqual({ asin: "B08G9PRS1K" });
+  });
+
+  it("extracts a bare ASIN", () => {
+    expect(extractQueryIdentifiers("B08G9PRS1K")).toEqual({
+      asin: "B08G9PRS1K",
+    });
+  });
+
+  it("uppercases ASINs typed in lowercase", () => {
+    expect(extractQueryIdentifiers("b08g9prs1k")).toEqual({
+      asin: "B08G9PRS1K",
+    });
+  });
+
+  it("returns empty for a plain title", () => {
+    expect(extractQueryIdentifiers("Project Hail Mary")).toEqual({});
+  });
+
+  it("returns empty for an empty string", () => {
+    expect(extractQueryIdentifiers("")).toEqual({});
+    expect(extractQueryIdentifiers("   ")).toEqual({});
   });
 });

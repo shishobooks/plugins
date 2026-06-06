@@ -1,5 +1,5 @@
 import { fetchByISBN, fetchEdition, fetchWork, searchBooks } from "../api";
-import { searchForBooks } from "../lookup";
+import { extractQueryIdentifiers, searchForBooks } from "../lookup";
 import type { OLEdition, OLSearchResult, OLWork } from "../types";
 import type { SearchContext } from "@shisho/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
@@ -319,5 +319,175 @@ describe("searchForBooks", () => {
       expect(mockedFetchEdition).toHaveBeenCalledWith("OL999M");
       expect(mockedFetchByISBN).toHaveBeenCalledWith("9780123456789");
     });
+  });
+
+  describe("query-embedded identifiers", () => {
+    it("uses an edition URL pasted into the title field", () => {
+      const context = makeContext({
+        query: "https://openlibrary.org/books/OL123M/The_Hobbit",
+      });
+      mockedFetchEdition.mockReturnValue(sampleEdition);
+
+      const results = searchForBooks(context);
+
+      expect(mockedFetchEdition).toHaveBeenCalledWith("OL123M");
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(1.0);
+    });
+
+    it("uses a work URL pasted into the title field", () => {
+      const context = makeContext({
+        query: "https://openlibrary.org/works/OL456W/The_Hobbit",
+      });
+      mockedFetchWork.mockReturnValue(sampleWork);
+
+      const results = searchForBooks(context);
+
+      expect(mockedFetchWork).toHaveBeenCalledWith("OL456W");
+      expect(results).toHaveLength(1);
+    });
+
+    it("uses an ISBN URL pasted into the title field", () => {
+      const context = makeContext({
+        query: "https://openlibrary.org/isbn/9780261102217",
+      });
+      mockedFetchByISBN.mockReturnValue(sampleEdition);
+
+      const results = searchForBooks(context);
+
+      expect(mockedFetchByISBN).toHaveBeenCalledWith("9780261102217");
+      expect(results).toHaveLength(1);
+    });
+
+    it("uses a bare edition ID pasted into the title field", () => {
+      const context = makeContext({ query: "OL123M" });
+      mockedFetchEdition.mockReturnValue(sampleEdition);
+
+      const results = searchForBooks(context);
+
+      expect(mockedFetchEdition).toHaveBeenCalledWith("OL123M");
+      expect(results).toHaveLength(1);
+    });
+
+    it("uses a bare work ID pasted into the title field", () => {
+      const context = makeContext({ query: "OL456W" });
+      mockedFetchWork.mockReturnValue(sampleWork);
+
+      const results = searchForBooks(context);
+
+      expect(mockedFetchWork).toHaveBeenCalledWith("OL456W");
+      expect(results).toHaveLength(1);
+    });
+
+    it("uses a bare ISBN pasted into the title field", () => {
+      const context = makeContext({ query: "978-0-261-10221-7" });
+      mockedFetchByISBN.mockReturnValue(sampleEdition);
+
+      const results = searchForBooks(context);
+
+      expect(mockedFetchByISBN).toHaveBeenCalledWith("9780261102217");
+      expect(results).toHaveLength(1);
+    });
+
+    it("query-embedded ID overrides file-metadata identifiers", () => {
+      const context = makeContext({
+        query: "https://openlibrary.org/books/OL123M",
+        identifiers: [
+          { type: "openlibrary_edition", value: "OL999M" },
+          { type: "isbn_13", value: "9780261102217" },
+        ],
+      });
+      mockedFetchEdition.mockReturnValue(sampleEdition);
+
+      searchForBooks(context);
+
+      expect(mockedFetchEdition).toHaveBeenCalledWith("OL123M");
+      expect(mockedFetchEdition).not.toHaveBeenCalledWith("OL999M");
+      expect(mockedFetchByISBN).not.toHaveBeenCalled();
+    });
+
+    it("does not fall back to file identifiers when query identifier misses", () => {
+      const context = makeContext({
+        query: "https://openlibrary.org/books/OL123M",
+        identifiers: [{ type: "isbn_13", value: "9780261102217" }],
+      });
+      mockedFetchEdition.mockReturnValue(null);
+
+      const results = searchForBooks(context);
+
+      expect(results).toHaveLength(0);
+      expect(mockedFetchByISBN).not.toHaveBeenCalled();
+    });
+
+    it("does not fall back to title search when query is a bare identifier", () => {
+      const context = makeContext({ query: "OL456W" });
+      mockedFetchWork.mockReturnValue(null);
+
+      const results = searchForBooks(context);
+
+      expect(results).toHaveLength(0);
+      expect(mockedSearchBooks).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("extractQueryIdentifiers", () => {
+  it("extracts an edition ID from a books URL", () => {
+    expect(
+      extractQueryIdentifiers("https://openlibrary.org/books/OL123M"),
+    ).toEqual({ editionId: "OL123M" });
+  });
+
+  it("extracts an edition ID from a URL with a slug", () => {
+    expect(
+      extractQueryIdentifiers(
+        "https://openlibrary.org/books/OL123M/The_Hobbit",
+      ),
+    ).toEqual({ editionId: "OL123M" });
+  });
+
+  it("extracts a work ID from a works URL", () => {
+    expect(
+      extractQueryIdentifiers("https://openlibrary.org/works/OL456W"),
+    ).toEqual({ workId: "OL456W" });
+  });
+
+  it("extracts an ISBN from an isbn URL", () => {
+    expect(
+      extractQueryIdentifiers("https://openlibrary.org/isbn/9780261102217"),
+    ).toEqual({ isbn: "9780261102217" });
+  });
+
+  it("treats a bare edition ID as an edition", () => {
+    expect(extractQueryIdentifiers("OL123M")).toEqual({ editionId: "OL123M" });
+  });
+
+  it("treats a bare work ID as a work", () => {
+    expect(extractQueryIdentifiers("OL456W")).toEqual({ workId: "OL456W" });
+  });
+
+  it("uppercases lowercase OL IDs", () => {
+    expect(extractQueryIdentifiers("ol123m")).toEqual({ editionId: "OL123M" });
+  });
+
+  it("treats a bare ISBN-13 as an ISBN", () => {
+    expect(extractQueryIdentifiers("9780261102217")).toEqual({
+      isbn: "9780261102217",
+    });
+  });
+
+  it("strips hyphens and spaces from ISBNs", () => {
+    expect(extractQueryIdentifiers("978-0-261-10221-7")).toEqual({
+      isbn: "9780261102217",
+    });
+  });
+
+  it("returns empty for a plain title", () => {
+    expect(extractQueryIdentifiers("The Hobbit")).toEqual({});
+  });
+
+  it("returns empty for an empty string", () => {
+    expect(extractQueryIdentifiers("")).toEqual({});
+    expect(extractQueryIdentifiers("   ")).toEqual({});
   });
 });

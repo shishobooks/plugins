@@ -6,18 +6,29 @@ import {
   normalizeForComparison,
   parseOLDate,
 } from "./utils";
-import { titleMatchConfidence } from "@shisho-plugins/shared";
+import { normalizeIsbn, titleMatchConfidence } from "@shisho-plugins/shared";
 import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
 
 /**
  * Search for candidate books in Open Library using the priority lookup chain:
- * 1. Existing Open Library IDs (edition or work)
- * 2. ISBN lookup
- * 3. Title + Author search (with confidence check)
+ * 1. Query-embedded identifier (OL URL / work ID / edition ID / ISBN) —
+ *    wins over every file-metadata identifier and disables the title fallback.
+ * 2. Existing file-metadata Open Library IDs (edition or work)
+ * 3. File-metadata ISBN lookup
+ * 4. Title + Author search (with confidence check)
  *
  * Returns lightweight ParsedMetadata[] for the user to select from.
  */
 export function searchForBooks(context: SearchContext): ParsedMetadata[] {
+  // A query-typed identifier trumps ALL file-metadata identifiers. If the
+  // user pasted an Open Library URL/ID or an ISBN they're asking for a
+  // specific book — honour that over whatever happens to be on the file,
+  // and don't fall back to a fuzzy title search on a miss.
+  const fromQuery = extractQueryIdentifiers(context.query ?? "");
+  if (fromQuery.editionId) return lookupByEditionId(fromQuery.editionId);
+  if (fromQuery.workId) return lookupByWorkId(fromQuery.workId);
+  if (fromQuery.isbn) return lookupByIsbn(fromQuery.isbn);
+
   // 1. Try existing Open Library IDs
   const idResults = tryExistingIdSearch(context);
   if (idResults.length > 0) return idResults;
@@ -31,7 +42,45 @@ export function searchForBooks(context: SearchContext): ParsedMetadata[] {
 }
 
 /**
- * Try search using existing Open Library identifiers.
+ * Parse a free-text query for a directly-usable identifier. Users often
+ * paste an Open Library URL, OL ID, or ISBN into the title field when they
+ * want a specific book.
+ */
+export function extractQueryIdentifiers(query: string): {
+  editionId?: string;
+  workId?: string;
+  isbn?: string;
+} {
+  const trimmed = query.trim();
+  if (!trimmed) return {};
+
+  // Open Library URLs — /books/<edition>, /works/<work>, /isbn/<isbn>.
+  // Any trailing slug is ignored.
+  const editionUrl = trimmed.match(/openlibrary\.org\/books\/(OL\d+M)/i);
+  if (editionUrl) return { editionId: editionUrl[1].toUpperCase() };
+
+  const workUrl = trimmed.match(/openlibrary\.org\/works\/(OL\d+W)/i);
+  if (workUrl) return { workId: workUrl[1].toUpperCase() };
+
+  const isbnUrl = trimmed.match(/openlibrary\.org\/isbn\/([\dXx-]+)/i);
+  if (isbnUrl) {
+    const normalized = normalizeIsbn(isbnUrl[1]);
+    if (normalized) return { isbn: normalized };
+  }
+
+  // Bare OL identifiers — edition IDs end in M, work IDs in W.
+  if (/^OL\d+M$/i.test(trimmed)) return { editionId: trimmed.toUpperCase() };
+  if (/^OL\d+W$/i.test(trimmed)) return { workId: trimmed.toUpperCase() };
+
+  // Bare ISBN, tolerant of dashes/spaces and a trailing X checksum.
+  const normalizedIsbn = normalizeIsbn(trimmed);
+  if (normalizedIsbn) return { isbn: normalizedIsbn };
+
+  return {};
+}
+
+/**
+ * Try search using existing file-metadata Open Library identifiers.
  */
 function tryExistingIdSearch(context: SearchContext): ParsedMetadata[] {
   const identifiers = context.identifiers ?? [];
@@ -41,25 +90,8 @@ function tryExistingIdSearch(context: SearchContext): ParsedMetadata[] {
     (id) => id.type === "openlibrary_edition",
   )?.value;
   if (editionId) {
-    shisho.log.info(`Looking up by edition ID: ${editionId}`);
-    const edition = fetchEdition(editionId);
-    if (edition) {
-      const workId = edition.works?.[0]?.key
-        ? extractOLId(edition.works[0].key)
-        : undefined;
-      // Search to find author names (not on edition endpoint)
-      const search = searchBooks(edition.title);
-      const matchingDoc = search?.docs.find(
-        (doc) => workId && extractOLId(doc.key) === workId,
-      );
-      return [
-        editionToResult(
-          edition,
-          { editionId, workId },
-          matchingDoc?.author_name,
-        ),
-      ];
-    }
+    const results = lookupByEditionId(editionId);
+    if (results.length > 0) return results;
   }
 
   // Try work ID
@@ -67,23 +99,52 @@ function tryExistingIdSearch(context: SearchContext): ParsedMetadata[] {
     (id) => id.type === "openlibrary_work",
   )?.value;
   if (workId) {
-    shisho.log.info(`Looking up by work ID: ${workId}`);
-    const work = fetchWork(workId);
-    if (work) {
-      // Search to find fields not on work endpoint (authors, publish year)
-      const search = searchBooks(work.title);
-      const matchingDoc = search?.docs.find(
-        (doc) => extractOLId(doc.key) === workId,
-      );
-      return [workToResult(work, { workId }, matchingDoc)];
-    }
+    const results = lookupByWorkId(workId);
+    if (results.length > 0) return results;
   }
 
   return [];
 }
 
 /**
- * Try search using ISBN identifiers.
+ * Direct lookup by Open Library edition ID.
+ */
+function lookupByEditionId(editionId: string): ParsedMetadata[] {
+  shisho.log.info(`Looking up by edition ID: ${editionId}`);
+  const edition = fetchEdition(editionId);
+  if (!edition) return [];
+
+  const workId = edition.works?.[0]?.key
+    ? extractOLId(edition.works[0].key)
+    : undefined;
+  // Search to find author names (not on edition endpoint)
+  const search = searchBooks(edition.title);
+  const matchingDoc = search?.docs.find(
+    (doc) => workId && extractOLId(doc.key) === workId,
+  );
+  return [
+    editionToResult(edition, { editionId, workId }, matchingDoc?.author_name),
+  ];
+}
+
+/**
+ * Direct lookup by Open Library work ID.
+ */
+function lookupByWorkId(workId: string): ParsedMetadata[] {
+  shisho.log.info(`Looking up by work ID: ${workId}`);
+  const work = fetchWork(workId);
+  if (!work) return [];
+
+  // Search to find fields not on work endpoint (authors, publish year)
+  const search = searchBooks(work.title);
+  const matchingDoc = search?.docs.find(
+    (doc) => extractOLId(doc.key) === workId,
+  );
+  return [workToResult(work, { workId }, matchingDoc)];
+}
+
+/**
+ * Try search using file-metadata ISBN identifiers.
  */
 function tryISBNSearch(context: SearchContext): ParsedMetadata[] {
   const identifiers = context.identifiers ?? [];
@@ -94,29 +155,33 @@ function tryISBNSearch(context: SearchContext): ParsedMetadata[] {
     .map((id) => id.value);
 
   for (const isbn of isbns) {
-    shisho.log.info(`Looking up by ISBN: ${isbn}`);
-    const edition = fetchByISBN(isbn);
-    if (edition) {
-      const workId = edition.works?.[0]?.key
-        ? extractOLId(edition.works[0].key)
-        : undefined;
-      const editionId = extractOLId(edition.key);
-      // Search to find author names (not on edition endpoint)
-      const search = searchBooks(edition.title);
-      const matchingDoc = search?.docs.find(
-        (doc) => workId && extractOLId(doc.key) === workId,
-      );
-      return [
-        editionToResult(
-          edition,
-          { editionId, workId },
-          matchingDoc?.author_name,
-        ),
-      ];
-    }
+    const results = lookupByIsbn(isbn);
+    if (results.length > 0) return results;
   }
 
   return [];
+}
+
+/**
+ * Direct lookup by ISBN.
+ */
+function lookupByIsbn(isbn: string): ParsedMetadata[] {
+  shisho.log.info(`Looking up by ISBN: ${isbn}`);
+  const edition = fetchByISBN(isbn);
+  if (!edition) return [];
+
+  const workId = edition.works?.[0]?.key
+    ? extractOLId(edition.works[0].key)
+    : undefined;
+  const editionId = extractOLId(edition.key);
+  // Search to find author names (not on edition endpoint)
+  const search = searchBooks(edition.title);
+  const matchingDoc = search?.docs.find(
+    (doc) => workId && extractOLId(doc.key) === workId,
+  );
+  return [
+    editionToResult(edition, { editionId, workId }, matchingDoc?.author_name),
+  ];
 }
 
 /**
