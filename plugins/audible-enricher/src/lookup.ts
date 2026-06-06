@@ -40,6 +40,10 @@ export function searchForBooks(context: SearchContext): ParsedMetadata[] {
  * Parse a free-text query for a directly-usable identifier. Users often
  * paste an Audible product URL or a bare ASIN into the title field when
  * they want a specific audiobook.
+ *
+ * Only ASINs are recognised — unlike the Goodreads/Open Library enrichers
+ * there is no ISBN path, because the Audible and Audnexus APIs are
+ * ASIN-only and have no ISBN lookup.
  */
 export function extractQueryIdentifiers(query: string): { asin?: string } {
   const trimmed = query.trim();
