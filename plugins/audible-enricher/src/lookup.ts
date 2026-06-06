@@ -13,7 +13,7 @@ import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
  * Search for candidate audiobooks.
  *
  * Priority:
- *   1. Query-embedded identifier (Audible URL / ASIN) — wins over every
+ *   1. Query-embedded identifier (Audible URL / ASIN): wins over every
  *      file-metadata identifier and disables the title fallback.
  *   2. File-metadata ASIN.
  *   3. Fuzzy title + author search.
@@ -22,7 +22,7 @@ export function searchForBooks(context: SearchContext): ParsedMetadata[] {
   const marketplaces = getMarketplaces();
 
   // A query-typed identifier trumps ALL file-metadata identifiers. If the
-  // user pasted an Audible URL or ASIN they're asking for a specific book —
+  // user pasted an Audible URL or ASIN they're asking for a specific book, so
   // honour that over whatever happens to be on the file, and don't fall
   // back to a fuzzy title search on a miss.
   const fromQuery = extractQueryIdentifiers(context.query ?? "");
@@ -47,7 +47,7 @@ export function searchForBooks(context: SearchContext): ParsedMetadata[] {
  * paste an Audible product URL or a bare ASIN into the title field when
  * they want a specific audiobook.
  *
- * Only ASINs are recognised — unlike the Goodreads/Open Library enrichers
+ * Only ASINs are recognised. Unlike the Goodreads/Open Library enrichers
  * there is no ISBN path, because the Audible and Audnexus APIs are
  * ASIN-only and have no ISBN lookup.
  */
@@ -58,7 +58,7 @@ export function extractQueryIdentifiers(query: string): {
   const trimmed = query.trim();
   if (!trimmed) return {};
 
-  // Audible product URL — the ASIN is a path segment, e.g.
+  // Audible product URL: the ASIN is a path segment, e.g.
   // audible.com/pd/Project-Hail-Mary-Audiobook/B08G9PRS1K?ref=…
   // The captured TLD (com, co.uk, com.au, …) tells us which store the book
   // lives in, so we can look it up against the right marketplace first.
@@ -129,7 +129,7 @@ function tryASINLookup(
 /**
  * Direct lookup by ASIN across the given marketplaces in order.
  * Per marketplace: Audnexus first (single call with genres), Audible API as
- * fallback. Returns on the first marketplace that resolves — an ASIN only
+ * fallback. Returns on the first marketplace that resolves; an ASIN only
  * exists in one store, so the rest are misses anyway.
  */
 function lookupByAsin(asin: string, marketplaces: string[]): ParsedMetadata[] {
