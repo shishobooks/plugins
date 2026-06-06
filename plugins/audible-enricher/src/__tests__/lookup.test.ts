@@ -98,6 +98,24 @@ describe("searchForBooks", () => {
       expect(results[0].confidence).toBe(1.0);
     });
 
+    it("tries all configured marketplaces for a file-metadata ASIN", () => {
+      setupDefaultMocks();
+      mockedGetMarketplaces.mockReturnValue(["us", "uk"]);
+      // `us` misses on both Audnexus and the Audible API; `uk` resolves.
+      mockedFetchAudnexusBook
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce(sampleAudnexusBook);
+
+      const context = makeContext({
+        identifiers: [{ type: "asin", value: "B08G9PRS1K" }],
+      });
+      const results = searchForBooks(context);
+
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B08G9PRS1K", "us");
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B08G9PRS1K", "uk");
+      expect(results).toHaveLength(1);
+    });
+
     it("returns empty when both Audnexus and Audible API fail for ASIN", () => {
       setupDefaultMocks();
 
@@ -356,11 +374,65 @@ describe("searchForBooks", () => {
 
       const context = makeContext({
         query:
-          "https://www.audible.co.uk/pd/Project-Hail-Mary/B08G9PRS1K?ref=a_search",
+          "https://www.audible.com/pd/Project-Hail-Mary/B08G9PRS1K?ref=a_search",
       });
       const results = searchForBooks(context);
 
       expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B08G9PRS1K", "us");
+      expect(results).toHaveLength(1);
+    });
+
+    it("looks up against the marketplace implied by the URL first", () => {
+      setupDefaultMocks();
+      mockedFetchAudnexusBook.mockReturnValue(sampleAudnexusBook);
+
+      // A .co.uk URL should drive the lookup against `uk` even though the
+      // only configured marketplace is `us`.
+      const context = makeContext({
+        query:
+          "https://www.audible.co.uk/pd/Some-Title-Audiobook/B0CKS5PQYB?ref=a_search",
+      });
+      const results = searchForBooks(context);
+
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B0CKS5PQYB", "uk");
+      expect(results).toHaveLength(1);
+      expect(results[0].confidence).toBe(1.0);
+    });
+
+    it("prefers the URL marketplace over a different configured first one", () => {
+      setupDefaultMocks();
+      mockedGetMarketplaces.mockReturnValue(["us", "uk"]);
+      mockedFetchAudnexusBook.mockReturnValue(sampleAudnexusBook);
+
+      const context = makeContext({
+        query: "https://www.audible.co.uk/pd/Some-Title/B0CKS5PQYB",
+      });
+      searchForBooks(context);
+
+      // Resolves on the URL marketplace, so `us` is never queried.
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B0CKS5PQYB", "uk");
+      expect(mockedFetchAudnexusBook).not.toHaveBeenCalledWith(
+        "B0CKS5PQYB",
+        "us",
+      );
+    });
+
+    it("falls back to configured marketplaces when the URL marketplace misses", () => {
+      setupDefaultMocks();
+      mockedGetMarketplaces.mockReturnValue(["us"]);
+      // `uk` (from the URL) misses on both Audnexus and the Audible API; the
+      // configured `us` marketplace resolves.
+      mockedFetchAudnexusBook
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce(sampleAudnexusBook);
+
+      const context = makeContext({
+        query: "https://www.audible.co.uk/pd/Some-Title/B0CKS5PQYB",
+      });
+      const results = searchForBooks(context);
+
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B0CKS5PQYB", "uk");
+      expect(mockedFetchAudnexusBook).toHaveBeenCalledWith("B0CKS5PQYB", "us");
       expect(results).toHaveLength(1);
     });
 
@@ -409,12 +481,12 @@ describe("searchForBooks", () => {
 });
 
 describe("extractQueryIdentifiers", () => {
-  it("extracts an ASIN from an Audible product URL", () => {
+  it("extracts an ASIN and marketplace from an Audible product URL", () => {
     expect(
       extractQueryIdentifiers(
         "https://www.audible.com/pd/Project-Hail-Mary-Audiobook/B08G9PRS1K",
       ),
-    ).toEqual({ asin: "B08G9PRS1K" });
+    ).toEqual({ asin: "B08G9PRS1K", marketplace: "us" });
   });
 
   it("extracts an ASIN from a URL with a query string", () => {
@@ -422,12 +494,28 @@ describe("extractQueryIdentifiers", () => {
       extractQueryIdentifiers(
         "https://www.audible.com/pd/Title/B08G9PRS1K?ref=a_search_c1",
       ),
-    ).toEqual({ asin: "B08G9PRS1K" });
+    ).toEqual({ asin: "B08G9PRS1K", marketplace: "us" });
   });
 
-  it("extracts an ASIN from a non-US marketplace URL", () => {
+  it("derives the marketplace from each marketplace TLD", () => {
+    const cases: Array<[string, string]> = [
+      ["audible.com", "us"],
+      ["audible.co.uk", "uk"],
+      ["audible.de", "de"],
+      ["audible.com.au", "au"],
+      ["audible.co.jp", "jp"],
+      ["audible.com.br", "br"],
+    ];
+    for (const [host, marketplace] of cases) {
+      expect(
+        extractQueryIdentifiers(`https://www.${host}/pd/Title/B08G9PRS1K`),
+      ).toEqual({ asin: "B08G9PRS1K", marketplace });
+    }
+  });
+
+  it("returns no marketplace for an unknown TLD", () => {
     expect(
-      extractQueryIdentifiers("https://www.audible.co.uk/pd/Title/B08G9PRS1K"),
+      extractQueryIdentifiers("https://www.audible.zz/pd/Title/B08G9PRS1K"),
     ).toEqual({ asin: "B08G9PRS1K" });
   });
 
@@ -439,10 +527,10 @@ describe("extractQueryIdentifiers", () => {
       extractQueryIdentifiers(
         "https://www.audible.com/pd/B12345678X-Audiobook/B08G9PRS1K",
       ),
-    ).toEqual({ asin: "B08G9PRS1K" });
+    ).toEqual({ asin: "B08G9PRS1K", marketplace: "us" });
   });
 
-  it("extracts a bare ASIN", () => {
+  it("extracts a bare ASIN with no implied marketplace", () => {
     expect(extractQueryIdentifiers("B08G9PRS1K")).toEqual({
       asin: "B08G9PRS1K",
     });
