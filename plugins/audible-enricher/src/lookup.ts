@@ -5,7 +5,7 @@ import {
   searchProducts,
 } from "./api";
 import { audibleToMetadata, audnexusToMetadata } from "./mapping";
-import type { AudibleProduct } from "./types";
+import { MARKETPLACE_TLDS, type AudibleProduct } from "./types";
 import { titleMatchConfidence } from "@shisho-plugins/shared";
 import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
 
@@ -13,7 +13,7 @@ import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
  * Search for candidate audiobooks.
  *
  * Priority:
- *   1. Query-embedded identifier (Audible URL / ASIN) — wins over every
+ *   1. Query-embedded identifier (Audible URL / ASIN): wins over every
  *      file-metadata identifier and disables the title fallback.
  *   2. File-metadata ASIN.
  *   3. Fuzzy title + author search.
@@ -22,11 +22,17 @@ export function searchForBooks(context: SearchContext): ParsedMetadata[] {
   const marketplaces = getMarketplaces();
 
   // A query-typed identifier trumps ALL file-metadata identifiers. If the
-  // user pasted an Audible URL or ASIN they're asking for a specific book —
+  // user pasted an Audible URL or ASIN they're asking for a specific book, so
   // honour that over whatever happens to be on the file, and don't fall
   // back to a fuzzy title search on a miss.
   const fromQuery = extractQueryIdentifiers(context.query ?? "");
-  if (fromQuery.asin) return lookupByAsin(fromQuery.asin, marketplaces);
+  if (fromQuery.asin) {
+    // A pasted URL also tells us which store the book lives in. Try that
+    // marketplace first, then fall back to the configured ones (so a UK-only
+    // title from a .co.uk link still resolves even when `uk` isn't first).
+    const ordered = preferMarketplace(fromQuery.marketplace, marketplaces);
+    return lookupByAsin(fromQuery.asin, ordered);
+  }
 
   // Tier 1: Try ASIN lookup
   const asinResults = tryASINLookup(context, marketplaces);
@@ -41,25 +47,68 @@ export function searchForBooks(context: SearchContext): ParsedMetadata[] {
  * paste an Audible product URL or a bare ASIN into the title field when
  * they want a specific audiobook.
  *
- * Only ASINs are recognised — unlike the Goodreads/Open Library enrichers
+ * Only ASINs are recognised. Unlike the Goodreads/Open Library enrichers
  * there is no ISBN path, because the Audible and Audnexus APIs are
  * ASIN-only and have no ISBN lookup.
  */
-export function extractQueryIdentifiers(query: string): { asin?: string } {
+export function extractQueryIdentifiers(query: string): {
+  asin?: string;
+  marketplace?: string;
+} {
   const trimmed = query.trim();
   if (!trimmed) return {};
 
-  // Audible product URL — the ASIN is a path segment, e.g.
+  // Audible product URL: the ASIN is a path segment, e.g.
   // audible.com/pd/Project-Hail-Mary-Audiobook/B08G9PRS1K?ref=…
+  // The captured TLD (com, co.uk, com.au, …) tells us which store the book
+  // lives in, so we can look it up against the right marketplace first.
   const urlMatch = trimmed.match(
-    /audible\.[a-z.]+\/[^\s]*?(B[A-Z0-9]{9})(?:[/?#]|$)/i,
+    /audible\.([a-z.]+)\/[^\s]*?(B[A-Z0-9]{9})(?:[/?#]|$)/i,
   );
-  if (urlMatch) return { asin: urlMatch[1].toUpperCase() };
+  if (urlMatch) {
+    const result: { asin?: string; marketplace?: string } = {
+      asin: urlMatch[2].toUpperCase(),
+    };
+    const marketplace = marketplaceForTld(urlMatch[1]);
+    if (marketplace) result.marketplace = marketplace;
+    return result;
+  }
 
-  // Bare ASIN: B + 9 alphanumerics.
+  // Bare ASIN: B + 9 alphanumerics. No store is implied.
   if (/^B[A-Z0-9]{9}$/i.test(trimmed)) return { asin: trimmed.toUpperCase() };
 
   return {};
+}
+
+/**
+ * Reverse-map a website TLD (com, co.uk, com.au, …) to a marketplace code.
+ * Matches the whole TLD segment exactly so that `com`, `com.au`, and `com.br`
+ * don't collide. Returns undefined for an unrecognised store.
+ */
+function marketplaceForTld(tld: string): string | undefined {
+  const normalized = tld.toLowerCase();
+  for (const code of Object.keys(MARKETPLACE_TLDS)) {
+    if (MARKETPLACE_TLDS[code] === normalized) return code;
+  }
+  return undefined;
+}
+
+/**
+ * Put a preferred marketplace (e.g. one derived from a pasted URL) at the
+ * front of the configured list, de-duplicated. A missing preference leaves
+ * the configured order untouched.
+ */
+function preferMarketplace(
+  preferred: string | undefined,
+  configured: string[],
+): string[] {
+  const ordered = preferred ? [preferred, ...configured] : configured;
+  const seen = new Set<string>();
+  return ordered.filter((marketplace) => {
+    if (seen.has(marketplace)) return false;
+    seen.add(marketplace);
+    return true;
+  });
 }
 
 /**
@@ -78,29 +127,34 @@ function tryASINLookup(
 }
 
 /**
- * Direct lookup by ASIN.
- * Audnexus first (single call with genres), Audible API as fallback.
+ * Direct lookup by ASIN across the given marketplaces in order.
+ * Per marketplace: Audnexus first (single call with genres), Audible API as
+ * fallback. Returns on the first marketplace that resolves; an ASIN only
+ * exists in one store, so the rest are misses anyway.
  */
 function lookupByAsin(asin: string, marketplaces: string[]): ParsedMetadata[] {
-  const primaryMarketplace = marketplaces[0];
   shisho.log.info(`Looking up by ASIN: ${asin}`);
 
-  // Try Audnexus first
-  const audnexusBook = fetchAudnexusBook(asin, primaryMarketplace);
-  if (audnexusBook) {
-    shisho.log.info("Got metadata from Audnexus");
-    const metadata = audnexusToMetadata(audnexusBook, primaryMarketplace);
-    metadata.confidence = 1.0;
-    return [metadata];
-  }
+  for (const marketplace of marketplaces) {
+    // Try Audnexus first
+    const audnexusBook = fetchAudnexusBook(asin, marketplace);
+    if (audnexusBook) {
+      shisho.log.info(`Got metadata from Audnexus (${marketplace})`);
+      const metadata = audnexusToMetadata(audnexusBook, marketplace);
+      metadata.confidence = 1.0;
+      return [metadata];
+    }
 
-  // Fallback to Audible API
-  shisho.log.debug("Audnexus unavailable, falling back to Audible API");
-  const product = fetchProduct(primaryMarketplace, asin);
-  if (product) {
-    const metadata = audibleToMetadata(product, primaryMarketplace);
-    metadata.confidence = 1.0;
-    return [metadata];
+    // Fallback to the Audible API for this marketplace
+    shisho.log.debug(
+      `Audnexus unavailable for ${marketplace}, falling back to Audible API`,
+    );
+    const product = fetchProduct(marketplace, asin);
+    if (product) {
+      const metadata = audibleToMetadata(product, marketplace);
+      metadata.confidence = 1.0;
+      return [metadata];
+    }
   }
 
   return [];
