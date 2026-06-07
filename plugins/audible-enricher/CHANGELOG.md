@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-07
+
+### Features
+- Support exact Audible and Open Library lookups via query identifiers (#49)
+
+### Bug Fixes
+- Honour the marketplace implied by a pasted Audible URL (#50)
+
+
 ## [0.2.2] - 2026-04-26
 
 ### Bug Fixes
