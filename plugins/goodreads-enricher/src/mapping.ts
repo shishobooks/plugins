@@ -1,4 +1,4 @@
-import type { GRLookupResult } from "./types";
+import type { GRAutocompleteResult, GRLookupResult } from "./types";
 import {
   normalizeIsbn,
   normalizeWhitespace,
@@ -44,8 +44,8 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
   // Description - prefer page description, fall back to autocomplete
   if (pageData.description) {
     metadata.description = pageData.description;
-  } else if (autocomplete?.description?.html) {
-    metadata.description = stripHTML(autocomplete.description.html);
+  } else {
+    metadata.description = getEligibleAutocompleteDescription(autocomplete);
   }
 
   // Publisher
@@ -116,6 +116,15 @@ export function toMetadata(result: GRLookupResult): ParsedMetadata {
   }
 
   return metadata;
+}
+
+export function getEligibleAutocompleteDescription(
+  autocomplete: GRAutocompleteResult | undefined,
+): string | undefined {
+  const description = autocomplete?.description;
+  if (!description?.html || description.truncated) return undefined;
+
+  return stripHTML(description.html);
 }
 
 /**

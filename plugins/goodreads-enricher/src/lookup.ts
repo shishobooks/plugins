@@ -1,6 +1,7 @@
 import { fetchBookPage, searchAutocomplete } from "./api";
 import {
   cleanTitle,
+  getEligibleAutocompleteDescription,
   splitSubtitle,
   stripImageSuffix,
   toMetadata,
@@ -11,7 +12,6 @@ import {
   isbnsMatch,
   normalizeForComparison,
   normalizeIsbn,
-  stripHTML,
   titleMatchConfidence,
 } from "@shisho-plugins/shared";
 import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
@@ -339,9 +339,7 @@ function autocompleteToMetadata(
     metadata.coverUrl = stripImageSuffix(result.imageUrl);
   }
 
-  if (result.description?.html) {
-    metadata.description = stripHTML(result.description.html);
-  }
+  metadata.description = getEligibleAutocompleteDescription(result);
 
   return metadata;
 }

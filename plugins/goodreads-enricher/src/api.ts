@@ -9,6 +9,9 @@ const RETRY_BASE_DELAY_MS = 1000;
 
 function fetchWithRetry(
   url: string,
+  isUsableResponse: (
+    response: NonNullable<ReturnType<typeof shisho.http.fetch>>,
+  ) => boolean = () => true,
 ): ReturnType<typeof shisho.http.fetch> | null {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     shisho.log.debug(
@@ -19,7 +22,19 @@ function fetchWithRetry(
     });
 
     if (response?.ok) {
-      return response;
+      if (isUsableResponse(response)) return response;
+
+      if (attempt < MAX_ATTEMPTS) {
+        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        shisho.log.warn(
+          `Unusable response for ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_ATTEMPTS})…`,
+        );
+        shisho.sleep(delay);
+        continue;
+      }
+
+      shisho.log.warn(`Unusable response for ${url}`);
+      return null;
     }
 
     const status = response?.status;
@@ -38,6 +53,21 @@ function fetchWithRetry(
   return null;
 }
 
+function isUsableBookPage(status: number, html: string): boolean {
+  if (status === 202 || html.trim().length === 0) return false;
+
+  const normalized = html.toLowerCase();
+  const challengeMarkers = [
+    "window.gokuprops",
+    "awswafintegration",
+    "token.awswaf.com",
+    "/challenge.js",
+    "challenge-container",
+    "<title>human verification</title>",
+  ];
+  return !challengeMarkers.some((marker) => normalized.includes(marker));
+}
+
 function fetchJSON<T>(url: string): T | null {
   const response = fetchWithRetry(url);
   if (!response) return null;
@@ -48,13 +78,6 @@ function fetchJSON<T>(url: string): T | null {
     shisho.log.warn(`Failed to parse JSON from ${url}`);
     return null;
   }
-}
-
-function fetchText(url: string): string | null {
-  const response = fetchWithRetry(url);
-  if (!response) return null;
-
-  return response.text();
 }
 
 /**
@@ -75,5 +98,12 @@ export function searchAutocomplete(
  * @param bookId - Goodreads book ID (numeric)
  */
 export function fetchBookPage(bookId: string): string | null {
-  return fetchText(`${BASE_URL}/book/show/${bookId}`);
+  const url = `${BASE_URL}/book/show/${bookId}`;
+  let html: string | null = null;
+  const response = fetchWithRetry(url, (candidate) => {
+    html = candidate.text();
+    return isUsableBookPage(candidate.status, html);
+  });
+
+  return response ? html : null;
 }

@@ -433,6 +433,29 @@ describe("extractFromNextData", () => {
     );
   });
 
+  it("extracts the complete description for Goodreads book 17924086", () => {
+    const state = {
+      "Book:kca://book/amzn1.gr.book.v1.17924086": {
+        __typename: "Book",
+        title: "Nom Nom Paleo: Food for Humans",
+        titleComplete: "Nom Nom Paleo: Food for Humans",
+        description:
+          "By the creators of the critically-acclaimed leading Paleo food blog, Nom Nom Paleo features over 100 flavor-packed, nutrient-dense recipes using real, whole ingredients.<br /><br />Healthy cooking doesn't mean sacrificing flavor. This book gives you &quot;Paleo with personality,&quot; and will make you excited to play in the kitchen again.",
+        details: {},
+        bookGenres: [],
+      },
+    };
+
+    const result = parseBookPage(makeNextDataHtml(state));
+
+    expect(result.description).toContain(
+      "By the creators of the critically-acclaimed leading Paleo food blog",
+    );
+    expect(result.description).toContain(
+      'Healthy cooking doesn\'t mean sacrificing flavor. This book gives you "Paleo with personality," and will make you excited to play in the kitchen again.',
+    );
+  });
+
   it("extracts series info from Apollo refs", () => {
     const html = makeNextDataHtml(fullApolloState);
     const result = extractFromNextData(html)!;

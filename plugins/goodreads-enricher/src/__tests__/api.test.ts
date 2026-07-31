@@ -115,6 +115,66 @@ describe("fetchBookPage", () => {
     );
   });
 
+  it("retries an empty accepted response and returns the later book page", () => {
+    const html = "<html><body>Book</body></html>";
+    vi.mocked(shisho.http.fetch)
+      .mockReturnValueOnce({
+        status: 202,
+        statusText: "Accepted",
+        ok: true,
+        json: () => null,
+        text: () => "",
+      } as ReturnType<typeof shisho.http.fetch>)
+      .mockReturnValueOnce({
+        status: 200,
+        statusText: "OK",
+        ok: true,
+        json: () => null,
+        text: () => html,
+      } as ReturnType<typeof shisho.http.fetch>);
+
+    expect(fetchBookPage("5907")).toBe(html);
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(2);
+    expect(shisho.sleep).toHaveBeenCalledWith(1000);
+  });
+
+  it("retries an AWS WAF challenge and returns the later book page", () => {
+    const challenge = `
+      <html>
+        <head><title>Human Verification</title></head>
+        <body><script>window.gokuProps = {};</script></body>
+      </html>
+    `;
+    const html = "<html><body>Book</body></html>";
+    vi.mocked(shisho.http.fetch)
+      .mockReturnValueOnce({
+        status: 200,
+        statusText: "OK",
+        ok: true,
+        json: () => null,
+        text: () => challenge,
+      } as ReturnType<typeof shisho.http.fetch>)
+      .mockReturnValueOnce({
+        status: 200,
+        statusText: "OK",
+        ok: true,
+        json: () => null,
+        text: () => html,
+      } as ReturnType<typeof shisho.http.fetch>);
+
+    expect(fetchBookPage("5907")).toBe(html);
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up after three unusable book-page responses", () => {
+    mockFetch({ status: 202, statusText: "Accepted", ok: true, text: "" });
+
+    expect(fetchBookPage("5907")).toBeNull();
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(3);
+    expect(shisho.sleep).toHaveBeenNthCalledWith(1, 1000);
+    expect(shisho.sleep).toHaveBeenNthCalledWith(2, 2000);
+  });
+
   it("returns null on 404", () => {
     mockFetch({ status: 404, statusText: "Not Found", ok: false });
 

@@ -270,8 +270,23 @@ describe("toMetadata", () => {
       expect(metadata.description).toBe("Full page description.");
     });
 
-    it("falls back to autocomplete description", () => {
+    it("omits a known-truncated autocomplete description", () => {
       const result = makeResult();
+
+      const metadata = toMetadata(result);
+      expect(metadata.description).toBeUndefined();
+    });
+
+    it("falls back to a complete autocomplete description", () => {
+      const result = makeResult({
+        autocomplete: {
+          ...baseAutocomplete,
+          description: {
+            ...baseAutocomplete.description!,
+            truncated: false,
+          },
+        },
+      });
 
       const metadata = toMetadata(result);
       expect(metadata.description).toBe(

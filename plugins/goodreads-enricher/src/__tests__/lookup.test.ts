@@ -433,15 +433,35 @@ describe("searchForBooks", () => {
 
       expect(result.title).toBe("The Hobbit, or There and Back Again");
       expect(result.authors).toEqual([{ name: "J.R.R. Tolkien" }]);
-      expect(result.description).toBe(
-        "In a hole in the ground there lived a hobbit.",
-      );
+      expect(result.description).toBeUndefined();
       expect(result.url).toBe("https://www.goodreads.com/book/show/5907");
       expect(result.coverUrl).toBe(
         "https://i.gr-assets.com/images/books/5907.jpg",
       );
       expect(result.series).toBeUndefined();
       expect(result.publisher).toBeUndefined();
+    });
+
+    it("keeps a complete autocomplete description when the book page fails", () => {
+      const context = makeContext({
+        identifiers: [{ type: "isbn_13", value: "9780261102217" }],
+      });
+      mockedSearchAutocomplete.mockReturnValue([
+        {
+          ...sampleAutocomplete,
+          description: {
+            ...sampleAutocomplete.description!,
+            truncated: false,
+          },
+        },
+      ]);
+      mockedFetchBookPage.mockReturnValue(null);
+
+      const results = searchForBooks(context);
+
+      expect(results[0].description).toBe(
+        "In a hole in the ground there lived a hobbit.",
+      );
     });
 
     it("uses bookTitleBare and strips series suffix in autocomplete fallback", () => {
