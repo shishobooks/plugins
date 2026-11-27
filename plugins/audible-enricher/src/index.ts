@@ -1,4 +1,5 @@
 import { searchForBooks } from "./lookup";
+import { searchWithFailureReporting } from "@shisho-plugins/shared";
 import type {
   SearchContext,
   SearchResponse,
@@ -10,7 +11,7 @@ const plugin: ShishoPlugin = {
     search(context: SearchContext): SearchResponse {
       shisho.log.info("Audible enricher: searching");
 
-      const results = searchForBooks(context);
+      const results = searchWithFailureReporting(() => searchForBooks(context));
       shisho.log.info(`Found ${results.length} candidate(s)`);
 
       return { results };

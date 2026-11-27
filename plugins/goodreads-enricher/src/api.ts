@@ -1,5 +1,6 @@
 import type { GRAutocompleteResult } from "./types";
 import { safeFetch } from "@shisho-plugins/shared";
+import type { FetchResponse } from "@shisho/plugin-sdk";
 
 const BASE_URL = "https://www.goodreads.com";
 const USER_AGENT =
@@ -10,28 +11,19 @@ const RETRY_BASE_DELAY_MS = 1000;
 
 function fetchWithRetry(
   url: string,
-  isUsableResponse: (
-    response: NonNullable<ReturnType<typeof shisho.http.fetch>>,
-  ) => boolean = () => true,
-): ReturnType<typeof shisho.http.fetch> | null {
+  isUsableResponse: (response: FetchResponse) => boolean = () => true,
+): FetchResponse | null {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     shisho.log.debug(
       `Fetching: ${url}${attempt > 1 ? ` (attempt ${attempt}/${MAX_ATTEMPTS})` : ""}`,
     );
+    // A thrown request (connection reset, DNS or TLS failure) isn't
+    // retried: with no per-request timeout, a slow failure repeated across
+    // every result could outlast Shisho's one-minute search deadline.
     const response = safeFetch(url, {
       headers: { "User-Agent": USER_AGENT },
     });
-
-    // A thrown request (connection reset, DNS or TLS failure) is usually
-    // transient, so retry it like a 503.
-    if (!response && attempt < MAX_ATTEMPTS) {
-      const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
-      shisho.log.warn(
-        `Request failed for ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_ATTEMPTS})…`,
-      );
-      shisho.sleep(delay);
-      continue;
-    }
+    if (!response) return null;
 
     if (response?.ok) {
       if (isUsableResponse(response)) return response;

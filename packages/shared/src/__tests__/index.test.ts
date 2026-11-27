@@ -8,6 +8,7 @@ import {
   normalizeWhitespace,
   parseMonth,
   safeFetch,
+  searchWithFailureReporting,
   slugify,
   stripHTML,
   stripSubtitle,
@@ -71,6 +72,27 @@ describe("normalizeForComparison", () => {
     expect(
       normalizeForComparison("  The Hobbit: An Unexpected Journey!  "),
     ).toBe("the hobbit an unexpected journey");
+  });
+
+  it("folds accented letters to their base letter", () => {
+    expect(normalizeForComparison("Charlotte Brontë")).toBe("charlotte bronte");
+    expect(normalizeForComparison("Gabriel García Márquez")).toBe(
+      "gabriel garcia marquez",
+    );
+    expect(normalizeForComparison("Shōnen")).toBe("shonen");
+  });
+
+  it("folds letters that don't decompose", () => {
+    expect(normalizeForComparison("Søren Kierkegaard")).toBe(
+      "soren kierkegaard",
+    );
+    expect(normalizeForComparison("Stanisław Lem")).toBe("stanislaw lem");
+    expect(normalizeForComparison("Straße")).toBe("strasse");
+    expect(normalizeForComparison("Ægir")).toBe("aegir");
+  });
+
+  it("scores an unaccented title as an exact match", () => {
+    expect(titleMatchConfidence("Les Miserables", "Les Misérables")).toBe(1);
   });
 
   it("handles empty string", () => {
@@ -459,29 +481,6 @@ describe("isbnsMatch", () => {
   });
 });
 
-describe("normalizeForComparison accent folding", () => {
-  it("folds accented letters to their base letter", () => {
-    expect(normalizeForComparison("Charlotte Brontë")).toBe("charlotte bronte");
-    expect(normalizeForComparison("Gabriel García Márquez")).toBe(
-      "gabriel garcia marquez",
-    );
-    expect(normalizeForComparison("Shōnen")).toBe("shonen");
-  });
-
-  it("folds letters that don't decompose", () => {
-    expect(normalizeForComparison("Søren Kierkegaard")).toBe(
-      "soren kierkegaard",
-    );
-    expect(normalizeForComparison("Stanisław Lem")).toBe("stanislaw lem");
-    expect(normalizeForComparison("Straße")).toBe("strasse");
-    expect(normalizeForComparison("Ægir")).toBe("aegir");
-  });
-
-  it("scores an unaccented title as an exact match", () => {
-    expect(titleMatchConfidence("Les Miserables", "Les Misérables")).toBe(1);
-  });
-});
-
 describe("authorsMatch", () => {
   it("ignores spacing and dots between initials", () => {
     expect(authorsMatch("J. K. Rowling", "J.K. Rowling")).toBe(true);
@@ -524,5 +523,49 @@ describe("safeFetch", () => {
     expect(shisho.log.warn).toHaveBeenCalledWith(
       expect.stringContaining("connection reset"),
     );
+  });
+});
+
+describe("searchWithFailureReporting", () => {
+  it("rethrows a request error when the search found nothing", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw "shisho.http.fetch: request failed: connection reset";
+    });
+
+    expect(() =>
+      searchWithFailureReporting(() => {
+        safeFetch("https://example.com");
+        return [];
+      }),
+    ).toThrow("shisho.http.fetch: request failed: connection reset");
+  });
+
+  it("keeps results when some requests failed", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw "shisho.http.fetch: request failed: connection reset";
+    });
+
+    expect(
+      searchWithFailureReporting(() => {
+        safeFetch("https://example.com");
+        return ["partial result"];
+      }),
+    ).toEqual(["partial result"]);
+  });
+
+  it("returns no results when nothing failed", () => {
+    expect(searchWithFailureReporting(() => [])).toEqual([]);
+  });
+
+  it("forgets failures from earlier searches", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw "shisho.http.fetch: request failed: connection reset";
+    });
+    searchWithFailureReporting(() => {
+      safeFetch("https://example.com");
+      return ["result"];
+    });
+
+    expect(searchWithFailureReporting(() => [])).toEqual([]);
   });
 });

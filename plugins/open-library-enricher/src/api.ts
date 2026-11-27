@@ -8,7 +8,7 @@ const USER_AGENT =
 
 /**
  * Make an HTTP request to Open Library API.
- * Returns null on 404 or other HTTP errors.
+ * Returns null on 404, other HTTP errors, or a failed request.
  */
 function fetchJSON<T>(url: string): T | null {
   shisho.log.debug(`Fetching: ${url}`);

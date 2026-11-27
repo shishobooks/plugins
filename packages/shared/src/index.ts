@@ -45,6 +45,10 @@ const LETTER_FOLDS: Record<string, string> = {
   þ: "th",
   ı: "i",
 };
+const LETTER_FOLD_PATTERN = new RegExp(
+  `[${Object.keys(LETTER_FOLDS).join("")}]`,
+  "g",
+);
 
 /**
  * Normalize a string for comparison: fold accents ("Brontë" becomes
@@ -57,7 +61,7 @@ export function normalizeForComparison(text: string): string {
       // punctuation strip below then drops.
       .normalize("NFD")
       .toLowerCase()
-      .replace(/[ßæœøłđðþı]/g, (letter) => LETTER_FOLDS[letter])
+      .replace(LETTER_FOLD_PATTERN, (letter) => LETTER_FOLDS[letter])
       .replace(/[^\w\s]/g, "")
       .replace(/\s+/g, " ")
       .trim()
@@ -305,12 +309,17 @@ export function stripHTML(html: string): string {
     .trim();
 }
 
+/** Errors from requests `safeFetch` swallowed during the current search. */
+let requestErrors: string[] = [];
+
 /**
  * Call `shisho.http.fetch`, returning null instead of throwing. The host
  * throws, rather than returning a non-ok response, on DNS failures,
  * connection resets, TLS errors, and malformed bodies from anti-bot
  * protection. Left uncaught, that kills the whole search, including any
- * results already found, so every fetch should go through this.
+ * results already found, so every fetch should go through this. Wrap the
+ * search in {@link searchWithFailureReporting} so an outage still shows up
+ * as a failure rather than as no results.
  */
 export function safeFetch(
   url: string,
@@ -320,6 +329,22 @@ export function safeFetch(
     return shisho.http.fetch(url, options);
   } catch (err) {
     shisho.log.warn(`Request failed for ${url}: ${String(err)}`);
+    requestErrors.push(String(err));
     return null;
   }
+}
+
+/**
+ * Run a plugin's search. If it found nothing and a request failed along
+ * the way, rethrow the first request error, so Shisho shows the plugin as
+ * failed instead of showing an empty "no results" state during an outage.
+ * When the search still found something, the failures stay swallowed.
+ */
+export function searchWithFailureReporting<T>(search: () => T[]): T[] {
+  requestErrors = [];
+  const results = search();
+  if (results.length === 0 && requestErrors.length > 0) {
+    throw new Error(requestErrors[0]);
+  }
+  return results;
 }

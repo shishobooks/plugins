@@ -851,6 +851,15 @@ describe("pickCanonicalTitle", () => {
     expect(pickCanonicalTitle(series, "sweat and soap")).toBe("Sweat and Soap");
   });
 
+  it("keeps the accented spelling the user typed when folded titles tie", () => {
+    const series = seriesWith({
+      title: "Kijin Gentosho",
+      associated: [{ title: "Kijin Gentōshō" }],
+    });
+    expect(pickCanonicalTitle(series, "Kijin Gentōshō")).toBe("Kijin Gentōshō");
+    expect(pickCanonicalTitle(series, "Kijin Gentosho")).toBe("Kijin Gentosho");
+  });
+
   it("prefers the shorter title when distances tie", () => {
     // Both match "Attack on Titan" exactly under normalization; the
     // shorter one wins.
