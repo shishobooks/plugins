@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-27
+
+### Bug Fixes
+- Survive failed requests and match author names across accents and initials (#63)
+
+
 ## [0.4.0] - 2026-05-17
 
 ### Other

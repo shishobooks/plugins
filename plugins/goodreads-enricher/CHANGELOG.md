@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-11-27
+
+### Bug Fixes
+- Survive failed requests and match author names across accents and initials (#63)
+- Stop study guides from crowding out Goodreads title searches (#62)
+
+
 ## [0.7.2] - 2026-07-31
 
 ### Bug Fixes

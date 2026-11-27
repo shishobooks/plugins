@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-27
+
+### Bug Fixes
+- Survive failed requests and match author names across accents and initials (#63)
+
+
 ## [0.5.0] - 2026-06-07
 
 ### Features
