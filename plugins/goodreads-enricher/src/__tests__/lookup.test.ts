@@ -493,6 +493,25 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(0);
     });
 
+    it("stops fetching book pages after one fails", () => {
+      const context = makeContext({ query: "The Hobbit" });
+      const second: GRAutocompleteResult = {
+        ...closeTitleAutocomplete,
+        bookId: "1234",
+      };
+      mockedSearchAutocomplete.mockReturnValue([
+        closeTitleAutocomplete,
+        second,
+      ]);
+      mockedFetchBookPage.mockReturnValue(null);
+
+      const results = searchForBooks(context);
+
+      expect(mockedFetchBookPage).toHaveBeenCalledTimes(1);
+      expect(goodreadsIds(results)).toEqual(["5907", "1234"]);
+      expect(results.map((r) => r.confidence)).toEqual([1, 1]);
+    });
+
     it("returns empty when query is empty", () => {
       const context = makeContext({ query: "" });
 

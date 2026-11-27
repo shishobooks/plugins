@@ -311,8 +311,11 @@ export function stripHTML(html: string): string {
     .trim();
 }
 
-/** Errors from requests `safeFetch` swallowed during the current search. */
-let requestErrors: string[] = [];
+/**
+ * Errors from requests `safeFetch` swallowed during the current search,
+ * kept as thrown so they can be rethrown unchanged.
+ */
+let requestErrors: unknown[] = [];
 
 /**
  * Call `shisho.http.fetch`, returning null instead of throwing. The host
@@ -322,16 +325,22 @@ let requestErrors: string[] = [];
  * results already found, so every fetch should go through this. Wrap the
  * search in {@link searchWithFailureReporting} so an outage still shows up
  * as a failure rather than as no results.
+ *
+ * Pass `supplementary: true` for a request that only adds to what another
+ * request answers, such as a secondary data source. Its failure is logged
+ * but never reported, so a conclusive "not found" from the main source
+ * isn't turned into a plugin failure.
  */
 export function safeFetch(
   url: string,
   options?: FetchOptions,
+  { supplementary = false }: { supplementary?: boolean } = {},
 ): FetchResponse | null {
   try {
     return shisho.http.fetch(url, options);
   } catch (err) {
     shisho.log.warn(`Request failed for ${url}: ${String(err)}`);
-    requestErrors.push(String(err));
+    if (!supplementary) requestErrors.push(err);
     return null;
   }
 }
@@ -346,7 +355,7 @@ export function searchWithFailureReporting<T>(search: () => T[]): T[] {
   requestErrors = [];
   const results = search();
   if (results.length === 0 && requestErrors.length > 0) {
-    throw new Error(requestErrors[0]);
+    throw requestErrors[0];
   }
   return results;
 }

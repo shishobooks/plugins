@@ -537,12 +537,30 @@ describe("searchWithFailureReporting", () => {
       throw "shisho.http.fetch: request failed: connection reset";
     });
 
-    expect(() =>
+    let thrown: unknown;
+    try {
       searchWithFailureReporting(() => {
         safeFetch("https://example.com");
         return [];
+      });
+    } catch (err) {
+      thrown = err;
+    }
+    // The host's original value, not a new Error wrapping it.
+    expect(thrown).toBe("shisho.http.fetch: request failed: connection reset");
+  });
+
+  it("doesn't report failed supplementary requests", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw "shisho.http.fetch: request failed: connection reset";
+    });
+
+    expect(
+      searchWithFailureReporting(() => {
+        safeFetch("https://example.com", undefined, { supplementary: true });
+        return [];
       }),
-    ).toThrow("shisho.http.fetch: request failed: connection reset");
+    ).toEqual([]);
   });
 
   it("keeps results when some requests failed", () => {

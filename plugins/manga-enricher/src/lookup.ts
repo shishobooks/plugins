@@ -321,17 +321,25 @@ export function pickCanonicalTitle(
 
   const normalizedQuery = normalizeForComparison(query);
 
-  const rawQuery = query.normalize("NFC").toLowerCase();
+  // Accent-preserving comparison for tie-breaks: drop ASCII punctuation
+  // and extra whitespace like normalizeForComparison does, but keep
+  // accented letters, so "Pokémon Adventures!" still beats "Pokemon
+  // Adventures" for a query of "Pokémon Adventures".
+  const keepAccents = (text: string) =>
+    text
+      .normalize("NFC")
+      .toLowerCase()
+      .replace(/[!-/:-@[-`{-~]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  const rawQuery = keepAccents(query);
 
   let best: { title: string; distance: number; rawDistance: number } | null =
     null;
   for (const candidate of candidates) {
     const normalized = normalizeForComparison(candidate);
     const distance = levenshteinDistance(normalizedQuery, normalized);
-    const rawDistance = levenshteinDistance(
-      rawQuery,
-      candidate.normalize("NFC").toLowerCase(),
-    );
+    const rawDistance = levenshteinDistance(rawQuery, keepAccents(candidate));
 
     if (
       best === null ||
