@@ -1,4 +1,5 @@
 import type { MUSearchResponse, MUSeries } from "./types";
+import { safeFetch } from "@shisho-plugins/shared";
 
 const USER_AGENT =
   "ShishoPlugin/0.1.0 (manga-enricher; github.com/shishobooks/plugins)";
@@ -18,7 +19,7 @@ export function searchSeries(query: string): MUSeries[] | null {
   const url = `${BASE_URL}/series/search`;
   shisho.log.debug(`MU search: ${query}`);
 
-  const response = shisho.http.fetch(url, {
+  const response = safeFetch(url, {
     method: "POST",
     headers: {
       "User-Agent": USER_AGENT,
@@ -55,7 +56,7 @@ export function fetchSeries(seriesId: number): MUSeries | null {
   const url = `${BASE_URL}/series/${seriesId}`;
   shisho.log.debug(`MU fetchSeries: ${seriesId}`);
 
-  const response = shisho.http.fetch(url, {
+  const response = safeFetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "application/json",

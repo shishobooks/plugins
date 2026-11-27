@@ -1,4 +1,5 @@
 import type { OLAuthor, OLEdition, OLSearchResult, OLWork } from "./types";
+import { safeFetch } from "@shisho-plugins/shared";
 
 const BASE_URL = "https://openlibrary.org";
 const COVERS_URL = "https://covers.openlibrary.org";
@@ -7,13 +8,14 @@ const USER_AGENT =
 
 /**
  * Make an HTTP request to Open Library API.
- * Returns null on 404 or other HTTP errors.
+ * Returns null on 404, other HTTP errors, or a failed request.
  */
 function fetchJSON<T>(url: string): T | null {
   shisho.log.debug(`Fetching: ${url}`);
-  const response = shisho.http.fetch(url, {
+  const response = safeFetch(url, {
     headers: { "User-Agent": USER_AGENT },
   });
+  if (!response) return null;
 
   if (response.status === 404) {
     shisho.log.debug(`Not found: ${url}`);
@@ -27,7 +29,14 @@ function fetchJSON<T>(url: string): T | null {
     return null;
   }
 
-  return response.json() as T;
+  // The host parses the body lazily and throws on invalid JSON, such as an
+  // HTML maintenance page served with a 200.
+  try {
+    return response.json() as T;
+  } catch {
+    shisho.log.warn(`Failed to parse JSON from ${url}`);
+    return null;
+  }
 }
 
 /**
@@ -93,12 +102,14 @@ export function fetchCover(coverId: number): CoverResult | null {
   const url = `${COVERS_URL}/b/id/${coverId}-L.jpg`;
   shisho.log.debug(`Fetching cover: ${url}`);
 
-  const response = shisho.http.fetch(url, {
+  const response = safeFetch(url, {
     headers: { "User-Agent": USER_AGENT },
   });
 
-  if (!response.ok) {
-    shisho.log.warn(`Failed to fetch cover ${coverId}: ${response.status}`);
+  if (!response || !response.ok) {
+    shisho.log.warn(
+      `Failed to fetch cover ${coverId}: ${response?.status ?? "no response"}`,
+    );
     return null;
   }
 

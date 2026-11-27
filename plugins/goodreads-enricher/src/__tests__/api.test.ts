@@ -218,3 +218,16 @@ describe("fetchBookPage", () => {
     expect(shisho.http.fetch).toHaveBeenCalledTimes(3);
   });
 });
+
+describe("request failures", () => {
+  it("returns null without retrying when the request throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw "shisho.http.fetch: request failed: connection reset";
+    });
+
+    expect(searchAutocomplete("the hobbit")).toBeNull();
+    expect(fetchBookPage("5907")).toBeNull();
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(2);
+    expect(shisho.sleep).not.toHaveBeenCalled();
+  });
+});

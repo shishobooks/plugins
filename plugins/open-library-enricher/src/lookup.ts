@@ -1,12 +1,11 @@
 import { fetchByISBN, fetchEdition, fetchWork, searchBooks } from "./api";
 import type { OLEdition, OLSearchDoc, OLWork } from "./types";
+import { extractOLId, normalizeDescription, parseOLDate } from "./utils";
 import {
-  extractOLId,
-  normalizeDescription,
-  normalizeForComparison,
-  parseOLDate,
-} from "./utils";
-import { normalizeIsbn, titleMatchConfidence } from "@shisho-plugins/shared";
+  authorsMatch,
+  normalizeIsbn,
+  titleMatchConfidence,
+} from "@shisho-plugins/shared";
 import type { ParsedMetadata, SearchContext } from "@shisho/plugin-sdk";
 
 /**
@@ -219,10 +218,8 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
         shisho.log.debug(`Skipping "${doc.title}" - no author info to verify`);
         continue;
       }
-      const hasAuthorMatch = doc.author_name.some(
-        (docAuthor) =>
-          normalizeForComparison(authorName) ===
-          normalizeForComparison(docAuthor),
+      const hasAuthorMatch = doc.author_name.some((docAuthor) =>
+        authorsMatch(authorName, docAuthor),
       );
       if (!hasAuthorMatch) {
         shisho.log.debug(`Skipping "${doc.title}" - no author match`);

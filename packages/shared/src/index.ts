@@ -1,3 +1,5 @@
+import type { FetchOptions, FetchResponse } from "@shisho/plugin-sdk";
+
 /**
  * Calculate Levenshtein distance between two strings.
  */
@@ -29,14 +31,60 @@ export function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
- * Normalize a string for comparison: lowercase, remove punctuation, collapse whitespace.
+ * Latin letters that Unicode doesn't decompose into a base letter plus an
+ * accent, so NFKD alone can't fold them.
+ */
+const LETTER_FOLDS: Record<string, string> = {
+  ß: "ss",
+  æ: "ae",
+  œ: "oe",
+  ø: "o",
+  ł: "l",
+  đ: "d",
+  ð: "d",
+  þ: "th",
+  ı: "i",
+};
+const LETTER_FOLD_PATTERN = new RegExp(
+  `[${Object.keys(LETTER_FOLDS).join("")}]`,
+  "g",
+);
+
+/**
+ * Normalize a string for comparison: fold accents ("Brontë" becomes
+ * "bronte"), fullwidth letters and ligatures, lowercase, remove
+ * punctuation, collapse whitespace.
  */
 export function normalizeForComparison(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    text
+      // NFKD splits "ë" into "e" plus a combining mark, which the
+      // punctuation strip below then drops. It also turns fullwidth
+      // "ＳＰＹ" into "SPY" and the "ﬁ" ligature into "fi".
+      .normalize("NFKD")
+      .toLowerCase()
+      .replace(LETTER_FOLD_PATTERN, (letter) => LETTER_FOLDS[letter])
+      .replace(/[^\w\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+/**
+ * Compare author names ignoring case, accents, punctuation, and spacing
+ * between initials, so "J. K. Rowling", "J.K. Rowling" and "JK Rowling" all
+ * match. Spaces between longer name parts still count: "Jo Ann Brown"
+ * isn't "Joann Brown".
+ */
+export function authorsMatch(a: string, b: string): boolean {
+  // Split dotted initials apart first so "J.R. R." and "J.R.R." both
+  // become "j r r", then join runs of single letters back together.
+  const joinInitials = (name: string) =>
+    normalizeForComparison(name.replace(/\./g, " ")).replace(
+      /\b(\w) (?=\w\b)/g,
+      "$1",
+    );
+  return joinInitials(a) === joinInitials(b);
 }
 
 /**
@@ -261,4 +309,53 @@ export function stripHTML(html: string): string {
     .replace(/[^\S\n]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/**
+ * Errors from requests `safeFetch` swallowed during the current search,
+ * kept as thrown so they can be rethrown unchanged.
+ */
+let requestErrors: unknown[] = [];
+
+/**
+ * Call `shisho.http.fetch`, returning null instead of throwing. The host
+ * throws, rather than returning a non-ok response, on DNS failures,
+ * connection resets, TLS errors, and malformed bodies from anti-bot
+ * protection. Left uncaught, that kills the whole search, including any
+ * results already found, so every fetch should go through this. Wrap the
+ * search in {@link searchWithFailureReporting} so an outage still shows up
+ * as a failure rather than as no results.
+ *
+ * Pass `supplementary: true` for a request that only adds to what another
+ * request answers, such as a secondary data source. Its failure is logged
+ * but never reported, so a conclusive "not found" from the main source
+ * isn't turned into a plugin failure.
+ */
+export function safeFetch(
+  url: string,
+  options?: FetchOptions,
+  { supplementary = false }: { supplementary?: boolean } = {},
+): FetchResponse | null {
+  try {
+    return shisho.http.fetch(url, options);
+  } catch (err) {
+    shisho.log.warn(`Request failed for ${url}: ${String(err)}`);
+    if (!supplementary) requestErrors.push(err);
+    return null;
+  }
+}
+
+/**
+ * Run a plugin's search. If it found nothing and a request failed along
+ * the way, rethrow the first request error, so Shisho shows the plugin as
+ * failed instead of showing an empty "no results" state during an outage.
+ * When the search still found something, the failures stay swallowed.
+ */
+export function searchWithFailureReporting<T>(search: () => T[]): T[] {
+  requestErrors = [];
+  const results = search();
+  if (results.length === 0 && requestErrors.length > 0) {
+    throw requestErrors[0];
+  }
+  return results;
 }

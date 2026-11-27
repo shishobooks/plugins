@@ -185,3 +185,28 @@ describe("fetchCover", () => {
     expect(fetchCover(99999)).toBeNull();
   });
 });
+
+describe("request failures", () => {
+  it("returns null instead of throwing when the body isn't valid JSON", () => {
+    vi.mocked(shisho.http.fetch).mockReturnValue({
+      status: 200,
+      statusText: "OK",
+      ok: true,
+      headers: {},
+      json: () => {
+        throw "invalid character '<' looking for beginning of value";
+      },
+    } as unknown as ReturnType<typeof shisho.http.fetch>);
+
+    expect(fetchEdition("OL123M")).toBeNull();
+  });
+
+  it("returns null instead of throwing when fetch throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw new Error("shisho.http.fetch: request failed: connection reset");
+    });
+
+    expect(fetchEdition("OL123M")).toBeNull();
+    expect(fetchCover(123)).toBeNull();
+  });
+});

@@ -1,5 +1,5 @@
 import type { PublisherScraper, VolumeMetadata } from "./types";
-import { slugify, stripHTML } from "@shisho-plugins/shared";
+import { safeFetch, slugify, stripHTML } from "@shisho-plugins/shared";
 
 // Re-export so existing test imports (`from "../publishers/sevenseas"`)
 // don't need to know that the helper now lives in the shared package.
@@ -22,22 +22,12 @@ const BASE_URL = "https://sevenseasentertainment.com";
 
 function fetchHtml(url: string): string | null {
   shisho.log.debug(`SevenSeas: fetching ${url}`);
-  // shisho.http.fetch can throw (not just return a !ok response) when it
-  // encounters TLS errors, connection resets, or anti-bot protection that
-  // returns a malformed body. An uncaught throw bubbles up and kills the
-  // entire search for the file — every fetch must be guarded.
-  let response: ReturnType<typeof shisho.http.fetch>;
-  try {
-    response = shisho.http.fetch(url, {
-      headers: {
-        "User-Agent": SEVEN_SEAS_UA_WORKAROUND_GOOGLEBOT,
-        Accept: "text/html,application/xhtml+xml",
-      },
-    });
-  } catch (err) {
-    shisho.log.warn(`SevenSeas: fetch threw for ${url}: ${String(err)}`);
-    return null;
-  }
+  const response = safeFetch(url, {
+    headers: {
+      "User-Agent": SEVEN_SEAS_UA_WORKAROUND_GOOGLEBOT,
+      Accept: "text/html,application/xhtml+xml",
+    },
+  });
   if (!response || !response.ok) {
     shisho.log.warn(
       `SevenSeas: HTTP ${response?.status ?? "no response"} ${url}`,

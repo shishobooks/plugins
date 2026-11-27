@@ -1,4 +1,5 @@
 import { searchForManga } from "./lookup";
+import { searchWithFailureReporting } from "@shisho-plugins/shared";
 import type {
   SearchContext,
   SearchResponse,
@@ -10,7 +11,7 @@ const plugin: ShishoPlugin = {
     search(context: SearchContext): SearchResponse {
       shisho.log.info("Manga enricher: searching");
 
-      const results = searchForManga(context);
+      const results = searchWithFailureReporting(() => searchForManga(context));
       shisho.log.info(`Found ${results.length} candidate(s)`);
 
       return { results };

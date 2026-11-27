@@ -123,3 +123,13 @@ describe("vizScraper.searchVolume", () => {
     expect(searchUrl.toLowerCase()).toContain("omnibus");
   });
 });
+
+describe("vizScraper request failures", () => {
+  it("returns null instead of throwing when fetch throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw new Error("shisho.http.fetch: request failed: connection reset");
+    });
+
+    expect(vizScraper.searchVolume("Some Series", 1)).toBeNull();
+  });
+});

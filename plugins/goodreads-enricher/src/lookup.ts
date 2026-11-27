@@ -9,8 +9,8 @@ import {
 import { parseBookPage } from "./parsing";
 import type { GRAutocompleteResult, GRLookupResult } from "./types";
 import {
+  authorsMatch,
   isbnsMatch,
-  normalizeForComparison,
   normalizeIsbn,
   titleMatchConfidence,
 } from "@shisho-plugins/shared";
@@ -284,7 +284,25 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
     return [];
   }
 
-  return candidates.map((c) => enrichSearchResult(c.result, c.confidence));
+  // Book pages are fetched one at a time, and a failing page (an outage or
+  // Goodreads' bot check) costs time and retries on every candidate. After
+  // the first failure, use autocomplete data for the rest, so slow failures
+  // can't run the search past Shisho's one-minute deadline and lose every
+  // result.
+  let pagesUnavailable = false;
+  return candidates.map(({ result, confidence }) => {
+    const html = pagesUnavailable ? null : fetchBookPage(result.bookId);
+    if (!html) {
+      if (!pagesUnavailable) {
+        shisho.log.debug(
+          `Book page unavailable for ${result.bookId}, using autocomplete data for the remaining results`,
+        );
+      }
+      pagesUnavailable = true;
+      return autocompleteToMetadata(result, confidence);
+    }
+    return pageToMetadata(result, html, confidence);
+  });
 }
 
 /**
@@ -313,44 +331,15 @@ function searchCandidates(
 }
 
 /**
- * Compare author names ignoring case, punctuation, and spacing between
- * initials, so "J. K. Rowling", "J.K. Rowling" and "JK Rowling" all match.
- * Spaces between longer name parts still count: "Jo Ann Brown" isn't
- * "Joann Brown".
+ * Build full ParsedMetadata for an autocomplete result from its book page.
+ * The server applies this directly when the user selects a result.
  */
-function authorsMatch(a: string, b: string): boolean {
-  // Split dotted initials apart first so "J.R. R." and "J.R.R." both
-  // become "j r r", then join runs of single letters back together.
-  const joinInitials = (name: string) =>
-    normalizeForComparison(name.replace(/\./g, " ")).replace(
-      /\b(\w) (?=\w\b)/g,
-      "$1",
-    );
-  return joinInitials(a) === joinInitials(b);
-}
-
-/**
- * Enrich an autocomplete result by fetching the book page and building
- * full ParsedMetadata. The server applies this directly when the user
- * selects a result.
- *
- * Falls back to autocomplete-only data if the book page fetch fails.
- */
-function enrichSearchResult(
+function pageToMetadata(
   autocomplete: GRAutocompleteResult,
+  html: string,
   confidence: number,
 ): ParsedMetadata {
   const bookId = autocomplete.bookId;
-
-  // Fetch book page for rich data
-  const html = fetchBookPage(bookId);
-  if (!html) {
-    shisho.log.debug(
-      `Book page unavailable for ${bookId}, using autocomplete only`,
-    );
-    return autocompleteToMetadata(autocomplete, confidence);
-  }
-
   const pageData = parseBookPage(html);
   const lookupResult: GRLookupResult = { bookId, autocomplete, pageData };
   const metadata = toMetadata(lookupResult);

@@ -203,6 +203,44 @@ describe("searchForBooks", () => {
       expect(results).toHaveLength(0);
     });
 
+    it("matches authors despite initials spacing and accents", () => {
+      const context = makeContext({
+        query: "Jane Eyre",
+        author: "Charlotte Bronte",
+      });
+      mockedSearchBooks.mockReturnValue({
+        numFound: 1,
+        start: 0,
+        docs: [
+          {
+            key: "/works/OL1W",
+            title: "Jane Eyre",
+            author_name: ["Charlotte Brontë"],
+          },
+        ],
+      });
+
+      expect(searchForBooks(context)).toHaveLength(1);
+
+      mockedSearchBooks.mockReturnValue({
+        numFound: 1,
+        start: 0,
+        docs: [
+          {
+            key: "/works/OL2W",
+            title: "The Hobbit",
+            author_name: ["J.R.R. Tolkien"],
+          },
+        ],
+      });
+
+      expect(
+        searchForBooks(
+          makeContext({ query: "The Hobbit", author: "J. R. R. Tolkien" }),
+        ),
+      ).toHaveLength(1);
+    });
+
     it("filters out results with no author info when context has author", () => {
       const context = makeContext({
         query: "The Hobbit",

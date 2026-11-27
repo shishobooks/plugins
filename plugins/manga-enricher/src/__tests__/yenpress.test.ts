@@ -374,3 +374,13 @@ describe("yenpressScraper.searchVolume", () => {
     expect(vi.mocked(shisho.http.fetch)).not.toHaveBeenCalled();
   });
 });
+
+describe("yenpressScraper request failures", () => {
+  it("returns null instead of throwing when fetch throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw new Error("shisho.http.fetch: request failed: connection reset");
+    });
+
+    expect(yenpressScraper.searchVolume("Some Series", 1)).toBeNull();
+  });
+});

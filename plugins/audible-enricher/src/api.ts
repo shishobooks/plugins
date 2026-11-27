@@ -4,6 +4,7 @@ import {
   type AudibleSearchResponse,
   type AudnexusBook,
 } from "./types";
+import { safeFetch } from "@shisho-plugins/shared";
 
 const USER_AGENT =
   "ShishoPlugin/0.1.0 (audible-enricher; github.com/shishobooks/plugins)";
@@ -16,14 +17,18 @@ const PRODUCT_RESPONSE_GROUPS =
 
 const IMAGE_SIZES = "500,1024";
 
-function fetchJSON<T>(url: string): T | null {
+function fetchJSON<T>(url: string, supplementary = false): T | null {
   shisho.log.debug(`Fetching: ${url}`);
-  const response = shisho.http.fetch(url, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      Accept: "application/json",
+  const response = safeFetch(
+    url,
+    {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "application/json",
+      },
     },
-  });
+    { supplementary },
+  );
 
   if (!response || !response.ok) {
     shisho.log.warn(`HTTP ${response?.status ?? "no response"} for ${url}`);
@@ -104,7 +109,9 @@ export function fetchProduct(
 }
 
 /**
- * Fetch book metadata from Audnexus by ASIN.
+ * Fetch book metadata from Audnexus by ASIN. Audnexus only supplements the
+ * Audible API, which answers the same lookups, so its failures aren't
+ * reported as a plugin failure.
  */
 export function fetchAudnexusBook(
   asin: string,
@@ -112,5 +119,6 @@ export function fetchAudnexusBook(
 ): AudnexusBook | null {
   return fetchJSON<AudnexusBook>(
     `https://api.audnex.us/books/${asin}?region=${region}`,
+    true,
   );
 }

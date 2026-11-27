@@ -304,9 +304,11 @@ function buildMetadata(
  * list almost always contains a near-exact match for whichever
  * language variant the user typed, so the "best" choice is obvious.
  *
- * Ties on distance break to the shorter title — avoids variants like
- * "Attack on Titan: Junior High" winning over plain "Attack on Titan"
- * when both match equally.
+ * Ties on distance break first to the spelling closest to what the user
+ * typed, accents included, so "Kijin Gentōshō" keeps its macrons over an
+ * equally close "Kijin Gentosho". Remaining ties break to the shorter
+ * title, so variants like "Attack on Titan: Junior High" don't win over
+ * plain "Attack on Titan" when both match equally.
  */
 export function pickCanonicalTitle(
   series: MUSeries,
@@ -319,17 +321,35 @@ export function pickCanonicalTitle(
 
   const normalizedQuery = normalizeForComparison(query);
 
-  let best: { title: string; distance: number } | null = null;
+  // Accent-preserving comparison for tie-breaks: drop ASCII punctuation
+  // and extra whitespace like normalizeForComparison does, but keep
+  // accented letters, so "Pokémon Adventures!" still beats "Pokemon
+  // Adventures" for a query of "Pokémon Adventures".
+  const keepAccents = (text: string) =>
+    text
+      .normalize("NFC")
+      .toLowerCase()
+      .replace(/[!-/:-@[-`{-~]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  const rawQuery = keepAccents(query);
+
+  let best: { title: string; distance: number; rawDistance: number } | null =
+    null;
   for (const candidate of candidates) {
     const normalized = normalizeForComparison(candidate);
     const distance = levenshteinDistance(normalizedQuery, normalized);
+    const rawDistance = levenshteinDistance(rawQuery, keepAccents(candidate));
 
     if (
       best === null ||
       distance < best.distance ||
-      (distance === best.distance && candidate.length < best.title.length)
+      (distance === best.distance && rawDistance < best.rawDistance) ||
+      (distance === best.distance &&
+        rawDistance === best.rawDistance &&
+        candidate.length < best.title.length)
     ) {
-      best = { title: candidate, distance };
+      best = { title: candidate, distance, rawDistance };
     }
   }
 
