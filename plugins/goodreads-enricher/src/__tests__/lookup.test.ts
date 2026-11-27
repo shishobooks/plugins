@@ -316,7 +316,26 @@ describe("searchForBooks", () => {
       bookTitleBare: "The Hobbit",
     };
 
-    it("searches by query and author", () => {
+    const goodreadsIds = (
+      results: { identifiers?: { type: string; value: string }[] }[],
+    ) =>
+      results.map(
+        (r) => r.identifiers?.find((id) => id.type === "goodreads")?.value,
+      );
+
+    const weakMatchByAuthor: GRAutocompleteResult = {
+      ...sampleAutocomplete,
+      bookId: "1234",
+      bookTitleBare: "A Completely Different Title Altogether",
+    };
+
+    const otherAuthorBook: GRAutocompleteResult = {
+      ...closeTitleAutocomplete,
+      bookId: "777",
+      author: { ...sampleAutocomplete.author, name: "Someone Else" },
+    };
+
+    it("searches by title alone when it finds a strong match by the author", () => {
       const context = makeContext({
         query: "The Hobbit",
         author: "J.R.R. Tolkien",
@@ -326,10 +345,108 @@ describe("searchForBooks", () => {
 
       const results = searchForBooks(context);
 
-      expect(mockedSearchAutocomplete).toHaveBeenCalledWith(
+      expect(mockedSearchAutocomplete).toHaveBeenCalledTimes(1);
+      expect(mockedSearchAutocomplete).toHaveBeenCalledWith("The Hobbit");
+      expect(goodreadsIds(results)).toEqual(["5907"]);
+      expect(results[0].confidence).toBe(1.0);
+    });
+
+    it("searches by title only when there is no author", () => {
+      const context = makeContext({ query: "The Hobbit" });
+      mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
+      mockBookPageSuccess();
+
+      searchForBooks(context);
+
+      expect(mockedSearchAutocomplete).toHaveBeenCalledTimes(1);
+      expect(mockedSearchAutocomplete).toHaveBeenCalledWith("The Hobbit");
+    });
+
+    it("falls back to title + author when the title search has no strong match by the author", () => {
+      const context = makeContext({
+        query: "The Hobbit",
+        author: "J.R.R. Tolkien",
+      });
+      mockedSearchAutocomplete.mockImplementation((query) =>
+        query === "The Hobbit"
+          ? [weakMatchByAuthor, otherAuthorBook]
+          : [closeTitleAutocomplete, weakMatchByAuthor],
+      );
+      mockBookPageSuccess();
+
+      const results = searchForBooks(context);
+
+      expect(mockedSearchAutocomplete).toHaveBeenNthCalledWith(
+        2,
         "The Hobbit J.R.R. Tolkien",
       );
+      // Title-only results come first, and the repeated 1234 appears once.
+      expect(goodreadsIds(results)).toEqual(["1234", "5907"]);
+      expect(results[1].confidence).toBe(1.0);
+    });
+
+    it("falls back to title + author when the title search fails", () => {
+      const context = makeContext({
+        query: "The Hobbit",
+        author: "J.R.R. Tolkien",
+      });
+      mockedSearchAutocomplete.mockImplementation((query) =>
+        query === "The Hobbit" ? null : [closeTitleAutocomplete],
+      );
+      mockBookPageSuccess();
+
+      const results = searchForBooks(context);
+
+      expect(goodreadsIds(results)).toEqual(["5907"]);
+    });
+
+    it("drops study guides that only match the title + author query", () => {
+      const context = makeContext({
+        query: "The Hobbit",
+        author: "J.R.R. Tolkien",
+      });
+      const studyGuide: GRAutocompleteResult = {
+        ...sampleAutocomplete,
+        bookId: "999",
+        bookTitleBare: "Study Guide: The Hobbit by J.R.R. Tolkien",
+        author: { ...sampleAutocomplete.author, name: "SuperSummary" },
+      };
+      mockedSearchAutocomplete.mockImplementation((query) =>
+        query === "The Hobbit" ? [] : [studyGuide],
+      );
+
+      const results = searchForBooks(context);
+
+      expect(mockedSearchAutocomplete).toHaveBeenCalledTimes(2);
+      expect(results).toHaveLength(0);
+    });
+
+    it("matches authors regardless of spacing between initials", () => {
+      const context = makeContext({
+        query: "The Hobbit",
+        author: "J. R. R. Tolkien",
+      });
+      mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
+      mockBookPageSuccess();
+
+      const results = searchForBooks(context);
       expect(results).toHaveLength(1);
+    });
+
+    it("still treats spaces between full name parts as significant", () => {
+      const context = makeContext({
+        query: "The Hobbit",
+        author: "Jo Ann Brown",
+      });
+      mockedSearchAutocomplete.mockReturnValue([
+        {
+          ...closeTitleAutocomplete,
+          author: { ...sampleAutocomplete.author, name: "Joann Brown" },
+        },
+      ]);
+
+      const results = searchForBooks(context);
+      expect(results).toHaveLength(0);
     });
 
     it("returns empty when query is empty", () => {
