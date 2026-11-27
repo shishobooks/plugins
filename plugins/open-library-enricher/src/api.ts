@@ -29,7 +29,14 @@ function fetchJSON<T>(url: string): T | null {
     return null;
   }
 
-  return response.json() as T;
+  // The host parses the body lazily and throws on invalid JSON, such as an
+  // HTML maintenance page served with a 200.
+  try {
+    return response.json() as T;
+  } catch {
+    shisho.log.warn(`Failed to parse JSON from ${url}`);
+    return null;
+  }
 }
 
 /**

@@ -91,6 +91,11 @@ describe("normalizeForComparison", () => {
     expect(normalizeForComparison("Ægir")).toBe("aegir");
   });
 
+  it("folds fullwidth letters and ligatures", () => {
+    expect(normalizeForComparison("ＳＰＹ×ＦＡＭＩＬＹ")).toBe("spyfamily");
+    expect(normalizeForComparison("The ﬁnal Empire")).toBe("the final empire");
+  });
+
   it("scores an unaccented title as an exact match", () => {
     expect(titleMatchConfidence("Les Miserables", "Les Misérables")).toBe(1);
   });

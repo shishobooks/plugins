@@ -32,7 +32,7 @@ export function levenshteinDistance(a: string, b: string): number {
 
 /**
  * Latin letters that Unicode doesn't decompose into a base letter plus an
- * accent, so NFD alone can't fold them.
+ * accent, so NFKD alone can't fold them.
  */
 const LETTER_FOLDS: Record<string, string> = {
   ß: "ss",
@@ -52,14 +52,16 @@ const LETTER_FOLD_PATTERN = new RegExp(
 
 /**
  * Normalize a string for comparison: fold accents ("Brontë" becomes
- * "bronte"), lowercase, remove punctuation, collapse whitespace.
+ * "bronte"), fullwidth letters and ligatures, lowercase, remove
+ * punctuation, collapse whitespace.
  */
 export function normalizeForComparison(text: string): string {
   return (
     text
-      // NFD splits "ë" into "e" plus a combining mark, which the
-      // punctuation strip below then drops.
-      .normalize("NFD")
+      // NFKD splits "ë" into "e" plus a combining mark, which the
+      // punctuation strip below then drops. It also turns fullwidth
+      // "ＳＰＹ" into "SPY" and the "ﬁ" ligature into "fi".
+      .normalize("NFKD")
       .toLowerCase()
       .replace(LETTER_FOLD_PATTERN, (letter) => LETTER_FOLDS[letter])
       .replace(/[^\w\s]/g, "")
