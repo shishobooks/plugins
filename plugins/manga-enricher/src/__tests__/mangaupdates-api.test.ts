@@ -77,3 +77,14 @@ describe("fetchSeries", () => {
     expect(fetchSeries(123)).toBeNull();
   });
 });
+
+describe("request failures", () => {
+  it("returns null instead of throwing when fetch throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw new Error("shisho.http.fetch: request failed: connection reset");
+    });
+
+    expect(searchSeries("One Piece")).toBeNull();
+    expect(fetchSeries(1)).toBeNull();
+  });
+});

@@ -4,6 +4,7 @@ import {
   type AudibleSearchResponse,
   type AudnexusBook,
 } from "./types";
+import { safeFetch } from "@shisho-plugins/shared";
 
 const USER_AGENT =
   "ShishoPlugin/0.1.0 (audible-enricher; github.com/shishobooks/plugins)";
@@ -18,7 +19,7 @@ const IMAGE_SIZES = "500,1024";
 
 function fetchJSON<T>(url: string): T | null {
   shisho.log.debug(`Fetching: ${url}`);
-  const response = shisho.http.fetch(url, {
+  const response = safeFetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "application/json",

@@ -1,3 +1,5 @@
+import type { FetchOptions, FetchResponse } from "@shisho/plugin-sdk";
+
 /**
  * Calculate Levenshtein distance between two strings.
  */
@@ -29,14 +31,54 @@ export function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
- * Normalize a string for comparison: lowercase, remove punctuation, collapse whitespace.
+ * Latin letters that Unicode doesn't decompose into a base letter plus an
+ * accent, so NFD alone can't fold them.
+ */
+const LETTER_FOLDS: Record<string, string> = {
+  ß: "ss",
+  æ: "ae",
+  œ: "oe",
+  ø: "o",
+  ł: "l",
+  đ: "d",
+  ð: "d",
+  þ: "th",
+  ı: "i",
+};
+
+/**
+ * Normalize a string for comparison: fold accents ("Brontë" becomes
+ * "bronte"), lowercase, remove punctuation, collapse whitespace.
  */
 export function normalizeForComparison(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    text
+      // NFD splits "ë" into "e" plus a combining mark, which the
+      // punctuation strip below then drops.
+      .normalize("NFD")
+      .toLowerCase()
+      .replace(/[ßæœøłđðþı]/g, (letter) => LETTER_FOLDS[letter])
+      .replace(/[^\w\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+/**
+ * Compare author names ignoring case, accents, punctuation, and spacing
+ * between initials, so "J. K. Rowling", "J.K. Rowling" and "JK Rowling" all
+ * match. Spaces between longer name parts still count: "Jo Ann Brown"
+ * isn't "Joann Brown".
+ */
+export function authorsMatch(a: string, b: string): boolean {
+  // Split dotted initials apart first so "J.R. R." and "J.R.R." both
+  // become "j r r", then join runs of single letters back together.
+  const joinInitials = (name: string) =>
+    normalizeForComparison(name.replace(/\./g, " ")).replace(
+      /\b(\w) (?=\w\b)/g,
+      "$1",
+    );
+  return joinInitials(a) === joinInitials(b);
 }
 
 /**
@@ -261,4 +303,23 @@ export function stripHTML(html: string): string {
     .replace(/[^\S\n]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/**
+ * Call `shisho.http.fetch`, returning null instead of throwing. The host
+ * throws, rather than returning a non-ok response, on DNS failures,
+ * connection resets, TLS errors, and malformed bodies from anti-bot
+ * protection. Left uncaught, that kills the whole search, including any
+ * results already found, so every fetch should go through this.
+ */
+export function safeFetch(
+  url: string,
+  options?: FetchOptions,
+): FetchResponse | null {
+  try {
+    return shisho.http.fetch(url, options);
+  } catch (err) {
+    shisho.log.warn(`Request failed for ${url}: ${String(err)}`);
+    return null;
+  }
 }

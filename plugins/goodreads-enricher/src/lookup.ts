@@ -9,8 +9,8 @@ import {
 import { parseBookPage } from "./parsing";
 import type { GRAutocompleteResult, GRLookupResult } from "./types";
 import {
+  authorsMatch,
   isbnsMatch,
-  normalizeForComparison,
   normalizeIsbn,
   titleMatchConfidence,
 } from "@shisho-plugins/shared";
@@ -310,23 +310,6 @@ function searchCandidates(
     });
   }
   return candidates;
-}
-
-/**
- * Compare author names ignoring case, punctuation, and spacing between
- * initials, so "J. K. Rowling", "J.K. Rowling" and "JK Rowling" all match.
- * Spaces between longer name parts still count: "Jo Ann Brown" isn't
- * "Joann Brown".
- */
-function authorsMatch(a: string, b: string): boolean {
-  // Split dotted initials apart first so "J.R. R." and "J.R.R." both
-  // become "j r r", then join runs of single letters back together.
-  const joinInitials = (name: string) =>
-    normalizeForComparison(name.replace(/\./g, " ")).replace(
-      /\b(\w) (?=\w\b)/g,
-      "$1",
-    );
-  return joinInitials(a) === joinInitials(b);
 }
 
 /**

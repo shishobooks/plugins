@@ -185,3 +185,14 @@ describe("fetchCover", () => {
     expect(fetchCover(99999)).toBeNull();
   });
 });
+
+describe("request failures", () => {
+  it("returns null instead of throwing when fetch throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw new Error("shisho.http.fetch: request failed: connection reset");
+    });
+
+    expect(fetchEdition("OL123M")).toBeNull();
+    expect(fetchCover(123)).toBeNull();
+  });
+});

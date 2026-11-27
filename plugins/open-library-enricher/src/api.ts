@@ -1,4 +1,5 @@
 import type { OLAuthor, OLEdition, OLSearchResult, OLWork } from "./types";
+import { safeFetch } from "@shisho-plugins/shared";
 
 const BASE_URL = "https://openlibrary.org";
 const COVERS_URL = "https://covers.openlibrary.org";
@@ -11,9 +12,10 @@ const USER_AGENT =
  */
 function fetchJSON<T>(url: string): T | null {
   shisho.log.debug(`Fetching: ${url}`);
-  const response = shisho.http.fetch(url, {
+  const response = safeFetch(url, {
     headers: { "User-Agent": USER_AGENT },
   });
+  if (!response) return null;
 
   if (response.status === 404) {
     shisho.log.debug(`Not found: ${url}`);
@@ -93,12 +95,14 @@ export function fetchCover(coverId: number): CoverResult | null {
   const url = `${COVERS_URL}/b/id/${coverId}-L.jpg`;
   shisho.log.debug(`Fetching cover: ${url}`);
 
-  const response = shisho.http.fetch(url, {
+  const response = safeFetch(url, {
     headers: { "User-Agent": USER_AGENT },
   });
 
-  if (!response.ok) {
-    shisho.log.warn(`Failed to fetch cover ${coverId}: ${response.status}`);
+  if (!response || !response.ok) {
+    shisho.log.warn(
+      `Failed to fetch cover ${coverId}: ${response?.status ?? "no response"}`,
+    );
     return null;
   }
 

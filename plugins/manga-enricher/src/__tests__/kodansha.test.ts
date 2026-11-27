@@ -128,3 +128,13 @@ ${JSON.stringify({
     );
   });
 });
+
+describe("kodanshaScraper request failures", () => {
+  it("returns null instead of throwing when fetch throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw new Error("shisho.http.fetch: request failed: connection reset");
+    });
+
+    expect(kodanshaScraper.searchVolume("Some Series", 1)).toBeNull();
+  });
+});

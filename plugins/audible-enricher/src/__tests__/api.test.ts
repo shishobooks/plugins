@@ -143,3 +143,14 @@ describe("fetchAudnexusBook", () => {
     expect(fetchAudnexusBook("B08G9PRS1K", "us")).toBeNull();
   });
 });
+
+describe("request failures", () => {
+  it("returns null instead of throwing when fetch throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw new Error("shisho.http.fetch: request failed: connection reset");
+    });
+
+    expect(searchProducts("us", "test")).toBeNull();
+    expect(fetchProduct("us", "B0000000")).toBeNull();
+  });
+});

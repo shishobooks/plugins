@@ -1,5 +1,5 @@
 import type { PublisherScraper, VolumeMetadata } from "./types";
-import { slugify, stripHTML } from "@shisho-plugins/shared";
+import { safeFetch, slugify, stripHTML } from "@shisho-plugins/shared";
 
 // Re-export so existing test imports (`from "../publishers/kodansha"`)
 // don't need to know that the helper now lives in the shared package.
@@ -12,7 +12,7 @@ const BASE_URL = "https://kodansha.us";
 
 function fetchHtml(url: string): string | null {
   shisho.log.debug(`Kodansha: fetching ${url}`);
-  const response = shisho.http.fetch(url, {
+  const response = safeFetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "text/html,application/xhtml+xml",

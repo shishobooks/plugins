@@ -1,5 +1,5 @@
 import type { PublisherScraper, VolumeMetadata } from "./types";
-import { stripHTML } from "@shisho-plugins/shared";
+import { safeFetch, stripHTML } from "@shisho-plugins/shared";
 
 const USER_AGENT =
   "ShishoPlugin/0.1.0 (manga-enricher; github.com/shishobooks/plugins)";
@@ -8,7 +8,7 @@ const BASE_URL = "https://yenpress.com";
 
 function fetchHtml(url: string): string | null {
   shisho.log.debug(`YenPress: fetching ${url}`);
-  const response = shisho.http.fetch(url, {
+  const response = safeFetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "text/html,application/xhtml+xml",

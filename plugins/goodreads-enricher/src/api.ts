@@ -1,4 +1,5 @@
 import type { GRAutocompleteResult } from "./types";
+import { safeFetch } from "@shisho-plugins/shared";
 
 const BASE_URL = "https://www.goodreads.com";
 const USER_AGENT =
@@ -17,9 +18,20 @@ function fetchWithRetry(
     shisho.log.debug(
       `Fetching: ${url}${attempt > 1 ? ` (attempt ${attempt}/${MAX_ATTEMPTS})` : ""}`,
     );
-    const response = shisho.http.fetch(url, {
+    const response = safeFetch(url, {
       headers: { "User-Agent": USER_AGENT },
     });
+
+    // A thrown request (connection reset, DNS or TLS failure) is usually
+    // transient, so retry it like a 503.
+    if (!response && attempt < MAX_ATTEMPTS) {
+      const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      shisho.log.warn(
+        `Request failed for ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_ATTEMPTS})…`,
+      );
+      shisho.sleep(delay);
+      continue;
+    }
 
     if (response?.ok) {
       if (isUsableResponse(response)) return response;

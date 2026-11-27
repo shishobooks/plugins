@@ -218,3 +218,33 @@ describe("fetchBookPage", () => {
     expect(shisho.http.fetch).toHaveBeenCalledTimes(3);
   });
 });
+
+describe("request failures", () => {
+  it("retries a thrown request and returns the later response", () => {
+    const results = [{ bookId: "5907" }];
+    vi.mocked(shisho.http.fetch)
+      .mockImplementationOnce(() => {
+        throw new Error("shisho.http.fetch: request failed: connection reset");
+      })
+      .mockReturnValueOnce({
+        status: 200,
+        statusText: "OK",
+        ok: true,
+        json: () => results,
+        text: () => "",
+      } as ReturnType<typeof shisho.http.fetch>);
+
+    expect(searchAutocomplete("the hobbit")).toEqual(results);
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(2);
+    expect(shisho.sleep).toHaveBeenCalledWith(1000);
+  });
+
+  it("returns null once every attempt throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw new Error("shisho.http.fetch: request failed: connection reset");
+    });
+
+    expect(fetchBookPage("5907")).toBeNull();
+    expect(shisho.http.fetch).toHaveBeenCalledTimes(3);
+  });
+});

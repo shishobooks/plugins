@@ -1,4 +1,5 @@
 import {
+  authorsMatch,
   isbn10To13,
   isbnsMatch,
   levenshteinDistance,
@@ -6,12 +7,13 @@ import {
   normalizeIsbn,
   normalizeWhitespace,
   parseMonth,
+  safeFetch,
   slugify,
   stripHTML,
   stripSubtitle,
   titleMatchConfidence,
 } from "../index";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("levenshteinDistance", () => {
   it("returns 0 for identical strings", () => {
@@ -454,5 +456,73 @@ describe("isbnsMatch", () => {
   it("rejects malformed input", () => {
     expect(isbnsMatch("", "9780261102217")).toBe(false);
     expect(isbnsMatch("1234", "9780261102217")).toBe(false);
+  });
+});
+
+describe("normalizeForComparison accent folding", () => {
+  it("folds accented letters to their base letter", () => {
+    expect(normalizeForComparison("Charlotte Brontë")).toBe("charlotte bronte");
+    expect(normalizeForComparison("Gabriel García Márquez")).toBe(
+      "gabriel garcia marquez",
+    );
+    expect(normalizeForComparison("Shōnen")).toBe("shonen");
+  });
+
+  it("folds letters that don't decompose", () => {
+    expect(normalizeForComparison("Søren Kierkegaard")).toBe(
+      "soren kierkegaard",
+    );
+    expect(normalizeForComparison("Stanisław Lem")).toBe("stanislaw lem");
+    expect(normalizeForComparison("Straße")).toBe("strasse");
+    expect(normalizeForComparison("Ægir")).toBe("aegir");
+  });
+
+  it("scores an unaccented title as an exact match", () => {
+    expect(titleMatchConfidence("Les Miserables", "Les Misérables")).toBe(1);
+  });
+});
+
+describe("authorsMatch", () => {
+  it("ignores spacing and dots between initials", () => {
+    expect(authorsMatch("J. K. Rowling", "J.K. Rowling")).toBe(true);
+    expect(authorsMatch("JK Rowling", "J.K. Rowling")).toBe(true);
+    expect(authorsMatch("J.R. R. Tolkien", "J.R.R. Tolkien")).toBe(true);
+  });
+
+  it("ignores case and accents", () => {
+    expect(authorsMatch("charlotte bronte", "Charlotte Brontë")).toBe(true);
+  });
+
+  it("keeps spaces between full name parts significant", () => {
+    expect(authorsMatch("Jo Ann Brown", "Joann Brown")).toBe(false);
+  });
+
+  it("rejects different authors", () => {
+    expect(authorsMatch("J.K. Rowling", "J.R.R. Tolkien")).toBe(false);
+  });
+});
+
+describe("safeFetch", () => {
+  it("returns the response when fetch succeeds", () => {
+    const response = { ok: true, status: 200 } as ReturnType<
+      typeof shisho.http.fetch
+    >;
+    vi.mocked(shisho.http.fetch).mockReturnValue(response);
+
+    expect(safeFetch("https://example.com", { method: "GET" })).toBe(response);
+    expect(shisho.http.fetch).toHaveBeenCalledWith("https://example.com", {
+      method: "GET",
+    });
+  });
+
+  it("returns null and logs a warning when fetch throws", () => {
+    vi.mocked(shisho.http.fetch).mockImplementation(() => {
+      throw new Error("shisho.http.fetch: request failed: connection reset");
+    });
+
+    expect(safeFetch("https://example.com")).toBeNull();
+    expect(shisho.log.warn).toHaveBeenCalledWith(
+      expect.stringContaining("connection reset"),
+    );
   });
 });
