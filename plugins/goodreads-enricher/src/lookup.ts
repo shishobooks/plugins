@@ -236,8 +236,21 @@ function hasMatchingAsin(metadata: ParsedMetadata, asin: string): boolean {
   );
 }
 
+interface Candidate {
+  result: GRAutocompleteResult;
+  confidence: number;
+}
+
 /**
- * Try search using title + author with confidence check.
+ * Search by title, filtered to the given author when there is one.
+ *
+ * Autocomplete only returns a handful of results, and adding the author to
+ * the query makes it favour summaries and study guides that put
+ * "by <Author>" in their titles, crowding out the real book. So the bare
+ * title is searched first. Only when that finds no exact title match by
+ * the author (a generic title like "It" surfaces other books or nothing,
+ * or only a near miss like "Book III" for "Book II") does it also search
+ * title + author, appending any new results after the title-only ones.
  */
 function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
   const title = context.query;
@@ -247,36 +260,73 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
   }
 
   const authorName = context.author;
-  const query = authorName ? `${title} ${authorName}` : title;
 
   shisho.log.info(
     `Searching by title: "${title}"${authorName ? ` author: "${authorName}"` : ""}`,
   );
-  const results = searchAutocomplete(query);
-  if (!results || results.length === 0) {
+
+  const candidates = searchCandidates(title, title, authorName);
+  if (authorName && !candidates.some((c) => c.confidence === 1)) {
+    const seenIds = new Set(candidates.map((c) => c.result.bookId));
+    for (const candidate of searchCandidates(
+      `${title} ${authorName}`,
+      title,
+      authorName,
+    )) {
+      if (seenIds.has(candidate.result.bookId)) continue;
+      seenIds.add(candidate.result.bookId);
+      candidates.push(candidate);
+    }
+  }
+
+  if (candidates.length === 0) {
     shisho.log.debug("No search results found");
     return [];
   }
 
-  // Preserve API relevance order; score via titleMatchConfidence so a
-  // subtitle in either side (query or result) doesn't tank the score.
-  const matches: ParsedMetadata[] = [];
+  return candidates.map((c) => enrichSearchResult(c.result, c.confidence));
+}
 
-  for (const result of results) {
-    // If we have an author in context, require match
-    if (authorName) {
-      const normalizedAuthor = normalizeForComparison(authorName);
-      if (normalizeForComparison(result.author.name) !== normalizedAuthor) {
-        shisho.log.debug(`Skipping "${result.title}" - author mismatch`);
-        continue;
-      }
+/**
+ * Run one autocomplete query and score its results against `title`,
+ * dropping results by a different author when `authorName` is given.
+ * Keeps the API's relevance order; titleMatchConfidence ignores subtitles
+ * on either side so they don't tank the score.
+ */
+function searchCandidates(
+  query: string,
+  title: string,
+  authorName: string | undefined,
+): Candidate[] {
+  const candidates: Candidate[] = [];
+  for (const result of searchAutocomplete(query) ?? []) {
+    if (authorName && !authorsMatch(authorName, result.author.name)) {
+      shisho.log.debug(`Skipping "${result.title}" - author mismatch`);
+      continue;
     }
-
-    const confidence = titleMatchConfidence(title, result.bookTitleBare);
-    matches.push(enrichSearchResult(result, confidence));
+    candidates.push({
+      result,
+      confidence: titleMatchConfidence(title, result.bookTitleBare),
+    });
   }
+  return candidates;
+}
 
-  return matches;
+/**
+ * Compare author names ignoring case, punctuation, and spacing between
+ * initials, so "J. K. Rowling", "J.K. Rowling" and "JK Rowling" all match.
+ * Spaces between longer name parts still count: "Jo Ann Brown" isn't
+ * "Joann Brown".
+ */
+function authorsMatch(a: string, b: string): boolean {
+  // Split dotted initials apart first so "J.R. R." and "J.R.R." both
+  // become "j r r", then join runs of single letters back together.
+  const joinInitials = (name: string) =>
+    normalizeForComparison(name.replace(/\./g, " ")).replace(
+      /\b(\w) (?=\w\b)/g,
+      "$1",
+    );
+  return joinInitials(a) === joinInitials(b);
 }
 
 /**
