@@ -236,13 +236,6 @@ function hasMatchingAsin(metadata: ParsedMetadata, asin: string): boolean {
   );
 }
 
-/**
- * A title-only match by the right author at or above this confidence
- * means the title + author fallback query isn't needed. Matches Shisho's
- * default auto-apply threshold.
- */
-const STRONG_MATCH_CONFIDENCE = 0.85;
-
 interface Candidate {
   result: GRAutocompleteResult;
   confidence: number;
@@ -254,10 +247,10 @@ interface Candidate {
  * Autocomplete only returns a handful of results, and adding the author to
  * the query makes it favour summaries and study guides that put
  * "by <Author>" in their titles, crowding out the real book. So the bare
- * title is searched first. Only when that finds no strong match by the
- * author (a generic title like "It" surfaces other books, or nothing) does
- * it also search title + author, appending any new results after the
- * title-only ones.
+ * title is searched first. Only when that finds no exact title match by
+ * the author (a generic title like "It" surfaces other books or nothing,
+ * or only a near miss like "Book III" for "Book II") does it also search
+ * title + author, appending any new results after the title-only ones.
  */
 function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
   const title = context.query;
@@ -273,10 +266,7 @@ function tryTitleAuthorSearch(context: SearchContext): ParsedMetadata[] {
   );
 
   const candidates = searchCandidates(title, title, authorName);
-  if (
-    authorName &&
-    !candidates.some((c) => c.confidence >= STRONG_MATCH_CONFIDENCE)
-  ) {
+  if (authorName && !candidates.some((c) => c.confidence === 1)) {
     const seenIds = new Set(candidates.map((c) => c.result.bookId));
     for (const candidate of searchCandidates(
       `${title} ${authorName}`,
@@ -324,12 +314,18 @@ function searchCandidates(
 
 /**
  * Compare author names ignoring case, punctuation, and spacing between
- * initials, so "J. K. Rowling" matches "J.K. Rowling". Spaces between
- * longer name parts still count: "Jo Ann Brown" isn't "Joann Brown".
+ * initials, so "J. K. Rowling", "J.K. Rowling" and "JK Rowling" all match.
+ * Spaces between longer name parts still count: "Jo Ann Brown" isn't
+ * "Joann Brown".
  */
 function authorsMatch(a: string, b: string): boolean {
+  // Split dotted initials apart first so "J.R. R." and "J.R.R." both
+  // become "j r r", then join runs of single letters back together.
   const joinInitials = (name: string) =>
-    normalizeForComparison(name).replace(/\b(\w) (?=\w\b)/g, "$1");
+    normalizeForComparison(name.replace(/\./g, " ")).replace(
+      /\b(\w) (?=\w\b)/g,
+      "$1",
+    );
   return joinInitials(a) === joinInitials(b);
 }
 

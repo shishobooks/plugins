@@ -329,13 +329,14 @@ describe("searchForBooks", () => {
       bookTitleBare: "A Completely Different Title Altogether",
     };
 
-    const otherAuthorBook: GRAutocompleteResult = {
+    // Same book ID as closeTitleAutocomplete but with a different author,
+    // so dedupe must run after the author filter, not before.
+    const staleAuthorCopy: GRAutocompleteResult = {
       ...closeTitleAutocomplete,
-      bookId: "777",
       author: { ...sampleAutocomplete.author, name: "Someone Else" },
     };
 
-    it("searches by title alone when it finds a strong match by the author", () => {
+    it("searches by title alone when it finds an exact match by the author", () => {
       const context = makeContext({
         query: "The Hobbit",
         author: "J.R.R. Tolkien",
@@ -362,14 +363,14 @@ describe("searchForBooks", () => {
       expect(mockedSearchAutocomplete).toHaveBeenCalledWith("The Hobbit");
     });
 
-    it("falls back to title + author when the title search has no strong match by the author", () => {
+    it("falls back to title + author when the title search has no exact match by the author", () => {
       const context = makeContext({
         query: "The Hobbit",
         author: "J.R.R. Tolkien",
       });
       mockedSearchAutocomplete.mockImplementation((query) =>
         query === "The Hobbit"
-          ? [weakMatchByAuthor, otherAuthorBook]
+          ? [weakMatchByAuthor, staleAuthorCopy]
           : [closeTitleAutocomplete, weakMatchByAuthor],
       );
       mockBookPageSuccess();
@@ -380,8 +381,39 @@ describe("searchForBooks", () => {
         2,
         "The Hobbit J.R.R. Tolkien",
       );
-      // Title-only results come first, and the repeated 1234 appears once.
+      // Title-only results come first, the repeated 1234 appears once, and
+      // the stale-author copy of 5907 doesn't hide the correct one.
       expect(goodreadsIds(results)).toEqual(["1234", "5907"]);
+      expect(results[1].confidence).toBe(1.0);
+    });
+
+    it("falls back to title + author when the title search only finds a near miss", () => {
+      const context = makeContext({
+        query: "Night of the Living Dummy II",
+        author: "R.L. Stine",
+      });
+      const author = { ...sampleAutocomplete.author, name: "R.L. Stine" };
+      const sequel: GRAutocompleteResult = {
+        ...sampleAutocomplete,
+        bookId: "3",
+        bookTitleBare: "Night of the Living Dummy III",
+        author,
+      };
+      const exact: GRAutocompleteResult = {
+        ...sampleAutocomplete,
+        bookId: "2",
+        bookTitleBare: "Night of the Living Dummy II",
+        author,
+      };
+      mockedSearchAutocomplete.mockImplementation((query) =>
+        query === "Night of the Living Dummy II" ? [sequel] : [exact],
+      );
+      mockBookPageSuccess();
+
+      const results = searchForBooks(context);
+
+      expect(goodreadsIds(results)).toEqual(["3", "2"]);
+      expect(results[0].confidence).toBeLessThan(1);
       expect(results[1].confidence).toBe(1.0);
     });
 
@@ -425,6 +457,18 @@ describe("searchForBooks", () => {
       const context = makeContext({
         query: "The Hobbit",
         author: "J. R. R. Tolkien",
+      });
+      mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
+      mockBookPageSuccess();
+
+      const results = searchForBooks(context);
+      expect(results).toHaveLength(1);
+    });
+
+    it("matches authors with mixed dotted and spaced initials", () => {
+      const context = makeContext({
+        query: "The Hobbit",
+        author: "J.R. R. Tolkien",
       });
       mockedSearchAutocomplete.mockReturnValue([closeTitleAutocomplete]);
       mockBookPageSuccess();
